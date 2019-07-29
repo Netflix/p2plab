@@ -1,23 +1,46 @@
+// Copyright 2019 Netflix, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package p2plab
 
 import "context"
 
+// ClusterAPI defines API for cluster operations.
 type ClusterAPI interface {
+	// Create deploys a cluster of a p2p application.
 	Create(ctx context.Context, opts ...CreateClusterOption) (Cluster, error)
 
+	// Get returns a cluster.
 	Get(ctx context.Context, id string) (Cluster, error)
 
+	// List returns available clusters.
 	List(ctx context.Context) ([]Cluster, error)
 }
 
 type Cluster interface {
+	// Remove destroys a cluster permanently.
 	Remove(ctx context.Context) error
 
+	// Query executes a query and returns a set of matching nodes.
 	Query(ctx context.Context, q Query) (NodeSet, error)
 
+	// Update compiles a commit and updates the cluster to the new p2p
+	// application.
 	Update(ctx context.Context, commit string) error
 }
 
+// CreateClusterOption is an option to 
 type CreateClusterOption func(CreateClusterSettings) error
 
 type CreateClusterSettings struct {
