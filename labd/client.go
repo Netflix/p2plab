@@ -91,6 +91,10 @@ type benchmarkAPI struct {
 	c *client
 }
 
+func (sapi *benchmarkAPI) Create(ctx context.Context, cluster, scenario string) (p2plab.Benchmark, error) {
+	return nil, nil
+}
+
 func (sapi *benchmarkAPI) Get(ctx context.Context, id string) (p2plab.Benchmark, error) {
 	return nil, nil
 }

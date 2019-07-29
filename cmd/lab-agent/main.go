@@ -18,8 +18,16 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/rs/zerolog"
 	"github.com/Netflix/p2plab/cmd/lab-agent/command"
 )
+
+func init() {
+	// UNIX Time is faster and smaller than most timestamps. If you set
+	// zerolog.TimeFieldFormat to an empty string, logs will write with UNIX
+	// time.
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+}
 
 func main() {
 	app := command.App()

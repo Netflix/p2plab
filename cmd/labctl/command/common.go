@@ -17,8 +17,14 @@ package command
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"strings"
 
 	"github.com/Netflix/p2plab/printer"
+	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/log"
+	jaeger "github.com/uber/jaeger-client-go"
 	"github.com/urfave/cli"
 )
 
@@ -32,10 +38,14 @@ var (
 func AttachAppContext(app *cli.App) {
 	ctx := context.Background()
 
+	tracer, closer := getTracer()
+
+	var span opentracing.Span
+
 	for i, cmd := range app.Commands {
 		for j, subcmd := range cmd.Subcommands {
 			func(before cli.BeforeFunc) {
-				// name := subcmd.Name
+				name := subcmd.Name
 				app.Commands[i].Subcommands[j].Before = func(c *cli.Context) error {
 					if before != nil {
 						if err := before(c); err != nil {
@@ -43,7 +53,11 @@ func AttachAppContext(app *cli.App) {
 						}
 					}
 
-					// Start span for context.
+					span = tracer.StartSpan(name)
+					span.LogFields(log.String("command", strings.Join(os.Args, " ")))
+
+					ctx = opentracing.ContextWithSpan(ctx, span)
+
 					c.App.Metadata["context"] = ctx
 					return nil
 				}
@@ -58,10 +72,12 @@ func AttachAppContext(app *cli.App) {
 				return err
 			}
 		}
-		// Finish spans.
-		return nil
-	}
 
+		if span != nil {
+			span.Finish()
+		}
+		return closer.Close()
+	}
 }
 
 func AttachAppPrinter(app *cli.App) {
@@ -89,4 +105,27 @@ func CommandContext(c *cli.Context) context.Context {
 
 func CommandPrinter(c *cli.Context) printer.Printer {
 	return c.App.Metadata["printer"].(printer.Printer)
+}
+
+func getTracer() (opentracing.Tracer, io.Closer) {
+	if traceAddr := os.Getenv("JAEGER_TRACE"); traceAddr != "" {
+		tr, err := jaeger.NewUDPTransport(traceAddr, 0)
+		if err != nil {
+			panic(err)
+		}
+
+		return jaeger.NewTracer(
+			"labctl",
+			jaeger.NewConstSampler(true),
+			jaeger.NewRemoteReporter(tr),
+		)
+	}
+
+	return opentracing.NoopTracer{}, &nopCloser{}
+}
+
+type nopCloser struct{}
+
+func (*nopCloser) Close() error {
+	return nil
 }

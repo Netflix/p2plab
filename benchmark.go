@@ -21,6 +21,9 @@ import (
 
 // BenchmarkAPI defines API for benchmark operations.
 type BenchmarkAPI interface {
+	// Create starts benchmarking a scenario on a cluster.
+	Create(ctx context.Context, cluster, scenario string) (Benchmark, error)
+
 	// Get returns a benchmark.
 	Get(ctx context.Context, id string) (Benchmark, error)
 
@@ -32,9 +35,6 @@ type BenchmarkAPI interface {
 type Benchmark interface {
 	// Status shows the current status of the benchmark.
 	Status() BenchmarkStatus
-
-	// Start begins the benchmark
-	Start(ctx context.Context, clstr Cluster, s Scenario) error
 
 	// Cancel cancels a running benchmark.
 	Cancel(ctx context.Context) error
@@ -53,7 +53,7 @@ type BenchmarkStatus string
 var (
 	// BenchmarkInit indicates that the benchmark is initializing and converting
 	// objects used in the benchmark.
-	BenchmarkInit    BenchmarkStatus = "init"
+	BenchmarkInit BenchmarkStatus = "init"
 
 	// BenchmarkSeeding indicates that the benchmark is seeding the cluster with
 	// the initial objects.
@@ -64,7 +64,7 @@ var (
 	BenchmarkRunning BenchmarkStatus = "running"
 
 	// BenchmarkDone indicates the benchmark has executed to completion.
-	BenchmarkDone    BenchmarkStatus = "done"
+	BenchmarkDone BenchmarkStatus = "done"
 
 	// BenchmarkError indicates the benchmark has exited with an error.
 	BenchmarkError BenchmarkStatus = "error"

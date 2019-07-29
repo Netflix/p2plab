@@ -68,12 +68,7 @@ func startBenchmarkAction(c *cli.Context) error {
 	}
 
 	ctx := CommandContext(c)
-	benchmark, err := cln.Benchmark().Get(ctx, c.Args().First())
-	if err != nil {
-		return err
-	}
-
-	err = benchmark.Start(ctx)
+	_, err = cln.Benchmark().Create(ctx, c.Args().Get(1), c.Args().Get(2))
 	if err != nil {
 		return err
 	}
