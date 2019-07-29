@@ -9,4 +9,5 @@ type ScenarioAPI interface {
 }
 
 type Scenario interface {
+	Remove(ctx context.Context) error
 }

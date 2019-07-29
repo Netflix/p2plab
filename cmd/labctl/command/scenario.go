@@ -1,6 +1,10 @@
 package command
 
-import "github.com/urfave/cli"
+import (
+	"errors"
+
+	"github.com/urfave/cli"
+)
 
 var scenarioCommand = cli.Command{
 	Name:    "scenario",
@@ -29,6 +33,26 @@ var scenarioCommand = cli.Command{
 }
 
 func createScenarioAction(c *cli.Context) error {
+	if c.NArg() != 1 {
+		return errors.New("scenario name must be provided")
+	}
+
+	cln, err := ResolveClient(c)
+	if err != nil {
+		return err
+	}
+
+	ctx := CommandContext(c)
+	node, err := cln.Node().Get(ctx, c.Args().First())
+	if err != nil {
+		return err
+	}
+
+	err = node.SSH(ctx)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

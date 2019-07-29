@@ -1,6 +1,11 @@
 package command
 
-import "github.com/urfave/cli"
+import (
+	"errors"
+
+	"github.com/Netflix/p2plab/node"
+	"github.com/urfave/cli"
+)
 
 var nodeCommand = cli.Command{
 	Name:    "node",
@@ -8,16 +13,19 @@ var nodeCommand = cli.Command{
 	Usage:   "Manage nodes.",
 	Subcommands: []cli.Command{
 		{
-			Name:    "label",
-			Aliases: []string{"l"},
-			Usage:   "Label nodes in a cluster for queries.",
-			Action:  labelNodeAction,
-		},
-		{
-			Name:    "list",
-			Aliases: []string{"ls"},
-			Usage:   "List nodes in a cluster.",
-			Action:  listNodeAction,
+			Name:   "label",
+			Usage:  "Label nodes in a cluster for grouping in scenarios.",
+			Action: labelNodesAction,
+			Flags: []cli.Flag{
+				&cli.StringSliceFlag{
+					Name:  "add",
+					Usage: "Adds a label to the matched nodes",
+				},
+				&cli.StringSliceFlag{
+					Name:  "remove,rm",
+					Usage: "Removes a label to the matched nodes",
+				},
+			},
 		},
 		{
 			Name:   "ssh",
@@ -27,14 +35,53 @@ var nodeCommand = cli.Command{
 	},
 }
 
-func labelNodeAction(c *cli.Context) error {
-	return nil
-}
+func labelNodesAction(c *cli.Context) error {
+	cln, err := ResolveClient(c)
+	if err != nil {
+		return err
+	}
 
-func listNodeAction(c *cli.Context) error {
+	ctx := CommandContext(c)
+
+	nset := node.NewSet()
+	for i := 0; i < c.NArg(); i++ {
+		id := c.Args().Get(i)
+
+		n, err := cln.Node().Get(ctx, id)
+		if err != nil {
+			return err
+		}
+		nset.Add(n)
+	}
+
+	err = nset.Label(ctx, c.StringSlice("add"), c.StringSlice("remove"))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func sshNodeAction(c *cli.Context) error {
+	if c.NArg() != 1 {
+		return errors.New("node id must be provided")
+	}
+
+	cln, err := ResolveClient(c)
+	if err != nil {
+		return err
+	}
+
+	ctx := CommandContext(c)
+	node, err := cln.Node().Get(ctx, c.Args().First())
+	if err != nil {
+		return err
+	}
+
+	err = node.SSH(ctx)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

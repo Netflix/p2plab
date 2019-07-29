@@ -3,6 +3,7 @@ package command
 import (
 	"errors"
 
+	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/query"
 	"github.com/urfave/cli"
 )
@@ -98,8 +99,8 @@ func listClusterAction(c *cli.Context) error {
 }
 
 func queryClusterAction(c *cli.Context) error {
-	if c.NArg() != 2 {
-		return errors.New("cluster id and query must be provided")
+	if c.NArg() < 1 {
+		return errors.New("cluster id must be provided")
 	}
 
 	cln, err := ResolveClient(c)
@@ -113,9 +114,14 @@ func queryClusterAction(c *cli.Context) error {
 		return err
 	}
 
-	q, err := query.Parse(c.Args().Get(2))
-	if err != nil {
-		return err
+	var q p2plab.Query
+	if c.NArg() == 1 {
+		q = query.All()
+	} else {
+		q, err = query.Parse(c.Args().Get(2))
+		if err != nil {
+			return err
+		}
 	}
 
 	nset, err := cluster.Query(ctx, q)
