@@ -28,6 +28,9 @@ type ClusterAPI interface {
 	List(ctx context.Context) ([]Cluster, error)
 }
 
+// Cluster is a group of instances connected in a p2p network. They can be
+// provisioned by developers, or CI. Clusters may span multiple regions and
+// have heterogeneous nodes.
 type Cluster interface {
 	// Remove destroys a cluster permanently.
 	Remove(ctx context.Context) error
@@ -40,8 +43,9 @@ type Cluster interface {
 	Update(ctx context.Context, commit string) error
 }
 
-// CreateClusterOption is an option to 
+// CreateClusterOption is an option to modify create cluster settings.
 type CreateClusterOption func(CreateClusterSettings) error
 
+// CreateClusterSettings specify cluster properties for creation.
 type CreateClusterSettings struct {
 }

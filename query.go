@@ -14,5 +14,8 @@
 
 package p2plab
 
+// Query is an executable function against a cluster to match a set of nodes.
+// Queries are used to group nodes to perform actions in either the seeding or
+// benchmarking stage of a scenario.
 type Query interface {
 }

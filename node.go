@@ -16,25 +16,39 @@ package p2plab
 
 import "context"
 
+// NodeAPI defines the API for node operations.
 type NodeAPI interface {
+	// Get returns a node.
 	Get(ctx context.Context, id string) (Node, error)
 }
 
+// Node is an instance running the P2P application to be benchmarked.
 type Node interface {
-	SSH(ctx context.Context, opts ...SSHOpt) error
+	// SSH creates a SSH connection to the node.
+	SSH(ctx context.Context, opts ...SSHOption) error
 }
 
+// NodeSet is a group of unique nodes.
 type NodeSet interface {
+	// Add adds a node to the set. If the node already exists in the set, it is
+	// not added again.
 	Add(node Node)
 
+	// Remove removes a node from a set. If the node doesn't exist in the set,
+	// it is not removed.
 	Remove(node Node)
 
+	// Slice returns a slice of nodes from the set.
 	Slice() []Node
 
+	// Label adds and removes metadata from nodes. Labels are used in a scenario
+	// definition to query nodes and execute actions against the matched group.
 	Label(ctx context.Context, addLabels, removeLabels []string) error
 }
 
-type SSHOpt func(SSHSettings) error
+// SSHOption is an option to modify SSH settings.
+type SSHOption func(SSHSettings) error
 
+// SSHSetttings specify ssh settings when connecting to a node.
 type SSHSettings struct {
 }

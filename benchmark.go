@@ -19,27 +19,67 @@ import (
 	"io"
 )
 
+// BenchmarkAPI defines API for benchmark operations.
 type BenchmarkAPI interface {
+	// Get returns a benchmark.
 	Get(ctx context.Context, id string) (Benchmark, error)
 
+	// List returns available benchmarks.
 	List(ctx context.Context) ([]Benchmark, error)
 }
 
+// Benchmark is an execution of a scenario on a cluster.
 type Benchmark interface {
-	Start(ctx context.Context) error
+	// Status shows the current status of the benchmark.
+	Status() BenchmarkStatus
 
+	// Start begins the benchmark
+	Start(ctx context.Context, clstr Cluster, s Scenario) error
+
+	// Cancel cancels a running benchmark.
 	Cancel(ctx context.Context) error
 
+	// Report returns statistics on how the P2P application behaved during the
+	// benchmark.
 	Report(ctx context.Context) (Report, error)
 
+	// Logs returns a streaming log of the benchmark operation.
 	Logs(ctx context.Context, opt ...LogsOption) (io.ReadCloser, error)
 }
 
+// BenchmarkStatus is the current status of a benchmark.
+type BenchmarkStatus string
+
+var (
+	// BenchmarkInit indicates that the benchmark is initializing and converting
+	// objects used in the benchmark.
+	BenchmarkInit    BenchmarkStatus = "init"
+
+	// BenchmarkSeeding indicates that the benchmark is seeding the cluster with
+	// the initial objects.
+	BenchmarkSeeding BenchmarkStatus = "seeding"
+
+	// BenchmarkRunning indicates that the benchmark is executing and metrics are
+	// being collected.
+	BenchmarkRunning BenchmarkStatus = "running"
+
+	// BenchmarkDone indicates the benchmark has executed to completion.
+	BenchmarkDone    BenchmarkStatus = "done"
+
+	// BenchmarkError indicates the benchmark has exited with an error.
+	BenchmarkError BenchmarkStatus = "error"
+)
+
+// Report is a benchmark summary on how the P2P application behaved during the
+// benchmark.
 type Report interface {
 }
 
+// LogsOption is an option to modify logging settings.
 type LogsOption func(LogsSettings) error
 
+// LogsSettings specify logging settings.
 type LogsSettings struct {
-	Tail bool
+	// Follow specify that the log should be followed.
+	Follow bool
 }
