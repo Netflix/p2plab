@@ -1,6 +1,10 @@
 package command
 
-import "github.com/urfave/cli"
+import (
+	"errors"
+
+	"github.com/urfave/cli"
+)
 
 var benchmarkCommand = cli.Command{
 	Name:    "benchmark",
@@ -40,21 +44,114 @@ var benchmarkCommand = cli.Command{
 }
 
 func startBenchmarkAction(c *cli.Context) error {
+	if c.NArg() != 2 {
+		return errors.New("cluster id and scenario name must be provided")
+	}
+
+	cln, err := ResolveClient(c)
+	if err != nil {
+		return err
+	}
+
+	ctx := CommandContext(c)
+	benchmark, err := cln.Benchmark().Get(ctx, c.Args().First())
+	if err != nil {
+		return err
+	}
+
+	err = benchmark.Start(ctx)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func cancelBenchmarkAction(c *cli.Context) error {
+	if c.NArg() != 2 {
+		return errors.New("cluster id and scenario name must be provided")
+	}
+
+	cln, err := ResolveClient(c)
+	if err != nil {
+		return err
+	}
+
+	ctx := CommandContext(c)
+	benchmark, err := cln.Benchmark().Get(ctx, c.Args().First())
+	if err != nil {
+		return err
+	}
+
+	err = benchmark.Cancel(ctx)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func listBenchmarkAction(c *cli.Context) error {
-	return nil
+	cln, err := ResolveClient(c)
+	if err != nil {
+		return err
+	}
+
+	ctx := CommandContext(c)
+	benchmarks, err := cln.Benchmark().List(ctx)
+	if err != nil {
+		return err
+	}
+
+	return CommandPrinter(c).Print(benchmarks)
 }
 
 func reportBenchmarkAction(c *cli.Context) error {
-	return nil
+	if c.NArg() != 1 {
+		return errors.New("benchmark id must be provided")
+	}
+
+	cln, err := ResolveClient(c)
+	if err != nil {
+		return err
+	}
+
+	ctx := CommandContext(c)
+	benchmark, err := cln.Benchmark().Get(ctx, c.Args().First())
+	if err != nil {
+		return err
+	}
+
+	report, err := benchmark.Report(ctx)
+	if err != nil {
+		return err
+	}
+
+	return CommandPrinter(c).Print(report)
 }
 
 func logBenchmarkAction(c *cli.Context) error {
-	return nil
+	if c.NArg() != 1 {
+		return errors.New("benchmark id must be provided")
+	}
+
+	cln, err := ResolveClient(c)
+	if err != nil {
+		return err
+	}
+
+	ctx := CommandContext(c)
+	benchmark, err := cln.Benchmark().Get(ctx, c.Args().First())
+	if err != nil {
+		return err
+	}
+
+	logs, err := benchmark.Logs(ctx)
+	if err != nil {
+		return err
+	}
+	defer logs.Close()
+
+	// TODO: Stream logs
+	return CommandPrinter(c).Print(logs)
 }

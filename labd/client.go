@@ -61,6 +61,10 @@ type scenarioAPI struct {
 	c *client
 }
 
+func (sapi *scenarioAPI) Create(ctx context.Context, name string, sdef p2plab.ScenarioDefinition) (p2plab.Scenario, error) {
+	return nil, nil
+}
+
 func (sapi *scenarioAPI) Get(ctx context.Context, id string) (p2plab.Scenario, error) {
 	return nil, nil
 }
