@@ -12,19 +12,48 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package command
+package labd
 
 import (
+	"context"
+
 	"github.com/Netflix/p2plab"
-	"github.com/Netflix/p2plab/labd"
-	"github.com/urfave/cli"
 )
 
-func ResolveClient(c *cli.Context) (p2plab.LabdAPI, error) {
-	cln, err := labd.NewClient(c.String("address"))
+type nodeAPI struct {
+	cln *client
+}
+
+func (napi *nodeAPI) Get(ctx context.Context, id string) (p2plab.Node, error) {
+	req := napi.cln.NewRequest("HEAD", "/nodes/%d", id)
+	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
-	return cln, nil
+	return &node{
+		cln: napi.cln,
+		id:  id,
+	}, nil
+}
+
+func (napi *nodeAPI) List(ctx context.Context) ([]p2plab.Node, error) {
+	req := napi.cln.NewRequest("GET", "/nodes")
+	resp, err := req.Send(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	return nil, nil
+}
+
+type node struct {
+	cln *client
+	id  string
+}
+
+func (n *node) SSH(ctx context.Context, opts ...p2plab.SSHOption) error {
+	return nil
 }
