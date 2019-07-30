@@ -50,7 +50,7 @@ var benchmarkCommand = cli.Command{
 			Action:  reportBenchmarkAction,
 		},
 		{
-			Name:   "log",
+			Name:   "logs",
 			Usage:  "Shows logs of a benchmark.",
 			Action: logBenchmarkAction,
 		},
@@ -78,8 +78,8 @@ func startBenchmarkAction(c *cli.Context) error {
 }
 
 func cancelBenchmarkAction(c *cli.Context) error {
-	if c.NArg() != 2 {
-		return errors.New("cluster id and scenario name must be provided")
+	if c.NArg() != 1 {
+		return errors.New("benchmark id must be provided")
 	}
 
 	cln, err := ResolveClient(c)

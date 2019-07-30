@@ -100,7 +100,7 @@ func (b *benchmark) Logs(ctx context.Context, opt ...p2plab.LogsOption) (io.Read
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	// defer resp.Body.Close()
 
-	return nil, nil
+	return resp.Body, nil
 }

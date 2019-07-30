@@ -25,7 +25,21 @@ type clusterAPI struct {
 }
 
 func (capi *clusterAPI) Create(ctx context.Context, opts ...p2plab.CreateClusterOption) (p2plab.Cluster, error) {
-	req := capi.cln.NewRequest("POST", "/clusters")
+	settings := p2plab.CreateClusterSettings{
+		Size: 3,
+	}
+	for _, opt := range opts {
+		err := opt(settings)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	req := capi.cln.NewRequest("POST", "/clusters").
+		Option("size", settings.Size).
+		Body("hello")
+
+
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
@@ -38,7 +52,7 @@ func (capi *clusterAPI) Create(ctx context.Context, opts ...p2plab.CreateCluster
 }
 
 func (capi *clusterAPI) Get(ctx context.Context, id string) (p2plab.Cluster, error) {
-	req := capi.cln.NewRequest("HEAD", "/clusters/%d", id)
+	req := capi.cln.NewRequest("HEAD", "/clusters/%s", id)
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
@@ -68,7 +82,7 @@ type cluster struct {
 }
 
 func (c *cluster) Remove(ctx context.Context) error {
-	req := c.cln.NewRequest("DELETE", "/clusters/%d", c.id)
+	req := c.cln.NewRequest("DELETE", "/clusters/%s", c.id)
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return err
@@ -79,7 +93,7 @@ func (c *cluster) Remove(ctx context.Context) error {
 }
 
 func (c *cluster) Query(ctx context.Context, q p2plab.Query) (p2plab.NodeSet, error) {
-	req := c.cln.NewRequest("POST", "/clusters/%d/query", c.id)
+	req := c.cln.NewRequest("POST", "/clusters/%s/query", c.id)
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
@@ -90,7 +104,7 @@ func (c *cluster) Query(ctx context.Context, q p2plab.Query) (p2plab.NodeSet, er
 }
 
 func (c *cluster) Update(ctx context.Context, commit string) error {
-	req := c.cln.NewRequest("POST", "/clusters/%d/update", c.id)
+	req := c.cln.NewRequest("PUT", "/clusters/%s", c.id)
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return err

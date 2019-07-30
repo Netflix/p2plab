@@ -27,6 +27,7 @@ func App() *cli.App {
 		cli.StringFlag{
 			Name:  "address,a",
 			Usage: "address for labd",
+			Value: "http://127.0.0.1:7001",
 		},
 		cli.StringFlag{
 			Name:  "log-level,l",

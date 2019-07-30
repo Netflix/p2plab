@@ -39,7 +39,7 @@ func (sapi *scenarioAPI) Create(ctx context.Context, name string, sdef p2plab.Sc
 }
 
 func (sapi *scenarioAPI) Get(ctx context.Context, name string) (p2plab.Scenario, error) {
-	req := sapi.cln.NewRequest("HEAD", "/scenarios/%d", name)
+	req := sapi.cln.NewRequest("HEAD", "/scenarios/%s", name)
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ type scenario struct {
 }
 
 func (s *scenario) Remove(ctx context.Context) error {
-	req := s.cln.NewRequest("DELETE", "/scenarios/%d", s.name)
+	req := s.cln.NewRequest("DELETE", "/scenarios/%s", s.name)
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return err

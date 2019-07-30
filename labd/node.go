@@ -25,7 +25,7 @@ type nodeAPI struct {
 }
 
 func (napi *nodeAPI) Get(ctx context.Context, id string) (p2plab.Node, error) {
-	req := napi.cln.NewRequest("HEAD", "/nodes/%d", id)
+	req := napi.cln.NewRequest("HEAD", "/nodes/%s", id)
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err

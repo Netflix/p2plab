@@ -56,6 +56,13 @@ var clusterCommand = cli.Command{
 			Aliases: []string{"u"},
 			Usage:   "Compiles a commit and updates a cluster to the new p2p app.",
 			Action:  updateClusterAction,
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name: "commit",
+					Usage: "Specify commit to update to.",
+					Value: "HEAD",
+				},
+			},
 		},
 	},
 }
@@ -162,7 +169,12 @@ func updateClusterAction(c *cli.Context) error {
 		return err
 	}
 
-	err = cluster.Update(ctx, c.Args().First())
+	var commit string
+	if c.IsSet("commit") {
+		commit = c.String("commit")
+	}
+
+	err = cluster.Update(ctx, commit)
 	if err != nil {
 		return err
 	}

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package node
+package labd
 
 import (
 	"context"
@@ -21,10 +21,11 @@ import (
 )
 
 type nodeSet struct {
+	cln *client
 }
 
-func NewSet() p2plab.NodeSet {
-	return &nodeSet{}
+func (napi *nodeAPI) NewSet() p2plab.NodeSet {
+	return &nodeSet{napi.cln}
 }
 
 func (s *nodeSet) Add(n p2plab.Node) {
@@ -38,5 +39,12 @@ func (s *nodeSet) Slice() []p2plab.Node {
 }
 
 func (s *nodeSet) Label(ctx context.Context, addLabels, removeLabels []string) error {
+	req := s.cln.NewRequest("PUT", "/nodes")
+	resp, err := req.Send(ctx)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
 	return nil
 }

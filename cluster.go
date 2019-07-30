@@ -48,4 +48,5 @@ type CreateClusterOption func(CreateClusterSettings) error
 
 // CreateClusterSettings specify cluster properties for creation.
 type CreateClusterSettings struct {
+	Size int
 }

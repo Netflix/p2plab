@@ -15,11 +15,17 @@
 package labd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
+	"strconv"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Request struct {
@@ -28,7 +34,8 @@ type Request struct {
 	Base     string
 	Endpoint string
 	Options  map[string]string
-	Body     io.Reader
+
+	body io.Reader
 }
 
 func (c *client) NewRequest(method, path string, a ...interface{}) *Request {
@@ -41,21 +48,61 @@ func (c *client) NewRequest(method, path string, a ...interface{}) *Request {
 	}
 }
 
-func (r *Request) Option(k, v string) *Request {
-	r.Options[k] = v
+func (r *Request) Option(key string, value interface{}) *Request {
+	var s string
+	switch v := value.(type) {
+	case bool:
+		s = strconv.FormatBool(v)
+	case string:
+		s = v
+	case []byte:
+		s = string(v)
+	default:
+		s = fmt.Sprint(value)
+	}
+
+	r.Options[key] = s
+	return r
+}
+
+func (r *Request) Body(value interface{}) *Request {
+	var reader io.Reader
+	switch v := value.(type) {
+	case []byte:
+		reader = bytes.NewReader(v)
+	case string:
+		reader = bytes.NewReader([]byte(v))
+	case io.Reader:
+		reader = v
+	}
+
+	r.body = reader
 	return r
 }
 
 func (r *Request) Send(ctx context.Context) (*http.Response, error) {
-	req, err := http.NewRequest(r.Method, r.url(), r.Body)
+	req, err := http.NewRequest(r.Method, r.url(), r.body)
 	if err != nil {
 		return nil, err
 	}
+
+	dump, _ := httputil.DumpRequest(req, false)
+	log.Debug().Msgf("dump: %s", string(dump))
 
 	req = req.WithContext(ctx)
 	resp, err := r.Client.Do(req)
 	if err != nil {
 		return resp, err
+	}
+
+	if resp.StatusCode >= http.StatusBadRequest {
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Error().Msgf("failed to read body: %s", err)
+		}
+
+		return nil, fmt.Errorf("got bad status [%d]: %s", resp.StatusCode, body)
 	}
 
 	return resp, nil
@@ -67,5 +114,5 @@ func (r *Request) url() string {
 		values.Add(k, v)
 	}
 
-	return fmt.Sprintf("%s/%s?%s", r.Base, r.Endpoint, values.Encode())
+	return fmt.Sprintf("%s/api/v0%s?%s", r.Base, r.Endpoint, values.Encode())
 }

@@ -17,7 +17,6 @@ package command
 import (
 	"errors"
 
-	"github.com/Netflix/p2plab/node"
 	"github.com/urfave/cli"
 )
 
@@ -57,7 +56,7 @@ func labelNodesAction(c *cli.Context) error {
 
 	ctx := CommandContext(c)
 
-	nset := node.NewSet()
+	nset := cln.Node().NewSet()
 	for i := 0; i < c.NArg(); i++ {
 		id := c.Args().Get(i)
 

@@ -20,6 +20,9 @@ import "context"
 type NodeAPI interface {
 	// Get returns a node.
 	Get(ctx context.Context, id string) (Node, error)
+
+	// NewSet returns a new set of nodes.
+	NewSet() NodeSet
 }
 
 // Node is an instance running the P2P application to be benchmarked.
