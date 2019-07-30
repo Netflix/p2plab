@@ -27,6 +27,9 @@ type NodeAPI interface {
 
 // Node is an instance running the P2P application to be benchmarked.
 type Node interface {
+	// ID returns an unique identifier for the node.
+	ID() string
+
 	// SSH creates a SSH connection to the node.
 	SSH(ctx context.Context, opts ...SSHOption) error
 }

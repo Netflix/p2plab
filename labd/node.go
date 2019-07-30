@@ -54,6 +54,10 @@ type node struct {
 	id  string
 }
 
+func (n *node) ID() string {
+	return n.id
+}
+
 func (n *node) SSH(ctx context.Context, opts ...p2plab.SSHOption) error {
 	return nil
 }

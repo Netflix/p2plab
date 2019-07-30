@@ -16,26 +16,40 @@ package labd
 
 import (
 	"context"
+	"sort"
 
 	"github.com/Netflix/p2plab"
 )
 
 type nodeSet struct {
 	cln *client
+	set map[string]p2plab.Node
 }
 
 func (napi *nodeAPI) NewSet() p2plab.NodeSet {
-	return &nodeSet{napi.cln}
+	return &nodeSet{
+		cln: napi.cln,
+		set: make(map[string]p2plab.Node),
+	}
 }
 
 func (s *nodeSet) Add(n p2plab.Node) {
+	s.set[n.ID()] = n
 }
 
 func (s *nodeSet) Remove(n p2plab.Node) {
+	delete(s.set, n.ID())
 }
 
 func (s *nodeSet) Slice() []p2plab.Node {
-	return nil
+	var slice []p2plab.Node
+	for _, n := range s.set {
+		slice = append(slice, n)
+	}
+	sort.SliceStable(slice, func(i, j int) bool {
+		return slice[i].ID() < slice[j].ID()
+	})
+	return slice
 }
 
 func (s *nodeSet) Label(ctx context.Context, addLabels, removeLabels []string) error {
