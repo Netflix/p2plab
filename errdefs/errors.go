@@ -13,3 +13,28 @@
 // limitations under the License.
 
 package errdefs
+
+import "github.com/pkg/errors"
+
+var (
+	// ErrAlreadyExists is returned when a resource already exists.
+	ErrAlreadyExists = errors.New("already exists")
+
+	// ErrNotFound is returned when a resource is not found.
+	ErrNotFound = errors.New("not found")
+
+	// ErrInvalidArgument is returned when a invalid argument was given.
+	ErrInvalidArgument = errors.New("invalid argument")
+)
+
+func IsAlreadyExists(err error) bool {
+	return errors.Cause(err) == ErrAlreadyExists
+}
+
+func IsNotFound(err error) bool {
+	return errors.Cause(err) == ErrNotFound
+}
+
+func IsInvalidArgument(err error) bool {
+	return errors.Cause(err) == ErrInvalidArgument
+}

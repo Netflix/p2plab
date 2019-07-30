@@ -19,20 +19,28 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Netflix/p2plab/metadata"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
 )
 
 type Labd struct {
+	root   string
 	addr   string
+	db     *metadata.DB
 	router *mux.Router
 }
 
-func New() (*Labd, error) {
-	r := mux.NewRouter().UseEncodedPath().StrictSlash(true)
+func New(root string) (*Labd, error) {
+	db, err := metadata.NewDB(root)
+	if err != nil {
+		return nil, err
+	}
 
+	r := mux.NewRouter().UseEncodedPath().StrictSlash(true)
 	d := &Labd{
 		addr:   ":7001",
+		db:     db,
 		router: r,
 	}
 	d.registerRoutes(r)
@@ -97,31 +105,43 @@ func (d *Labd) clusterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (d *Labd) listClusterHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) listClusterHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("cluster/list")
 }
 
-func (d *Labd) createClusterHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) createClusterHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("cluster/create")
+
+	cluster, err := d.db.CreateCluster(r.Context(), metadata.Cluster{ID: "hello"})
+	if err != nil {
+		panic(err)
+	}
+	log.Info().Msgf("cluster %q: %s", cluster.ID, cluster.CreatedAt)
 }
 
-func (d *Labd) statClusterHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) statClusterHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("cluster/stat")
+
+	cluster, err := d.db.GetCluster(r.Context(), "hello")
+	if err != nil {
+		panic(err)
+	}
+	log.Info().Msgf("cluster %q: %s", cluster.ID, cluster.CreatedAt)
 }
 
-func (d *Labd) getClusterHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) getClusterHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("cluster/get")
 }
 
-func (d *Labd) updateClusterHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) updateClusterHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("cluster/update")
 }
 
-func (d *Labd) deleteClusterHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) deleteClusterHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("cluster/delete")
 }
 
-func (d *Labd) queryClusterHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) queryClusterHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("cluster/query")
 }
 
@@ -141,15 +161,15 @@ func (d *Labd) nodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (d *Labd) labelNodeHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) labelNodeHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("node/label")
 }
 
-func (d *Labd) statNodeHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) statNodeHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("node/stat")
 }
 
-func (d *Labd) getNodeHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) getNodeHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("node/get")
 }
 
@@ -173,23 +193,23 @@ func (d *Labd) scenarioHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (d *Labd) listScenarioHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) listScenarioHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("scenario/list")
 }
 
-func (d *Labd) createScenarioHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) createScenarioHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("scenario/create")
 }
 
-func (d *Labd) statScenarioHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) statScenarioHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("scenario/stat")
 }
 
-func (d *Labd) getScenarioHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) getScenarioHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("scenario/get")
 }
 
-func (d *Labd) deleteScenarioHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) deleteScenarioHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("scenario/delete")
 }
 
@@ -211,30 +231,30 @@ func (d *Labd) benchmarkHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (d *Labd) listBenchmarkHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) listBenchmarkHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("benchmark/list")
 }
 
-func (d *Labd) createBenchmarkHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("benchmark/create")
 }
 
-func (d *Labd) statBenchmarkHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) statBenchmarkHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("benchmark/stat")
 }
 
-func (d *Labd) getBenchmarkHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) getBenchmarkHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("benchmark/get")
 }
 
-func (d *Labd) cancelBenchmarkHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) cancelBenchmarkHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("benchmark/cancel")
 }
 
-func (d *Labd) reportBenchmarkHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) reportBenchmarkHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("benchmark/report")
 }
 
-func (d *Labd) logsBenchmarkHandler(http.ResponseWriter, *http.Request) {
+func (d *Labd) logsBenchmarkHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("benchmark/logs")
 }

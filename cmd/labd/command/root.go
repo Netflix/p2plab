@@ -16,6 +16,7 @@ package command
 
 import (
 	"context"
+	"os"
 
 	"github.com/Netflix/p2plab/labd"
 	"github.com/Netflix/p2plab/version"
@@ -28,6 +29,11 @@ func App() *cli.App {
 	app.Version = version.Version
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
+			Name:  "root",
+			Usage: "path to state directory",
+			Value: "./tmp/labd",
+		},
+		cli.StringFlag{
 			Name:  "log-level,l",
 			Usage: "set the logging level [debug, info, warn, error, fatal, panic]",
 		},
@@ -39,7 +45,13 @@ func App() *cli.App {
 func daemonAction(c *cli.Context) error {
 	ctx := context.Background()
 
-	daemon, err := labd.New()
+	root := c.GlobalString("root")
+	err := os.MkdirAll(root, 0711)
+	if err != nil {
+		return err
+	}
+
+	daemon, err := labd.New(root)
 	if err != nil {
 		return err
 	}
