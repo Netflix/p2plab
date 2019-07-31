@@ -141,7 +141,7 @@ func (m *DB) UpdateCluster(ctx context.Context, cluster Cluster) (Cluster, error
 	return cluster, nil
 }
 
-func (m *DB) Delete(ctx context.Context, id string) error {
+func (m *DB) DeleteCluster(ctx context.Context, id string) error {
 	return m.Update(func(tx *bolt.Tx) error {
 		bkt := getClustersBucket(tx)
 		if bkt == nil {

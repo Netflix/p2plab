@@ -16,15 +16,17 @@ package labd
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/metadata"
 )
 
 type clusterAPI struct {
 	cln *client
 }
 
-func (capi *clusterAPI) Create(ctx context.Context, opts ...p2plab.CreateClusterOption) (p2plab.Cluster, error) {
+func (capi *clusterAPI) Create(ctx context.Context, id string, opts ...p2plab.CreateClusterOption) (p2plab.Cluster, error) {
 	settings := p2plab.CreateClusterSettings{
 		Size: 3,
 	}
@@ -36,9 +38,8 @@ func (capi *clusterAPI) Create(ctx context.Context, opts ...p2plab.CreateCluster
 	}
 
 	req := capi.cln.NewRequest("POST", "/clusters").
-		Option("size", settings.Size).
-		Body("hello")
-
+		Option("id", id).
+		Option("size", settings.Size)
 
 	resp, err := req.Send(ctx)
 	if err != nil {
@@ -46,23 +47,29 @@ func (capi *clusterAPI) Create(ctx context.Context, opts ...p2plab.CreateCluster
 	}
 	defer resp.Body.Close()
 
-	return &cluster{
-		cln: capi.cln,
-	}, nil
+	c := cluster{cln: capi.cln}
+	err = json.NewDecoder(resp.Body).Decode(&c.metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return &c, nil
 }
 
 func (capi *clusterAPI) Get(ctx context.Context, id string) (p2plab.Cluster, error) {
-	req := capi.cln.NewRequest("HEAD", "/clusters/%s", id)
+	req := capi.cln.NewRequest("GET", "/clusters/%s", id)
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	return &cluster{
-		cln: capi.cln,
-		id:  id,
-	}, nil
+	c := cluster{cln: capi.cln}
+	err = json.NewDecoder(resp.Body).Decode(&c.metadata)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
 }
 
 func (capi *clusterAPI) List(ctx context.Context) ([]p2plab.Cluster, error) {
@@ -73,16 +80,31 @@ func (capi *clusterAPI) List(ctx context.Context) ([]p2plab.Cluster, error) {
 	}
 	defer resp.Body.Close()
 
-	return nil, nil
+	var metadatas []metadata.Cluster
+	err = json.NewDecoder(resp.Body).Decode(&metadatas)
+	if err != nil {
+		return nil, err
+	}
+
+	var clusters []p2plab.Cluster
+	for _, m := range metadatas {
+		clusters = append(clusters, &cluster{cln: capi.cln, metadata: m})
+	}
+
+	return clusters, nil
 }
 
 type cluster struct {
-	cln *client
-	id  string
+	cln      *client
+	metadata metadata.Cluster
+}
+
+func (c *cluster) Metadata() metadata.Cluster {
+	return c.metadata
 }
 
 func (c *cluster) Remove(ctx context.Context) error {
-	req := c.cln.NewRequest("DELETE", "/clusters/%s", c.id)
+	req := c.cln.NewRequest("DELETE", "/clusters/%s", c.metadata.ID)
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return err
@@ -93,7 +115,7 @@ func (c *cluster) Remove(ctx context.Context) error {
 }
 
 func (c *cluster) Query(ctx context.Context, q p2plab.Query) (p2plab.NodeSet, error) {
-	req := c.cln.NewRequest("POST", "/clusters/%s/query", c.id)
+	req := c.cln.NewRequest("POST", "/clusters/%s/query", c.metadata.ID)
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
@@ -104,7 +126,7 @@ func (c *cluster) Query(ctx context.Context, q p2plab.Query) (p2plab.NodeSet, er
 }
 
 func (c *cluster) Update(ctx context.Context, commit string) error {
-	req := c.cln.NewRequest("PUT", "/clusters/%s", c.id)
+	req := c.cln.NewRequest("PUT", "/clusters/%s", c.metadata.ID)
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return err

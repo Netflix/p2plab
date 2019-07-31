@@ -14,12 +14,16 @@
 
 package p2plab
 
-import "context"
+import (
+	"context"
+
+	"github.com/Netflix/p2plab/metadata"
+)
 
 // ClusterAPI defines API for cluster operations.
 type ClusterAPI interface {
 	// Create deploys a cluster of a p2p application.
-	Create(ctx context.Context, opts ...CreateClusterOption) (Cluster, error)
+	Create(ctx context.Context, id string, opts ...CreateClusterOption) (Cluster, error)
 
 	// Get returns a cluster.
 	Get(ctx context.Context, id string) (Cluster, error)
@@ -32,6 +36,8 @@ type ClusterAPI interface {
 // provisioned by developers, or CI. Clusters may span multiple regions and
 // have heterogeneous nodes.
 type Cluster interface {
+	Metadata() metadata.Cluster
+
 	// Remove destroys a cluster permanently.
 	Remove(ctx context.Context) error
 

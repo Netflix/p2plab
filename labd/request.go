@@ -87,7 +87,7 @@ func (r *Request) Send(ctx context.Context) (*http.Response, error) {
 	}
 
 	dump, _ := httputil.DumpRequest(req, false)
-	log.Debug().Msgf("dump: %s", string(dump))
+	log.Debug().Msgf("dump:\n%s", string(dump))
 
 	req = req.WithContext(ctx)
 	resp, err := r.Client.Do(req)

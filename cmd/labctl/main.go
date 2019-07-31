@@ -20,6 +20,7 @@ import (
 
 	"github.com/Netflix/p2plab/cmd/labctl/command"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 func init() {
@@ -27,6 +28,8 @@ func init() {
 	// zerolog.TimeFieldFormat to an empty string, logs will write with UNIX
 	// time.
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 }
 
 func main() {

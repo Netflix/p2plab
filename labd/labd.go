@@ -16,10 +16,13 @@ package labd
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 
+	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
+	"github.com/Netflix/p2plab/query"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
 )
@@ -63,198 +66,271 @@ func (d *Labd) registerRoutes(r *mux.Router) {
 	api := r.PathPrefix("/api/v0").Subrouter()
 
 	clusters := api.PathPrefix("/clusters").Subrouter()
-	clusters.HandleFunc("", d.clustersHandler).Methods("GET", "POST")
-	clusters.HandleFunc("/{id}", d.clusterHandler).Methods("HEAD", "GET", "PUT", "DELETE")
-	clusters.HandleFunc("/{id}/query", d.queryClusterHandler).Methods("POST")
+	clusters.Handle("", ErrorHandler{d.clustersHandler}).Methods("GET", "POST")
+	clusters.Handle("/{id}", ErrorHandler{d.clusterHandler}).Methods("GET", "PUT", "DELETE")
+	clusters.Handle("/{id}/query", ErrorHandler{d.queryClusterHandler}).Methods("POST")
 
 	nodes := api.PathPrefix("/nodes").Subrouter()
-	nodes.HandleFunc("", d.nodesHandler).Methods("PUT")
-	nodes.HandleFunc("/{id}", d.nodeHandler).Methods("HEAD", "GET")
+	nodes.Handle("", ErrorHandler{d.nodesHandler}).Methods("PUT")
+	nodes.Handle("/{id}", ErrorHandler{d.nodeHandler}).Methods("GET")
 
 	scenarios := api.PathPrefix("/scenarios").Subrouter()
-	scenarios.HandleFunc("", d.scenariosHandler).Methods("GET", "POST")
-	scenarios.HandleFunc("/{id}", d.scenarioHandler).Methods("HEAD", "GET", "DELETE")
+	scenarios.Handle("", ErrorHandler{d.scenariosHandler}).Methods("GET", "POST")
+	scenarios.Handle("/{id}", ErrorHandler{d.scenarioHandler}).Methods("GET", "DELETE")
 
 	benchmarks := api.PathPrefix("/benchmarks").Subrouter()
-	benchmarks.HandleFunc("", d.benchmarksHandler).Methods("GET", "POST")
-	benchmarks.HandleFunc("/{id}", d.benchmarkHandler).Methods("HEAD", "GET")
-	benchmarks.HandleFunc("/{id}/cancel", d.cancelBenchmarkHandler).Methods("PUT")
-	benchmarks.HandleFunc("/{id}/report", d.reportBenchmarkHandler).Methods("GET")
-	benchmarks.HandleFunc("/{id}/logs", d.logsBenchmarkHandler).Methods("GET")
+	benchmarks.Handle("", ErrorHandler{d.benchmarksHandler}).Methods("GET", "POST")
+	benchmarks.Handle("/{id}", ErrorHandler{d.benchmarkHandler}).Methods("GET")
+	benchmarks.Handle("/{id}/cancel", ErrorHandler{d.cancelBenchmarkHandler}).Methods("PUT")
+	benchmarks.Handle("/{id}/report", ErrorHandler{d.reportBenchmarkHandler}).Methods("GET")
+	benchmarks.Handle("/{id}/logs", ErrorHandler{d.logsBenchmarkHandler}).Methods("GET")
 }
 
-func (d *Labd) clustersHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) clustersHandler(w http.ResponseWriter, r *http.Request) error {
+	var err error
 	switch r.Method {
 	case "GET":
-		d.listClusterHandler(w, r)
+		err = d.listClusterHandler(w, r)
 	case "POST":
-		d.createClusterHandler(w, r)
+		err = d.createClusterHandler(w, r)
 	}
+	return err
 }
 
-func (d *Labd) clusterHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) clusterHandler(w http.ResponseWriter, r *http.Request) error {
+	var err error
 	switch r.Method {
-	case "HEAD":
-		d.statClusterHandler(w, r)
 	case "GET":
-		d.getClusterHandler(w, r)
+		err = d.getClusterHandler(w, r)
 	case "PUT":
-		d.updateClusterHandler(w, r)
+		err = d.updateClusterHandler(w, r)
 	case "DELETE":
-		d.deleteClusterHandler(w, r)
+		err = d.deleteClusterHandler(w, r)
 	}
+	return err
 }
 
-func (d *Labd) listClusterHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) listClusterHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("cluster/list")
+
+	clusters, err := d.db.ListClusters(r.Context())
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(w, &clusters)
 }
 
-func (d *Labd) createClusterHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) createClusterHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("cluster/create")
 
-	cluster, err := d.db.CreateCluster(r.Context(), metadata.Cluster{ID: "hello"})
+	cluster, err := d.db.CreateCluster(r.Context(), metadata.Cluster{ID: r.FormValue("id")})
 	if err != nil {
-		panic(err)
+		return err
 	}
-	log.Info().Msgf("cluster %q: %s", cluster.ID, cluster.CreatedAt)
+
+	return writeJSON(w, &cluster)
 }
 
-func (d *Labd) statClusterHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Msg("cluster/stat")
-
-	cluster, err := d.db.GetCluster(r.Context(), "hello")
-	if err != nil {
-		panic(err)
-	}
-	log.Info().Msgf("cluster %q: %s", cluster.ID, cluster.CreatedAt)
-}
-
-func (d *Labd) getClusterHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) getClusterHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("cluster/get")
+
+	vars := mux.Vars(r)
+	cluster, err := d.db.GetCluster(r.Context(), vars["id"])
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(w, &cluster)
 }
 
-func (d *Labd) updateClusterHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) updateClusterHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("cluster/update")
+
+	vars := mux.Vars(r)
+	cluster, err := d.db.UpdateCluster(r.Context(), metadata.Cluster{
+		ID: vars["id"],
+	})
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(w, &cluster)
 }
 
-func (d *Labd) deleteClusterHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) deleteClusterHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("cluster/delete")
+
+	vars := mux.Vars(r)
+	err := d.db.DeleteCluster(r.Context(), vars["id"])
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (d *Labd) queryClusterHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) queryClusterHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("cluster/query")
+
+	vars := mux.Vars(r)
+	q, err := query.Parse(vars["query"])
+	if err != nil {
+		return err
+	}
+
+	nodes, err := d.db.ListNodes(r.Context(), vars["id"])
+	if err != nil {
+		return err
+	}
+
+	nset := nodeSet{
+		set: make(map[string]p2plab.Node),
+	}
+	for _, n := range nodes {
+		nset.Add(&node{metadata: n})
+	}
+
+	mset, err := q.Match(r.Context(), &nset)
+	if err != nil {
+		return err
+	}
+
+	var matchedNodes []metadata.Node
+	for _, n := range nodes {
+		if mset.Contains(&node{metadata: n}) {
+			matchedNodes = append(matchedNodes, n)
+		}
+	}
+
+	return writeJSON(w, &matchedNodes)
 }
 
-func (d *Labd) nodesHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) nodesHandler(w http.ResponseWriter, r *http.Request) error {
+	var err error
 	switch r.Method {
 	case "PUT":
-		d.labelNodeHandler(w, r)
+		err = d.labelNodeHandler(w, r)
 	}
+	return err
 }
 
-func (d *Labd) nodeHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) nodeHandler(w http.ResponseWriter, r *http.Request) error {
+	var err error
 	switch r.Method {
-	case "HEAD":
-		d.statNodeHandler(w, r)
 	case "GET":
-		d.getNodeHandler(w, r)
+		err = d.getNodeHandler(w, r)
 	}
+	return err
 }
 
-func (d *Labd) labelNodeHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) labelNodeHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("node/label")
+	return nil
 }
 
-func (d *Labd) statNodeHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Msg("node/stat")
-}
-
-func (d *Labd) getNodeHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) getNodeHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("node/get")
+	return nil
 }
 
-func (d *Labd) scenariosHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) scenariosHandler(w http.ResponseWriter, r *http.Request) error {
+	var err error
 	switch r.Method {
 	case "GET":
-		d.listScenarioHandler(w, r)
+		err = d.listScenarioHandler(w, r)
 	case "POST":
-		d.createScenarioHandler(w, r)
+		err = d.createScenarioHandler(w, r)
 	}
+	return err
 }
 
-func (d *Labd) scenarioHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) scenarioHandler(w http.ResponseWriter, r *http.Request) error {
+	var err error
 	switch r.Method {
-	case "HEAD":
-		d.statScenarioHandler(w, r)
 	case "GET":
-		d.getScenarioHandler(w, r)
+		err = d.getScenarioHandler(w, r)
 	case "DELETE":
-		d.deleteScenarioHandler(w, r)
+		err = d.deleteScenarioHandler(w, r)
 	}
+	return err
 }
 
-func (d *Labd) listScenarioHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) listScenarioHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("scenario/list")
+	return nil
 }
 
-func (d *Labd) createScenarioHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) createScenarioHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("scenario/create")
+	return nil
 }
 
-func (d *Labd) statScenarioHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Msg("scenario/stat")
-}
-
-func (d *Labd) getScenarioHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) getScenarioHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("scenario/get")
+	return nil
 }
 
-func (d *Labd) deleteScenarioHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) deleteScenarioHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("scenario/delete")
+	return nil
 }
 
-func (d *Labd) benchmarksHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) benchmarksHandler(w http.ResponseWriter, r *http.Request) error {
+	var err error
 	switch r.Method {
 	case "GET":
-		d.listBenchmarkHandler(w, r)
+		err = d.listBenchmarkHandler(w, r)
 	case "POST":
-		d.createBenchmarkHandler(w, r)
+		err = d.createBenchmarkHandler(w, r)
 	}
+	return err
 }
 
-func (d *Labd) benchmarkHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) benchmarkHandler(w http.ResponseWriter, r *http.Request) error {
+	var err error
 	switch r.Method {
-	case "HEAD":
-		d.statBenchmarkHandler(w, r)
 	case "GET":
-		d.getBenchmarkHandler(w, r)
+		err = d.getBenchmarkHandler(w, r)
 	}
+	return err
 }
 
-func (d *Labd) listBenchmarkHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) listBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("benchmark/list")
+	return nil
 }
 
-func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("benchmark/create")
+	return nil
 }
 
-func (d *Labd) statBenchmarkHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Msg("benchmark/stat")
-}
-
-func (d *Labd) getBenchmarkHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) getBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("benchmark/get")
+	return nil
 }
 
-func (d *Labd) cancelBenchmarkHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) cancelBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("benchmark/cancel")
+	return nil
 }
 
-func (d *Labd) reportBenchmarkHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) reportBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("benchmark/report")
+	return nil
 }
 
-func (d *Labd) logsBenchmarkHandler(w http.ResponseWriter, r *http.Request) {
+func (d *Labd) logsBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("benchmark/logs")
+	return nil
+}
+
+func writeJSON(w http.ResponseWriter, v interface{}) error {
+	content, err := json.MarshalIndent(v, "", "    ")
+	if err != nil {
+		return err
+	}
+	w.Write(content)
+	return nil
 }

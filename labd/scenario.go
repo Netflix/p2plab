@@ -16,8 +16,10 @@ package labd
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/metadata"
 )
 
 type scenarioAPI struct {
@@ -32,24 +34,30 @@ func (sapi *scenarioAPI) Create(ctx context.Context, name string, sdef p2plab.Sc
 	}
 	defer resp.Body.Close()
 
-	return &scenario{
-		cln:  sapi.cln,
-		name: name,
-	}, nil
+	s := scenario{cln: sapi.cln}
+	err = json.NewDecoder(resp.Body).Decode(&s.metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return &s, nil
 }
 
 func (sapi *scenarioAPI) Get(ctx context.Context, name string) (p2plab.Scenario, error) {
-	req := sapi.cln.NewRequest("HEAD", "/scenarios/%s", name)
+	req := sapi.cln.NewRequest("GET", "/scenarios/%s", name)
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	return &scenario{
-		cln:  sapi.cln,
-		name: name,
-	}, nil
+	s := scenario{cln: sapi.cln}
+	err = json.NewDecoder(resp.Body).Decode(&s.metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return &s, nil
 }
 
 func (sapi *scenarioAPI) List(ctx context.Context) ([]p2plab.Scenario, error) {
@@ -60,16 +68,31 @@ func (sapi *scenarioAPI) List(ctx context.Context) ([]p2plab.Scenario, error) {
 	}
 	defer resp.Body.Close()
 
-	return nil, nil
+	var metadatas []metadata.Scenario
+	err = json.NewDecoder(resp.Body).Decode(&metadatas)
+	if err != nil {
+		return nil, err
+	}
+
+	var scenarios []p2plab.Scenario
+	for _, m := range metadatas {
+		scenarios = append(scenarios, &scenario{cln: sapi.cln, metadata: m})
+	}
+
+	return scenarios, nil
 }
 
 type scenario struct {
-	cln  *client
-	name string
+	cln      *client
+	metadata metadata.Scenario
+}
+
+func (s *scenario) Metadata() metadata.Scenario {
+	return s.metadata
 }
 
 func (s *scenario) Remove(ctx context.Context) error {
-	req := s.cln.NewRequest("DELETE", "/scenarios/%s", s.name)
+	req := s.cln.NewRequest("DELETE", "/scenarios/%s", s.metadata.ID)
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return err

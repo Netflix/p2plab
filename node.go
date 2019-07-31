@@ -14,7 +14,11 @@
 
 package p2plab
 
-import "context"
+import (
+	"context"
+
+	"github.com/Netflix/p2plab/metadata"
+)
 
 // NodeAPI defines the API for node operations.
 type NodeAPI interface {
@@ -27,8 +31,7 @@ type NodeAPI interface {
 
 // Node is an instance running the P2P application to be benchmarked.
 type Node interface {
-	// ID returns an unique identifier for the node.
-	ID() string
+	Metadata() metadata.Node
 
 	// SSH creates a SSH connection to the node.
 	SSH(ctx context.Context, opts ...SSHOption) error
@@ -43,6 +46,8 @@ type NodeSet interface {
 	// Remove removes a node from a set. If the node doesn't exist in the set,
 	// it is not removed.
 	Remove(node Node)
+
+	Contains(node Node) bool
 
 	// Slice returns a slice of nodes from the set.
 	Slice() []Node

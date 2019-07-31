@@ -17,6 +17,8 @@ package p2plab
 import (
 	"context"
 	"io"
+
+	"github.com/Netflix/p2plab/metadata"
 )
 
 // BenchmarkAPI defines API for benchmark operations.
@@ -33,8 +35,7 @@ type BenchmarkAPI interface {
 
 // Benchmark is an execution of a scenario on a cluster.
 type Benchmark interface {
-	// Status shows the current status of the benchmark.
-	Status() BenchmarkStatus
+	Metadata() metadata.Benchmark
 
 	// Cancel cancels a running benchmark.
 	Cancel(ctx context.Context) error

@@ -29,16 +29,20 @@ type nodeSet struct {
 func (napi *nodeAPI) NewSet() p2plab.NodeSet {
 	return &nodeSet{
 		cln: napi.cln,
-		set: make(map[string]p2plab.Node),
 	}
 }
 
+func (s *nodeSet) Contains(n p2plab.Node) bool {
+	_, ok := s.set[n.Metadata().ID]
+	return ok
+}
+
 func (s *nodeSet) Add(n p2plab.Node) {
-	s.set[n.ID()] = n
+	s.set[n.Metadata().ID] = n
 }
 
 func (s *nodeSet) Remove(n p2plab.Node) {
-	delete(s.set, n.ID())
+	delete(s.set, n.Metadata().ID)
 }
 
 func (s *nodeSet) Slice() []p2plab.Node {
@@ -47,7 +51,7 @@ func (s *nodeSet) Slice() []p2plab.Node {
 		slice = append(slice, n)
 	}
 	sort.SliceStable(slice, func(i, j int) bool {
-		return slice[i].ID() < slice[j].ID()
+		return slice[i].Metadata().ID < slice[j].Metadata().ID
 	})
 	return slice
 }

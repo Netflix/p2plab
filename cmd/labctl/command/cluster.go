@@ -19,6 +19,7 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/query"
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli"
 )
 
@@ -58,7 +59,7 @@ var clusterCommand = cli.Command{
 			Action:  updateClusterAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
-					Name: "commit",
+					Name:  "commit",
 					Usage: "Specify commit to update to.",
 					Value: "HEAD",
 				},
@@ -68,16 +69,21 @@ var clusterCommand = cli.Command{
 }
 
 func createClusterAction(c *cli.Context) error {
+	if c.NArg() != 1 {
+		return errors.New("cluster name must be provided")
+	}
+
 	cln, err := ResolveClient(c)
 	if err != nil {
 		return err
 	}
 
-	_, err = cln.Cluster().Create(CommandContext(c))
+	cluster, err := cln.Cluster().Create(CommandContext(c), c.Args().First())
 	if err != nil {
 		return err
 	}
 
+	log.Info().Msgf("Created cluster %q", cluster.Metadata().ID)
 	return nil
 }
 

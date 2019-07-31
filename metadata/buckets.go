@@ -23,6 +23,12 @@ var (
 	bucketKeyScenarios  = []byte("scenarios")
 	bucketKeyBenchmarks = []byte("benchmarks")
 
+	bucketKeyObjects   = []byte("objects")
+	bucketKeySeed      = []byte("seed")
+	bucketKeyBenchmark = []byte("benchmark")
+	bucketKeyType      = []byte("type")
+	bucketKeyReference = []byte("reference")
+
 	bucketKeyCreatedAt = []byte("createdAt")
 	bucketKeyUpdatedAt = []byte("updatedAt")
 )
