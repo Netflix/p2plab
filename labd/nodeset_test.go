@@ -14,11 +14,8 @@ func newNode(id string) p2plab.Node {
 }
 
 func TestNodeSetAdd(t *testing.T) {
-	cln, err := NewClient("")
-	require.NoError(t, err)
-
 	// Empty set starts with 0 elements.
-	nset := cln.Node().NewSet()
+	nset := NewSet()
 	require.Empty(t, nset.Slice())
 
 	// Adding node increases length by 1.
@@ -31,10 +28,7 @@ func TestNodeSetAdd(t *testing.T) {
 }
 
 func TestNodeSetRemove(t *testing.T) {
-	cln, err := NewClient("")
-	require.NoError(t, err)
-
-	nset := cln.Node().NewSet()
+	nset := NewSet()
 	nset.Add(newNode("1"))
 	require.Len(t, nset.Slice(), 1)
 

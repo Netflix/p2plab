@@ -16,6 +16,7 @@ package metadata
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/Netflix/p2plab/errdefs"
@@ -25,6 +26,8 @@ import (
 
 type Node struct {
 	ID string
+
+	Labels []string
 
 	CreatedAt, UpdatedAt time.Time
 }
@@ -79,6 +82,7 @@ func (m *DB) ListNodes(ctx context.Context, cluster string) ([]Node, error) {
 				return err
 			}
 
+			nodes = append(nodes, node)
 			return nil
 		})
 	})
@@ -115,30 +119,91 @@ func (m *DB) CreateNode(ctx context.Context, cluster string, node Node) (Node, e
 	return node, err
 }
 
-func (m *DB) UpdateNode(ctx context.Context, cluster string, node Node) (Node, error) {
-	if node.ID == "" {
-		return Node{}, errors.Wrapf(errdefs.ErrInvalidArgument, "node id required for update")
+func (m *DB) LabelNodes(ctx context.Context, cluster string, ids, addLabels, removeLabels []string) ([]Node, error) {
+	if len(ids) == 0 {
+		return nil, nil
 	}
 
+	addSet := make(map[string]struct{})
+	for _, l := range addLabels {
+		addSet[l] = struct{}{}
+	}
+
+	removeSet := make(map[string]struct{})
+	for _, l := range removeLabels {
+		removeSet[l] = struct{}{}
+	}
+
+	var nodes []Node
 	err := m.Update(func(tx *bolt.Tx) error {
 		bkt, err := createNodesBucket(tx, cluster)
 		if err != nil {
 			return err
 		}
 
-		cbkt := bkt.Bucket([]byte(node.ID))
-		if cbkt == nil {
-			return errors.Wrapf(errdefs.ErrNotFound, "node %q", node.ID)
+		for _, id := range ids {
+			cbkt := bkt.Bucket([]byte(id))
+			if cbkt == nil {
+				return errors.Wrapf(errdefs.ErrNotFound, "node %q", id)
+			}
+
+			lbkt := cbkt.Bucket(bucketKeyLabels)
+
+			var labels []string
+			if lbkt != nil {
+				err = lbkt.ForEach(func(k, v []byte) error {
+					if _, ok := removeSet[string(k)]; ok {
+						return nil
+					}
+
+					labels = append(labels, string(k))
+					delete(addSet, string(k))
+					return nil
+				})
+				if err != nil {
+					return err
+				}
+
+				err = cbkt.DeleteBucket(bucketKeyLabels)
+				if err != nil {
+					return err
+				}
+			}
+
+			for l, _ := range addSet {
+				labels = append(labels, l)
+			}
+			sort.Strings(labels)
+
+			lbkt, err = cbkt.CreateBucket(bucketKeyLabels)
+			if err != nil {
+				return err
+			}
+
+			var node Node
+			node.ID = id
+			err = readNode(cbkt, &node)
+			if err != nil {
+				return err
+			}
+
+			node.Labels = labels
+			node.UpdatedAt = time.Now().UTC()
+
+			err = writeNode(cbkt, &node)
+			if err != nil {
+				return err
+			}
+			nodes = append(nodes, node)
 		}
 
-		node.UpdatedAt = time.Now().UTC()
-		return writeNode(cbkt, &node)
+		return nil
 	})
 	if err != nil {
-		return Node{}, err
+		return nil, err
 	}
 
-	return node, nil
+	return nodes, nil
 }
 
 func (m *DB) DeleteNode(ctx context.Context, cluster, id string) error {
@@ -188,6 +253,20 @@ func writeNode(bkt *bolt.Bucket, node *Node) error {
 		err = bkt.Put(f.key, f.value)
 		if err != nil {
 			return err
+		}
+	}
+
+	if len(node.Labels) > 0 {
+		lbkt, err := bkt.CreateBucketIfNotExists(bucketKeyLabels)
+		if err != nil {
+			return err
+		}
+
+		for _, l := range node.Labels {
+			err = lbkt.Put([]byte(l), nil)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

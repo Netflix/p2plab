@@ -24,9 +24,6 @@ import (
 type NodeAPI interface {
 	// Get returns a node.
 	Get(ctx context.Context, id string) (Node, error)
-
-	// NewSet returns a new set of nodes.
-	NewSet() NodeSet
 }
 
 // Node is an instance running the P2P application to be benchmarked.
@@ -51,10 +48,6 @@ type NodeSet interface {
 
 	// Slice returns a slice of nodes from the set.
 	Slice() []Node
-
-	// Label adds and removes metadata from nodes. Labels are used in a scenario
-	// definition to query nodes and execute actions against the matched group.
-	Label(ctx context.Context, addLabels, removeLabels []string) error
 }
 
 // SSHOption is an option to modify SSH settings.

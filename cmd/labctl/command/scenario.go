@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/Netflix/p2plab/scenario"
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli"
 )
 
@@ -78,11 +79,12 @@ func createScenarioAction(c *cli.Context) error {
 	}
 
 	ctx := CommandContext(c)
-	_, err = cln.Scenario().Create(ctx, name, sdef)
+	scenario, err := cln.Scenario().Create(ctx, name, sdef)
 	if err != nil {
-		return err
+	return err
 	}
 
+	log.Info().Msgf("Created scenario %q", scenario.Metadata().ID)
 	return nil
 }
 
@@ -107,6 +109,7 @@ func removeScenarioAction(c *cli.Context) error {
 		return err
 	}
 
+	log.Info().Msgf("Removed scenario %q", scenario.Metadata().ID)
 	return nil
 }
 
@@ -122,5 +125,10 @@ func listScenarioAction(c *cli.Context) error {
 		return err
 	}
 
-	return CommandPrinter(c).Print(scenarios)
+	l := make([]interface{}, len(scenarios))
+	for i, s := range scenarios {
+		l[i] = s.Metadata()
+	}
+
+	return CommandPrinter(c).Print(l)
 }

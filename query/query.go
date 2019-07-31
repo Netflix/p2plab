@@ -14,13 +14,41 @@
 
 package query
 
-import "github.com/Netflix/p2plab"
+import (
+	"context"
+
+	"github.com/Netflix/p2plab"
+)
+
+type query struct {
+	query string
+}
 
 func Parse(q string) (p2plab.Query, error) {
-	return nil, nil
+	return &query{
+		query: q,
+	}, nil
+}
+
+func (q *query) String() string {
+	return q.query
+}
+
+func (q *query) Match(ctx context.Context, nset p2plab.NodeSet) (p2plab.NodeSet, error) {
+	return nset, nil
 }
 
 // All returns a query that matches all nodes.
 func All() p2plab.Query {
-	return nil
+	return &all{}
+}
+
+type all struct{}
+
+func (a *all) String() string {
+	return "*"
+}
+
+func (a *all) Match(ctx context.Context, nset p2plab.NodeSet) (p2plab.NodeSet, error) {
+	return nset, nil
 }

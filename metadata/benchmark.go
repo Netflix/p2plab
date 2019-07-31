@@ -79,6 +79,7 @@ func (m *DB) ListBenchmarks(ctx context.Context) ([]Benchmark, error) {
 				return err
 			}
 
+			benchmarks = append(benchmarks, benchmark)
 			return nil
 		})
 	})

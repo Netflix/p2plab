@@ -20,5 +20,7 @@ import "context"
 // Queries are used to group nodes to perform actions in either the seeding or
 // benchmarking stage of a scenario.
 type Query interface {
+	String() string
+
 	Match(ctx context.Context, nset NodeSet) (NodeSet, error)
 }
