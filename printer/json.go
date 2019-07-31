@@ -14,12 +14,23 @@
 
 package printer
 
-type jsonPrinter struct {}
+import (
+	"encoding/json"
+	"fmt"
+)
+
+type jsonPrinter struct{}
 
 func NewJSONPrinter() Printer {
 	return &jsonPrinter{}
 }
 
 func (p *jsonPrinter) Print(v interface{}) error {
+	content, err := json.MarshalIndent(v, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(content))
 	return nil
 }
