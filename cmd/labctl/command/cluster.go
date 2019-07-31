@@ -157,15 +157,16 @@ func queryClusterAction(c *cli.Context) error {
 		return err
 	}
 
-	var q p2plab.Query
-	if c.NArg() == 1 {
-		q = query.All()
-	} else {
-		q, err = query.Parse(c.Args().Get(2))
-		if err != nil {
-			return err
-		}
+	rawQuery := "*"
+	if c.NArg() == 2 {
+		rawQuery = c.Args().Get(1)
 	}
+
+	q, err := query.Parse(rawQuery)
+	if err != nil {
+		return err
+	}
+	log.Info().Msgf("Parsed query as %q", q)
 
 	var opts []p2plab.QueryOption
 	addLabels := c.StringSlice("add")

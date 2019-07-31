@@ -68,7 +68,7 @@ func startBenchmarkAction(c *cli.Context) error {
 	}
 
 	ctx := CommandContext(c)
-	cluster, scenario := c.Args().Get(1), c.Args().Get(2)
+	cluster, scenario := c.Args().Get(0), c.Args().Get(1)
 	_, err = cln.Benchmark().Create(ctx, cluster, scenario)
 	if err != nil {
 		return err

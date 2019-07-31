@@ -21,8 +21,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
+	"github.com/Netflix/p2plab/nodes"
 	"github.com/Netflix/p2plab/query"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
@@ -178,31 +178,29 @@ func (d *Labd) deleteClusterHandler(w http.ResponseWriter, r *http.Request) erro
 func (d *Labd) queryClusterHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("cluster/query")
 
+	q, err := query.Parse(r.FormValue("query"))
+	if err != nil {
+		return err
+	}
+
 	vars := mux.Vars(r)
-	q, err := query.Parse(vars["query"])
+	ns, err := d.db.ListNodes(r.Context(), vars["id"])
 	if err != nil {
 		return err
 	}
 
-	nodes, err := d.db.ListNodes(r.Context(), vars["id"])
-	if err != nil {
-		return err
-	}
-
-	nset := nodeSet{
-		set: make(map[string]p2plab.Node),
-	}
-	for _, n := range nodes {
+	nset := nodes.NewSet()
+	for _, n := range ns {
 		nset.Add(&node{metadata: n})
 	}
 
-	mset, err := q.Match(r.Context(), &nset)
+	mset, err := q.Match(r.Context(), nset)
 	if err != nil {
 		return err
 	}
 
 	var matchedNodes []metadata.Node
-	for _, n := range nodes {
+	for _, n := range ns {
 		if mset.Contains(&node{metadata: n}) {
 			matchedNodes = append(matchedNodes, n)
 		}

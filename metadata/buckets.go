@@ -39,10 +39,10 @@ func getBucket(tx *bolt.Tx, keys ...[]byte) *bolt.Bucket {
 	bkt := tx.Bucket(keys[0])
 
 	for _, key := range keys[1:] {
-		bkt = bkt.Bucket(key)
 		if bkt == nil {
 			break
 		}
+		bkt = bkt.Bucket(key)
 	}
 
 	return bkt
