@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	github.com/containerd/containerd v1.2.7
+	github.com/gobwas/glob v0.2.3
 	github.com/gorilla/mux v1.7.3
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.8.1

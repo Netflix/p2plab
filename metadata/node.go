@@ -227,6 +227,17 @@ func readNode(bkt *bolt.Bucket, node *Node) error {
 		return err
 	}
 
+	lbkt := bkt.Bucket(bucketKeyLabels)
+	if lbkt != nil {
+		err = lbkt.ForEach(func(k, v []byte) error {
+			node.Labels = append(node.Labels, string(k))
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	return bkt.ForEach(func(k, v []byte) error {
 		if v == nil {
 			return nil

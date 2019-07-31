@@ -21,6 +21,7 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
+	"github.com/Netflix/p2plab/nodes"
 )
 
 type clusterAPI struct {
@@ -146,7 +147,7 @@ func (c *cluster) Query(ctx context.Context, q p2plab.Query, opts ...p2plab.Quer
 		return nil, err
 	}
 
-	nset := NewSet()
+	nset := nodes.NewSet()
 	for _, m := range metadatas {
 		nset.Add(&node{cln: c.cln, metadata: m})
 	}
