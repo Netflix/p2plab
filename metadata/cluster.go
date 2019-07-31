@@ -79,6 +79,7 @@ func (m *DB) ListClusters(ctx context.Context) ([]Cluster, error) {
 				return err
 			}
 
+			clusters = append(clusters, cluster)
 			return nil
 		})
 	})

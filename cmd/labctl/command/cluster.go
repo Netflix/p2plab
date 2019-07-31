@@ -108,6 +108,7 @@ func removeClusterAction(c *cli.Context) error {
 		return err
 	}
 
+	log.Info().Msgf("Removed cluster %q", cluster.Metadata().ID)
 	return nil
 }
 
@@ -122,7 +123,12 @@ func listClusterAction(c *cli.Context) error {
 		return err
 	}
 
-	return CommandPrinter(c).Print(clusters)
+	l := make([]interface{}, len(clusters))
+	for i, c := range clusters {
+		l[i] = c.Metadata()
+	}
+
+	return CommandPrinter(c).Print(l)
 }
 
 func queryClusterAction(c *cli.Context) error {
@@ -185,5 +191,6 @@ func updateClusterAction(c *cli.Context) error {
 		return err
 	}
 
+	log.Info().Msgf("Updated cluster %q", cluster.Metadata().ID)
 	return nil
 }

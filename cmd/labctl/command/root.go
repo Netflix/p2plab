@@ -35,8 +35,8 @@ func App() *cli.App {
 		},
 		cli.StringFlag{
 			Name:  "output,o",
-			Usage: "set the output printer [table, json]",
-			Value: "table",
+			Usage: "set the output printer [unix, json]",
+			Value: "unix",
 		},
 	}
 	app.Commands = []cli.Command{

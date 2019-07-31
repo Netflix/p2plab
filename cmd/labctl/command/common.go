@@ -31,8 +31,8 @@ import (
 type OutputType string
 
 var (
-	OutputTable OutputType = "table"
-	OutputJSON  OutputType = "json"
+	OutputUnix OutputType = "unix"
+	OutputJSON OutputType = "json"
 )
 
 func AttachAppContext(app *cli.App) {
@@ -86,8 +86,8 @@ func AttachAppPrinter(app *cli.App) {
 
 		var p printer.Printer
 		switch output {
-		case OutputTable:
-			p = printer.NewTablePrinter()
+		case OutputUnix:
+			p = printer.NewUnixPrinter()
 		case OutputJSON:
 			p = printer.NewJSONPrinter()
 		default:

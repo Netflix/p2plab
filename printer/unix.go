@@ -14,12 +14,36 @@
 
 package printer
 
-type tablePrinter struct {}
+import (
+	"fmt"
 
-func NewTablePrinter() Printer {
-	return &tablePrinter{}
+	"github.com/Netflix/p2plab/metadata"
+)
+
+type unixPrinter struct{}
+
+func NewUnixPrinter() Printer {
+	return &unixPrinter{}
 }
 
-func (p *tablePrinter) Print(v interface{}) error {
+func (p *unixPrinter) Print(v interface{}) error {
+	switch t := v.(type) {
+	case []interface{}:
+		for _, e := range t {
+			err := p.Print(e)
+			if err != nil {
+				return err
+			}
+		}
+	case metadata.Cluster:
+		fmt.Printf("%s\n", t.ID)
+	case metadata.Node:
+		fmt.Printf("%s\n", t.ID)
+	case metadata.Scenario:
+		fmt.Printf("%s\n", t.ID)
+	case metadata.Benchmark:
+		fmt.Printf("%s\n", t.ID)
+	}
+
 	return nil
 }
