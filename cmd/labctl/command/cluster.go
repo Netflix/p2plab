@@ -51,6 +51,16 @@ var clusterCommand = cli.Command{
 			Aliases: []string{"q"},
 			Usage:   "Runs a query against a cluster and returns a set of matching nodes.",
 			Action:  queryClusterAction,
+			Flags: []cli.Flag{
+				&cli.StringSliceFlag{
+					Name:  "add",
+					Usage: "Adds a label to the matched nodes",
+				},
+				&cli.StringSliceFlag{
+					Name:  "remove,rm",
+					Usage: "Removes a label to the matched nodes",
+				},
+			},
 		},
 		{
 			Name:    "update",
@@ -157,12 +167,29 @@ func queryClusterAction(c *cli.Context) error {
 		}
 	}
 
-	nset, err := cluster.Query(ctx, q)
+	var opts []p2plab.QueryOption
+	addLabels := c.StringSlice("add")
+	if len(addLabels) > 0 {
+		opts = append(opts, p2plab.WithAddLabels(addLabels...))
+	}
+
+	removeLabels := c.StringSlice("remove") 
+	if len(removeLabels) > 0 {
+		opts = append(opts, p2plab.WithRemoveLabels(removeLabels...))
+	}
+
+	nset, err := cluster.Query(ctx, q, opts...)
 	if err != nil {
 		return err
 	}
 
-	return CommandPrinter(c).Print(nset)
+	nodes := nset.Slice()
+	l := make([]interface{}, len(nodes))
+	for i, n := range nodes {
+		l[i] = n.Metadata()
+	}
+
+	return CommandPrinter(c).Print(l)
 }
 
 func updateClusterAction(c *cli.Context) error {

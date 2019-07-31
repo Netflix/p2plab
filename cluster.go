@@ -42,7 +42,7 @@ type Cluster interface {
 	Remove(ctx context.Context) error
 
 	// Query executes a query and returns a set of matching nodes.
-	Query(ctx context.Context, q Query) (NodeSet, error)
+	Query(ctx context.Context, q Query, opts ...QueryOption) (NodeSet, error)
 
 	// Update compiles a commit and updates the cluster to the new p2p
 	// application.
@@ -50,9 +50,30 @@ type Cluster interface {
 }
 
 // CreateClusterOption is an option to modify create cluster settings.
-type CreateClusterOption func(CreateClusterSettings) error
+type CreateClusterOption func(*CreateClusterSettings) error
 
 // CreateClusterSettings specify cluster properties for creation.
 type CreateClusterSettings struct {
 	Size int
+}
+
+type QueryOption func(*QuerySettings) error
+
+type QuerySettings struct {
+	AddLabels []string
+	RemoveLabels []string
+}
+
+func WithAddLabels(labels ...string) QueryOption {
+	return func(s *QuerySettings) error {
+		s.AddLabels = append(s.AddLabels, labels...)
+		return nil
+	}
+}
+
+func WithRemoveLabels(labels ...string) QueryOption {
+	return func(s *QuerySettings) error {
+		s.RemoveLabels = append(s.RemoveLabels, labels...)
+		return nil
+	}
 }

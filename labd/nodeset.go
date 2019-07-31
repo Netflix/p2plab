@@ -15,20 +15,18 @@
 package labd
 
 import (
-	"context"
 	"sort"
 
 	"github.com/Netflix/p2plab"
 )
 
 type nodeSet struct {
-	cln *client
 	set map[string]p2plab.Node
 }
 
-func (napi *nodeAPI) NewSet() p2plab.NodeSet {
+func NewSet() p2plab.NodeSet {
 	return &nodeSet{
-		cln: napi.cln,
+		set: make(map[string]p2plab.Node),
 	}
 }
 
@@ -54,15 +52,4 @@ func (s *nodeSet) Slice() []p2plab.Node {
 		return slice[i].Metadata().ID < slice[j].Metadata().ID
 	})
 	return slice
-}
-
-func (s *nodeSet) Label(ctx context.Context, addLabels, removeLabels []string) error {
-	req := s.cln.NewRequest("PUT", "/nodes")
-	resp, err := req.Send(ctx)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	return nil
 }

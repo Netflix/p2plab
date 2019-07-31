@@ -90,6 +90,7 @@ func (m *DB) ListScenarios(ctx context.Context) ([]Scenario, error) {
 				return err
 			}
 
+			scenarios = append(scenarios, scenario)
 			return nil
 		})
 	})

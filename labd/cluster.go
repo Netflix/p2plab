@@ -17,6 +17,7 @@ package labd
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
@@ -31,7 +32,7 @@ func (capi *clusterAPI) Create(ctx context.Context, id string, opts ...p2plab.Cr
 		Size: 3,
 	}
 	for _, opt := range opts {
-		err := opt(settings)
+		err := opt(&settings)
 		if err != nil {
 			return nil, err
 		}
@@ -114,15 +115,43 @@ func (c *cluster) Remove(ctx context.Context) error {
 	return nil
 }
 
-func (c *cluster) Query(ctx context.Context, q p2plab.Query) (p2plab.NodeSet, error) {
-	req := c.cln.NewRequest("POST", "/clusters/%s/query", c.metadata.ID)
+func (c *cluster) Query(ctx context.Context, q p2plab.Query, opts ...p2plab.QueryOption) (p2plab.NodeSet, error) {
+	var settings p2plab.QuerySettings
+	for _, opt := range opts {
+		err := opt(&settings)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	req := c.cln.NewRequest("POST", "/clusters/%s/query", c.metadata.ID).
+		Option("query", q.String())
+
+	if len(settings.AddLabels) > 0 {
+		req.Option("add", strings.Join(settings.AddLabels, ","))
+	}
+	if len(settings.RemoveLabels) > 0 {
+		req.Option("remove", strings.Join(settings.RemoveLabels, ","))
+	}
+
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	return nil, nil
+	var metadatas []metadata.Node
+	err = json.NewDecoder(resp.Body).Decode(&metadatas)
+	if err != nil {
+		return nil, err
+	}
+
+	nset := NewSet()
+	for _, m := range metadatas {
+		nset.Add(&node{cln: c.cln, metadata: m})
+	}
+
+	return nset, nil
 }
 
 func (c *cluster) Update(ctx context.Context, commit string) error {

@@ -26,53 +26,11 @@ var nodeCommand = cli.Command{
 	Usage:   "Manage nodes.",
 	Subcommands: []cli.Command{
 		{
-			Name:   "label",
-			Usage:  "Label nodes in a cluster for grouping in scenarios.",
-			Action: labelNodesAction,
-			Flags: []cli.Flag{
-				&cli.StringSliceFlag{
-					Name:  "add",
-					Usage: "Adds a label to the matched nodes",
-				},
-				&cli.StringSliceFlag{
-					Name:  "remove,rm",
-					Usage: "Removes a label to the matched nodes",
-				},
-			},
-		},
-		{
 			Name:   "ssh",
 			Usage:  "SSH into a node.",
 			Action: sshNodeAction,
 		},
 	},
-}
-
-func labelNodesAction(c *cli.Context) error {
-	cln, err := ResolveClient(c)
-	if err != nil {
-		return err
-	}
-
-	ctx := CommandContext(c)
-
-	nset := cln.Node().NewSet()
-	for i := 0; i < c.NArg(); i++ {
-		id := c.Args().Get(i)
-
-		n, err := cln.Node().Get(ctx, id)
-		if err != nil {
-			return err
-		}
-		nset.Add(n)
-	}
-
-	err = nset.Label(ctx, c.StringSlice("add"), c.StringSlice("remove"))
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func sshNodeAction(c *cli.Context) error {

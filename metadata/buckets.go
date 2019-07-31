@@ -29,6 +29,8 @@ var (
 	bucketKeyType      = []byte("type")
 	bucketKeyReference = []byte("reference")
 
+	bucketKeyLabels = []byte("labels")
+
 	bucketKeyCreatedAt = []byte("createdAt")
 	bucketKeyUpdatedAt = []byte("updatedAt")
 )

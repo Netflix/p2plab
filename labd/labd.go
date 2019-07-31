@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Netflix/p2plab"
@@ -71,7 +72,6 @@ func (d *Labd) registerRoutes(r *mux.Router) {
 	clusters.Handle("/{id}/query", ErrorHandler{d.queryClusterHandler}).Methods("POST")
 
 	nodes := api.PathPrefix("/nodes").Subrouter()
-	nodes.Handle("", ErrorHandler{d.nodesHandler}).Methods("PUT")
 	nodes.Handle("/{id}", ErrorHandler{d.nodeHandler}).Methods("GET")
 
 	scenarios := api.PathPrefix("/scenarios").Subrouter()
@@ -128,6 +128,11 @@ func (d *Labd) createClusterHandler(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return err
 	}
+
+	// _, err = d.db.CreateNode(r.Context(), cluster.ID, metadata.Node{ID: "node-1"})
+	// if err != nil {
+	// 	return err
+	// }
 
 	return writeJSON(w, &cluster)
 }
@@ -203,6 +208,21 @@ func (d *Labd) queryClusterHandler(w http.ResponseWriter, r *http.Request) error
 		}
 	}
 
+	addLabels := removeEmpty(strings.Split(r.FormValue("add"), ","))
+	removeLabels := removeEmpty(strings.Split(r.FormValue("remove"), ","))
+
+	if len(addLabels) > 0 || len(removeLabels) > 0 {
+		var ids []string
+		for _, n := range matchedNodes {
+			ids = append(ids, n.ID)
+		}
+
+		matchedNodes, err = d.db.LabelNodes(r.Context(), vars["id"], ids, addLabels, removeLabels)
+		if err != nil {
+			return err
+		}
+	}
+
 	return writeJSON(w, &matchedNodes)
 }
 
@@ -226,6 +246,7 @@ func (d *Labd) nodeHandler(w http.ResponseWriter, r *http.Request) error {
 
 func (d *Labd) labelNodeHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("node/label")
+
 	return nil
 }
 
@@ -333,4 +354,15 @@ func writeJSON(w http.ResponseWriter, v interface{}) error {
 	}
 	w.Write(content)
 	return nil
+}
+
+func removeEmpty(slice []string) []string {
+	var r []string
+	for _, e := range slice {
+		if e == "" {
+			continue
+		}
+		r = append(r, e)
+	}
+	return r
 }
