@@ -1,0 +1,14 @@
+{
+	"objects": {
+		"ubuntu": {
+			"type": "container-image",
+			"reference": "docker.io/library/ubuntu:latest"
+		}
+	},
+	"seed": {
+		"region=us-east-1": "ubuntu"
+	},
+	"benchmark": {
+		"region=us-west-2": "ubuntu"
+	}
+}

@@ -1,0 +1,19 @@
+{
+	"objects": {
+		"ubuntu-v1": {
+			"type": "container-image",
+			"reference": "docker.io/library/ubuntu:xenial-20190610"
+		}
+		"ubuntu-v2": {
+			"type": "container-image",
+			"reference": "docker.io/library/ubuntu:xenial-20190720"
+		}
+	},
+	"seed": {
+		"(not ‘new-peers’)": "ubuntu-v2",
+		"new-peers": "ubuntu-v1"
+	},
+	"benchmark": {
+		"new-peers": "ubuntu-v2"
+	}
+}

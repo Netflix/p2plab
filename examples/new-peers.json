@@ -1,0 +1,14 @@
+{
+	"objects": {
+		"ubuntu": {
+			"type": "container-image",
+			"reference": "docker.io/library/ubuntu:latest"
+		}
+	},
+	"seed": {
+		"(not ‘new-peers’)": "ubuntu"
+	},
+	"benchmark": {
+		"new-peers": "ubuntu"
+	}
+}
