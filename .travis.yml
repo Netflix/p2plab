@@ -4,6 +4,10 @@ os:
   - linux
   - osx
 
+env:
+    global: 
+        - GO111MODULE=on
+
 go:
   - "1.12.7"
   - master
