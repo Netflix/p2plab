@@ -65,7 +65,7 @@ func createScenarioAction(c *cli.Context) error {
 
 	name := c.String("name")
 	if name == "" {
-		name = strings.TrimSuffix(filename, filepath.Ext(filename))
+		name = strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename))
 	}
 
 	sdef, err := scenario.Parse(filename)

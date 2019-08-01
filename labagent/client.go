@@ -13,3 +13,60 @@
 // limitations under the License.
 
 package labagent
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+
+	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/pkg/httputil"
+	cid "github.com/ipfs/go-cid"
+)
+
+type client struct {
+	httpClient *http.Client
+	base       string
+}
+
+func NewClient(addr string) (p2plab.LabAgentAPI, error) {
+	return &client{
+		httpClient: &http.Client{
+			Transport: &http.Transport{
+				Proxy:             http.ProxyFromEnvironment,
+				DisableKeepAlives: true,
+			},
+		},
+		base: fmt.Sprintf("%s/api/v0", addr),
+	}, nil
+}
+
+func (c *client) Get(ctx context.Context, target cid.Cid) error {
+	req := c.NewRequest("POST", "/get").
+		Option("cid", target.String())
+
+	resp, err := req.Send(ctx)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
+func (c *client) Update(ctx context.Context, url string) error {
+	req := c.NewRequest("POST", "/update").
+		Option("url", url)
+
+	resp, err := req.Send(ctx)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
+func (c *client) NewRequest(method, path string, a ...interface{}) *httputil.Request {
+	return httputil.NewRequest(c.httpClient, c.base, method, path, a...)
+}

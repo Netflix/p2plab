@@ -15,9 +15,11 @@
 package labd
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/pkg/httputil"
 )
 
 type client struct {
@@ -33,7 +35,7 @@ func NewClient(addr string) (p2plab.LabdAPI, error) {
 				DisableKeepAlives: true,
 			},
 		},
-		base: addr,
+		base: fmt.Sprintf("%s/api/v0", addr),
 	}, nil
 }
 
@@ -51,4 +53,8 @@ func (c *client) Scenario() p2plab.ScenarioAPI {
 
 func (c *client) Benchmark() p2plab.BenchmarkAPI {
 	return &benchmarkAPI{c}
+}
+
+func (c *client) NewRequest(method, path string, a ...interface{}) *httputil.Request {
+	return httputil.NewRequest(c.httpClient, c.base, method, path, a...)
 }

@@ -14,6 +14,12 @@
 
 package p2plab
 
+import (
+	"context"
+
+	cid "github.com/ipfs/go-cid"
+)
+
 // Labd defines APIs for labd.
 type LabdAPI interface {
 	// Cluster returns an implementaiton of Cluster API.
@@ -29,6 +35,13 @@ type LabdAPI interface {
 	Benchmark() BenchmarkAPI
 }
 
-// LabAgentAPI defines APIs for lab-agent.
+// LabAgentAPI defines APIs for labagent.
 type LabAgentAPI interface {
+	// Get returns a reader to a file as identified as by its root CID. The file
+	// must have been added as a UnixFS DAG.
+	Get(ctx context.Context, target cid.Cid) error
+
+	// Update fetches a new binary from the url and restarts its P2P application
+	// with it.
+	Update(ctx context.Context, url string) error
 }

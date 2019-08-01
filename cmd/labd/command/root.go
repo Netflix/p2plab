@@ -34,6 +34,11 @@ func App() *cli.App {
 			Value: "./tmp/labd",
 		},
 		cli.StringFlag{
+			Name:  "address,a",
+			Usage: "address for labd's HTTP server",
+			Value: ":7001",
+		},
+		cli.StringFlag{
 			Name:  "log-level,l",
 			Usage: "set the logging level [debug, info, warn, error, fatal, panic]",
 		},
@@ -51,7 +56,7 @@ func daemonAction(c *cli.Context) error {
 		return err
 	}
 
-	daemon, err := labd.New(root)
+	daemon, err := labd.New(root, c.String("address"))
 	if err != nil {
 		return err
 	}

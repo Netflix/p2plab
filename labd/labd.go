@@ -23,6 +23,7 @@ import (
 
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/nodes"
+	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/query"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
@@ -35,7 +36,7 @@ type Labd struct {
 	router *mux.Router
 }
 
-func New(root string) (*Labd, error) {
+func New(root, addr string) (*Labd, error) {
 	db, err := metadata.NewDB(root)
 	if err != nil {
 		return nil, err
@@ -43,7 +44,7 @@ func New(root string) (*Labd, error) {
 
 	r := mux.NewRouter().UseEncodedPath().StrictSlash(true)
 	d := &Labd{
-		addr:   ":7001",
+		addr:   addr,
 		db:     db,
 		router: r,
 	}
@@ -67,23 +68,23 @@ func (d *Labd) registerRoutes(r *mux.Router) {
 	api := r.PathPrefix("/api/v0").Subrouter()
 
 	clusters := api.PathPrefix("/clusters").Subrouter()
-	clusters.Handle("", ErrorHandler{d.clustersHandler}).Methods("GET", "POST")
-	clusters.Handle("/{cluster}", ErrorHandler{d.clusterHandler}).Methods("GET", "PUT", "DELETE")
-	clusters.Handle("/{cluster}/query", ErrorHandler{d.queryClusterHandler}).Methods("POST")
+	clusters.Handle("", httputil.ErrorHandler{d.clustersHandler}).Methods("GET", "POST")
+	clusters.Handle("/{cluster}", httputil.ErrorHandler{d.clusterHandler}).Methods("GET", "PUT", "DELETE")
+	clusters.Handle("/{cluster}/query", httputil.ErrorHandler{d.queryClusterHandler}).Methods("POST")
 
 	nodes := clusters.PathPrefix("/{cluster}/nodes").Subrouter()
-	nodes.Handle("/{node}", ErrorHandler{d.getNodeHandler}).Methods("GET")
+	nodes.Handle("/{node}", httputil.ErrorHandler{d.getNodeHandler}).Methods("GET")
 
 	scenarios := api.PathPrefix("/scenarios").Subrouter()
-	scenarios.Handle("", ErrorHandler{d.scenariosHandler}).Methods("GET", "POST")
-	scenarios.Handle("/{scenario}", ErrorHandler{d.scenarioHandler}).Methods("GET", "DELETE")
+	scenarios.Handle("", httputil.ErrorHandler{d.scenariosHandler}).Methods("GET", "POST")
+	scenarios.Handle("/{scenario}", httputil.ErrorHandler{d.scenarioHandler}).Methods("GET", "DELETE")
 
 	benchmarks := api.PathPrefix("/benchmarks").Subrouter()
-	benchmarks.Handle("", ErrorHandler{d.benchmarksHandler}).Methods("GET", "POST")
-	benchmarks.Handle("/{benchmark}", ErrorHandler{d.getBenchmarkHandler}).Methods("GET")
-	benchmarks.Handle("/{benchmark}/cancel", ErrorHandler{d.cancelBenchmarkHandler}).Methods("PUT")
-	benchmarks.Handle("/{benchmark}/report", ErrorHandler{d.reportBenchmarkHandler}).Methods("GET")
-	benchmarks.Handle("/{benchmark}/logs", ErrorHandler{d.logsBenchmarkHandler}).Methods("GET")
+	benchmarks.Handle("", httputil.ErrorHandler{d.benchmarksHandler}).Methods("GET", "POST")
+	benchmarks.Handle("/{benchmark}", httputil.ErrorHandler{d.getBenchmarkHandler}).Methods("GET")
+	benchmarks.Handle("/{benchmark}/cancel", httputil.ErrorHandler{d.cancelBenchmarkHandler}).Methods("PUT")
+	benchmarks.Handle("/{benchmark}/report", httputil.ErrorHandler{d.reportBenchmarkHandler}).Methods("GET")
+	benchmarks.Handle("/{benchmark}/logs", httputil.ErrorHandler{d.logsBenchmarkHandler}).Methods("GET")
 }
 
 func (d *Labd) clustersHandler(w http.ResponseWriter, r *http.Request) error {
@@ -118,7 +119,7 @@ func (d *Labd) listClusterHandler(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 
-	return writeJSON(w, &clusters)
+	return WriteJSON(w, &clusters)
 }
 
 func (d *Labd) createClusterHandler(w http.ResponseWriter, r *http.Request) error {
@@ -129,12 +130,12 @@ func (d *Labd) createClusterHandler(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	// _, err = d.db.CreateNode(r.Context(), cluster.ID, metadata.Node{ID: "node-1"})
-	// if err != nil {
-	// 	return err
-	// }
+	_, err = d.db.CreateNode(r.Context(), cluster.ID, metadata.Node{ID: "node-1"})
+	if err != nil {
+		return err
+	}
 
-	return writeJSON(w, &cluster)
+	return WriteJSON(w, &cluster)
 }
 
 func (d *Labd) getClusterHandler(w http.ResponseWriter, r *http.Request) error {
@@ -146,7 +147,7 @@ func (d *Labd) getClusterHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	return writeJSON(w, &cluster)
+	return WriteJSON(w, &cluster)
 }
 
 func (d *Labd) updateClusterHandler(w http.ResponseWriter, r *http.Request) error {
@@ -160,7 +161,7 @@ func (d *Labd) updateClusterHandler(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	return writeJSON(w, &cluster)
+	return WriteJSON(w, &cluster)
 }
 
 func (d *Labd) deleteClusterHandler(w http.ResponseWriter, r *http.Request) error {
@@ -221,7 +222,7 @@ func (d *Labd) queryClusterHandler(w http.ResponseWriter, r *http.Request) error
 		}
 	}
 
-	return writeJSON(w, &matchedNodes)
+	return WriteJSON(w, &matchedNodes)
 }
 
 func (d *Labd) getNodeHandler(w http.ResponseWriter, r *http.Request) error {
@@ -233,7 +234,7 @@ func (d *Labd) getNodeHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	return writeJSON(w, &node)
+	return WriteJSON(w, &node)
 }
 
 func (d *Labd) scenariosHandler(w http.ResponseWriter, r *http.Request) error {
@@ -266,7 +267,7 @@ func (d *Labd) listScenarioHandler(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 
-	return writeJSON(w, &scenarios)
+	return WriteJSON(w, &scenarios)
 }
 
 func (d *Labd) createScenarioHandler(w http.ResponseWriter, r *http.Request) error {
@@ -283,7 +284,7 @@ func (d *Labd) createScenarioHandler(w http.ResponseWriter, r *http.Request) err
 		return err
 	}
 
-	return writeJSON(w, &scenario)
+	return WriteJSON(w, &scenario)
 }
 
 func (d *Labd) getScenarioHandler(w http.ResponseWriter, r *http.Request) error {
@@ -295,7 +296,7 @@ func (d *Labd) getScenarioHandler(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 
-	return writeJSON(w, &scenario)
+	return WriteJSON(w, &scenario)
 }
 
 func (d *Labd) deleteScenarioHandler(w http.ResponseWriter, r *http.Request) error {
@@ -329,7 +330,7 @@ func (d *Labd) listBenchmarkHandler(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	return writeJSON(w, &benchmarks)
+	return WriteJSON(w, &benchmarks)
 }
 
 func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
@@ -359,7 +360,7 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	return writeJSON(w, &benchmark)
+	return WriteJSON(w, &benchmark)
 }
 
 func (d *Labd) getBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
@@ -371,7 +372,7 @@ func (d *Labd) getBenchmarkHandler(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 
-	return writeJSON(w, &benchmark)
+	return WriteJSON(w, &benchmark)
 }
 
 func (d *Labd) cancelBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
@@ -413,7 +414,7 @@ func (d *Labd) logsBenchmarkHandler(w http.ResponseWriter, r *http.Request) erro
 	return nil
 }
 
-func writeJSON(w http.ResponseWriter, v interface{}) error {
+func WriteJSON(w http.ResponseWriter, v interface{}) error {
 	content, err := json.MarshalIndent(v, "", "    ")
 	if err != nil {
 		return err
