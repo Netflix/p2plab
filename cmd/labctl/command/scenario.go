@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Netflix/p2plab/scenario"
+	"github.com/Netflix/p2plab/scenarios"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli"
 )
@@ -68,7 +68,7 @@ func createScenarioAction(c *cli.Context) error {
 		name = strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename))
 	}
 
-	sdef, err := scenario.Parse(filename)
+	sdef, err := scenarios.Parse(filename)
 	if err != nil {
 		return err
 	}
