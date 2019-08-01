@@ -68,22 +68,22 @@ func (d *Labd) registerRoutes(r *mux.Router) {
 
 	clusters := api.PathPrefix("/clusters").Subrouter()
 	clusters.Handle("", ErrorHandler{d.clustersHandler}).Methods("GET", "POST")
-	clusters.Handle("/{id}", ErrorHandler{d.clusterHandler}).Methods("GET", "PUT", "DELETE")
-	clusters.Handle("/{id}/query", ErrorHandler{d.queryClusterHandler}).Methods("POST")
+	clusters.Handle("/{cluster}", ErrorHandler{d.clusterHandler}).Methods("GET", "PUT", "DELETE")
+	clusters.Handle("/{cluster}/query", ErrorHandler{d.queryClusterHandler}).Methods("POST")
 
-	nodes := api.PathPrefix("/nodes").Subrouter()
-	nodes.Handle("/{id}", ErrorHandler{d.nodeHandler}).Methods("GET")
+	nodes := clusters.PathPrefix("/{cluster}/nodes").Subrouter()
+	nodes.Handle("/{node}", ErrorHandler{d.getNodeHandler}).Methods("GET")
 
 	scenarios := api.PathPrefix("/scenarios").Subrouter()
 	scenarios.Handle("", ErrorHandler{d.scenariosHandler}).Methods("GET", "POST")
-	scenarios.Handle("/{id}", ErrorHandler{d.scenarioHandler}).Methods("GET", "DELETE")
+	scenarios.Handle("/{scenario}", ErrorHandler{d.scenarioHandler}).Methods("GET", "DELETE")
 
 	benchmarks := api.PathPrefix("/benchmarks").Subrouter()
 	benchmarks.Handle("", ErrorHandler{d.benchmarksHandler}).Methods("GET", "POST")
-	benchmarks.Handle("/{id}", ErrorHandler{d.benchmarkHandler}).Methods("GET")
-	benchmarks.Handle("/{id}/cancel", ErrorHandler{d.cancelBenchmarkHandler}).Methods("PUT")
-	benchmarks.Handle("/{id}/report", ErrorHandler{d.reportBenchmarkHandler}).Methods("GET")
-	benchmarks.Handle("/{id}/logs", ErrorHandler{d.logsBenchmarkHandler}).Methods("GET")
+	benchmarks.Handle("/{benchmark}", ErrorHandler{d.getBenchmarkHandler}).Methods("GET")
+	benchmarks.Handle("/{benchmark}/cancel", ErrorHandler{d.cancelBenchmarkHandler}).Methods("PUT")
+	benchmarks.Handle("/{benchmark}/report", ErrorHandler{d.reportBenchmarkHandler}).Methods("GET")
+	benchmarks.Handle("/{benchmark}/logs", ErrorHandler{d.logsBenchmarkHandler}).Methods("GET")
 }
 
 func (d *Labd) clustersHandler(w http.ResponseWriter, r *http.Request) error {
@@ -141,7 +141,7 @@ func (d *Labd) getClusterHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("cluster/get")
 
 	vars := mux.Vars(r)
-	cluster, err := d.db.GetCluster(r.Context(), vars["id"])
+	cluster, err := d.db.GetCluster(r.Context(), vars["cluster"])
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (d *Labd) updateClusterHandler(w http.ResponseWriter, r *http.Request) erro
 
 	vars := mux.Vars(r)
 	cluster, err := d.db.UpdateCluster(r.Context(), metadata.Cluster{
-		ID: vars["id"],
+		ID: vars["cluster"],
 	})
 	if err != nil {
 		return err
@@ -167,7 +167,7 @@ func (d *Labd) deleteClusterHandler(w http.ResponseWriter, r *http.Request) erro
 	log.Info().Msg("cluster/delete")
 
 	vars := mux.Vars(r)
-	err := d.db.DeleteCluster(r.Context(), vars["id"])
+	err := d.db.DeleteCluster(r.Context(), vars["cluster"])
 	if err != nil {
 		return err
 	}
@@ -184,7 +184,7 @@ func (d *Labd) queryClusterHandler(w http.ResponseWriter, r *http.Request) error
 	}
 
 	vars := mux.Vars(r)
-	ns, err := d.db.ListNodes(r.Context(), vars["id"])
+	ns, err := d.db.ListNodes(r.Context(), vars["cluster"])
 	if err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ func (d *Labd) queryClusterHandler(w http.ResponseWriter, r *http.Request) error
 			ids = append(ids, n.ID)
 		}
 
-		matchedNodes, err = d.db.LabelNodes(r.Context(), vars["id"], ids, addLabels, removeLabels)
+		matchedNodes, err = d.db.LabelNodes(r.Context(), vars["cluster"], ids, addLabels, removeLabels)
 		if err != nil {
 			return err
 		}
@@ -224,33 +224,16 @@ func (d *Labd) queryClusterHandler(w http.ResponseWriter, r *http.Request) error
 	return writeJSON(w, &matchedNodes)
 }
 
-func (d *Labd) nodesHandler(w http.ResponseWriter, r *http.Request) error {
-	var err error
-	switch r.Method {
-	case "PUT":
-		err = d.labelNodeHandler(w, r)
-	}
-	return err
-}
-
-func (d *Labd) nodeHandler(w http.ResponseWriter, r *http.Request) error {
-	var err error
-	switch r.Method {
-	case "GET":
-		err = d.getNodeHandler(w, r)
-	}
-	return err
-}
-
-func (d *Labd) labelNodeHandler(w http.ResponseWriter, r *http.Request) error {
-	log.Info().Msg("node/label")
-
-	return nil
-}
-
 func (d *Labd) getNodeHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("node/get")
-	return nil
+
+	vars := mux.Vars(r)
+	node, err := d.db.GetNode(r.Context(), vars["cluster"], vars["node"])
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(w, &node)
 }
 
 func (d *Labd) scenariosHandler(w http.ResponseWriter, r *http.Request) error {
@@ -277,21 +260,53 @@ func (d *Labd) scenarioHandler(w http.ResponseWriter, r *http.Request) error {
 
 func (d *Labd) listScenarioHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("scenario/list")
-	return nil
+
+	scenarios, err := d.db.ListScenarios(r.Context())
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(w, &scenarios)
 }
 
 func (d *Labd) createScenarioHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("scenario/create")
-	return nil
+
+	var sdef metadata.ScenarioDefinition
+	err := json.NewDecoder(r.Body).Decode(&sdef)
+	if err != nil {
+		return err
+	}
+
+	scenario, err := d.db.CreateScenario(r.Context(), metadata.Scenario{ID: r.FormValue("id"), Definition: sdef})
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(w, &scenario)
 }
 
 func (d *Labd) getScenarioHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("scenario/get")
-	return nil
+
+	vars := mux.Vars(r)
+	scenario, err := d.db.GetScenario(r.Context(), vars["scenario"])
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(w, &scenario)
 }
 
 func (d *Labd) deleteScenarioHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("scenario/delete")
+
+	vars := mux.Vars(r)
+	err := d.db.DeleteScenario(r.Context(), vars["scenario"])
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -306,42 +321,95 @@ func (d *Labd) benchmarksHandler(w http.ResponseWriter, r *http.Request) error {
 	return err
 }
 
-func (d *Labd) benchmarkHandler(w http.ResponseWriter, r *http.Request) error {
-	var err error
-	switch r.Method {
-	case "GET":
-		err = d.getBenchmarkHandler(w, r)
-	}
-	return err
-}
-
 func (d *Labd) listBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("benchmark/list")
-	return nil
+
+	benchmarks, err := d.db.ListBenchmarks(r.Context())
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(w, &benchmarks)
 }
 
 func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("benchmark/create")
-	return nil
+
+	ctx := r.Context()
+	sid := r.FormValue("scenario")
+	scenario, err := d.db.GetScenario(ctx, sid)
+	if err != nil {
+		return err
+	}
+
+	cid := r.FormValue("cluster")
+	cluster, err := d.db.GetCluster(ctx, cid)
+	if err != nil {
+		return err
+	}
+
+	benchmark := metadata.Benchmark{
+		ID:       time.Now().Format(time.RFC3339Nano),
+		Cluster:  cluster,
+		Scenario: scenario,
+	}
+
+	benchmark, err = d.db.CreateBenchmark(ctx, benchmark)
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(w, &benchmark)
 }
 
 func (d *Labd) getBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("benchmark/get")
-	return nil
+
+	vars := mux.Vars(r)
+	benchmark, err := d.db.GetBenchmark(r.Context(), vars["benchmark"])
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(w, &benchmark)
 }
 
 func (d *Labd) cancelBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("benchmark/cancel")
+
+	vars := mux.Vars(r)
+	benchmark, err := d.db.GetBenchmark(r.Context(), vars["benchmark"])
+	if err != nil {
+		return err
+	}
+	log.Info().Msgf("cancel %q", benchmark.ID)
+
 	return nil
 }
 
 func (d *Labd) reportBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("benchmark/report")
+
+	vars := mux.Vars(r)
+	benchmark, err := d.db.GetBenchmark(r.Context(), vars["benchmark"])
+	if err != nil {
+		return err
+	}
+	log.Info().Msgf("report %q", benchmark.ID)
+
 	return nil
 }
 
 func (d *Labd) logsBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("benchmark/logs")
+
+	vars := mux.Vars(r)
+	benchmark, err := d.db.GetBenchmark(r.Context(), vars["benchmark"])
+	if err != nil {
+		return err
+	}
+	log.Info().Msgf("logs %q", benchmark.ID)
+
 	return nil
 }
 

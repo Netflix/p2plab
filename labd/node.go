@@ -26,8 +26,8 @@ type nodeAPI struct {
 	cln *client
 }
 
-func (napi *nodeAPI) Get(ctx context.Context, id string) (p2plab.Node, error) {
-	req := napi.cln.NewRequest("GET", "/nodes/%s", id)
+func (napi *nodeAPI) Get(ctx context.Context, cluster, id string) (p2plab.Node, error) {
+	req := napi.cln.NewRequest("GET", "/clusters/%s/nodes/%s", cluster, id)
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err

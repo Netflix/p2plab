@@ -15,6 +15,7 @@
 package labd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 
@@ -26,8 +27,16 @@ type scenarioAPI struct {
 	cln *client
 }
 
-func (sapi *scenarioAPI) Create(ctx context.Context, name string, sdef p2plab.ScenarioDefinition) (p2plab.Scenario, error) {
-	req := sapi.cln.NewRequest("POST", "/scenarios")
+func (sapi *scenarioAPI) Create(ctx context.Context, id string, sdef metadata.ScenarioDefinition) (p2plab.Scenario, error) {
+	content, err := json.MarshalIndent(&sdef, "", "    ")
+	if err != nil {
+		return nil, err
+	}
+
+	req := sapi.cln.NewRequest("POST", "/scenarios").
+		Option("id", id).
+		Body(bytes.NewReader(content))
+
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err

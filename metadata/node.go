@@ -244,8 +244,8 @@ func readNode(bkt *bolt.Bucket, node *Node) error {
 		}
 
 		switch string(k) {
-		// case string(bucketKeyField):
-		//  node.Field = string(v)
+		case string(bucketKeyID):
+			node.ID = string(v)
 		}
 
 		return nil
@@ -256,15 +256,6 @@ func writeNode(bkt *bolt.Bucket, node *Node) error {
 	err := WriteTimestamps(bkt, node.CreatedAt, node.UpdatedAt)
 	if err != nil {
 		return err
-	}
-
-	for _, f := range []field{
-		// {bucketKeyField, []byte(node.Field)},
-	} {
-		err = bkt.Put(f.key, f.value)
-		if err != nil {
-			return err
-		}
 	}
 
 	if len(node.Labels) > 0 {
@@ -278,6 +269,15 @@ func writeNode(bkt *bolt.Bucket, node *Node) error {
 			if err != nil {
 				return err
 			}
+		}
+	}
+
+	for _, f := range []field{
+		{bucketKeyID, []byte(node.ID)},
+	} {
+		err = bkt.Put(f.key, f.value)
+		if err != nil {
+			return err
 		}
 	}
 

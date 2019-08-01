@@ -26,19 +26,49 @@ import (
 type Scenario struct {
 	ID string
 
-	Objects map[string]Object
-
-	Seed map[string]string
-
-	Benchmark map[string]string
+	Definition ScenarioDefinition
 
 	CreatedAt, UpdatedAt time.Time
 }
 
-type Object struct {
-	Type      string
-	Reference string
+// ScenarioDefinition defines a scenario.
+type ScenarioDefinition struct {
+	Objects map[string]ObjectDefinition `json:"objects,omitempty"`
+
+	// Seed map a query to an action. Queries are executed in parallel to seed
+	// a cluster with initial data before running the benchmark.
+	Seed map[string]string `json:"seed,omitempty"`
+
+	// Benchmark maps a query to an action. Queries are executed in parallel
+	// during the benchmark and metrics are collected during this stage.
+	Benchmark map[string]string `json:"benchmark,omitempty"`
 }
+
+// ObjectDefinition define a type of data that will be distributed during the
+// benchmark. The definition also specify options on how the data is converted
+// into IPFS datastructures.
+type ObjectDefinition struct {
+	// Type specifies what type is the source of the data and how the data is
+	// retrieved. Types must be one of the following: ["oci-image"].
+	Type string `json:"type"`
+
+	Reference string `json:"reference"`
+
+	// Chunker specify which chunking algorithm to use to chunk the data into IPLD
+	// blocks.
+	Chunker string `json:"chunker"`
+
+	// Layout specify how the DAG is shaped and constructed over the IPLD blocks.
+	Layout string `json:"layout"`
+}
+
+// ObjectType is the type of data retrieved.
+type ObjectType string
+
+var (
+	// ObjectContainerImage indicates that the object is an OCI image.
+	ObjectContainerImage ObjectType = "oci-image"
+)
 
 func (m *DB) GetScenario(ctx context.Context, id string) (Scenario, error) {
 	var scenario Scenario
@@ -174,25 +204,53 @@ func readScenario(bkt *bolt.Bucket, scenario *Scenario) error {
 		return err
 	}
 
-	objects, err := readObjects(bkt)
+	sdef, err := readDefinition(bkt)
 	if err != nil {
 		return err
 	}
-	scenario.Objects = objects
+	scenario.Definition = sdef
 
-	seed, err := readMap(bkt, bucketKeySeed)
-	if err != nil {
-		return err
+	return bkt.ForEach(func(k, v []byte) error {
+		if v == nil {
+			return nil
+		}
+
+		switch string(k) {
+		case string(bucketKeyID):
+			scenario.ID = string(v)
+		}
+
+		return nil
+	})
+}
+
+func readDefinition(bkt *bolt.Bucket) (ScenarioDefinition, error) {
+	var sdef ScenarioDefinition
+
+	dbkt := bkt.Bucket(bucketKeyDefinition)
+	if dbkt == nil {
+		return sdef, nil
 	}
-	scenario.Seed = seed
 
-	benchmark, err := readMap(bkt, bucketKeyBenchmark)
+	objects, err := readObjects(dbkt)
 	if err != nil {
-		return err
+		return sdef, err
 	}
-	scenario.Benchmark = benchmark
+	sdef.Objects = objects
 
-	return nil
+	seed, err := readMap(dbkt, bucketKeySeed)
+	if err != nil {
+		return sdef, err
+	}
+	sdef.Seed = seed
+
+	benchmark, err := readMap(dbkt, bucketKeyBenchmark)
+	if err != nil {
+		return sdef, err
+	}
+	sdef.Benchmark = benchmark
+
+	return sdef, nil
 }
 
 func writeScenario(bkt *bolt.Bucket, scenario *Scenario) error {
@@ -201,17 +259,48 @@ func writeScenario(bkt *bolt.Bucket, scenario *Scenario) error {
 		return err
 	}
 
-	err = writeObjects(bkt, scenario.Objects)
+	err = writeDefinition(bkt, scenario.Definition)
 	if err != nil {
 		return err
 	}
 
-	err = writeMap(bkt, bucketKeySeed, scenario.Seed)
+	for _, f := range []field{
+		{bucketKeyID, []byte(scenario.ID)},
+	} {
+		err = bkt.Put(f.key, f.value)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func writeDefinition(bkt *bolt.Bucket, sdef ScenarioDefinition) error {
+	dbkt := bkt.Bucket(bucketKeyDefinition)
+	if dbkt != nil {
+		err := bkt.DeleteBucket(bucketKeyDefinition)
+		if err != nil {
+			return err
+		}
+	}
+
+	dbkt, err := bkt.CreateBucket(bucketKeyDefinition)
 	if err != nil {
 		return err
 	}
 
-	err = writeMap(bkt, bucketKeyBenchmark, scenario.Benchmark)
+	err = writeObjects(dbkt, sdef.Objects)
+	if err != nil {
+		return err
+	}
+
+	err = writeMap(dbkt, bucketKeySeed, sdef.Seed)
+	if err != nil {
+		return err
+	}
+
+	err = writeMap(dbkt, bucketKeyBenchmark, sdef.Benchmark)
 	if err != nil {
 		return err
 	}
@@ -219,24 +308,20 @@ func writeScenario(bkt *bolt.Bucket, scenario *Scenario) error {
 	return nil
 }
 
-func readObjects(bkt *bolt.Bucket) (map[string]Object, error) {
+func readObjects(bkt *bolt.Bucket) (map[string]ObjectDefinition, error) {
 	obkt := bkt.Bucket(bucketKeyObjects)
 	if obkt == nil {
 		return nil, nil
 	}
 
-	objects := map[string]Object{}
+	objects := map[string]ObjectDefinition{}
 	err := obkt.ForEach(func(name, v []byte) error {
-		if v == nil {
-			return nil
-		}
-
 		nbkt := obkt.Bucket(name)
 		if nbkt == nil {
 			return nil
 		}
 
-		var object Object
+		var object ObjectDefinition
 		err := nbkt.ForEach(func(k, v []byte) error {
 			switch string(k) {
 			case string(bucketKeyType):
@@ -260,7 +345,7 @@ func readObjects(bkt *bolt.Bucket) (map[string]Object, error) {
 	return objects, nil
 }
 
-func writeObjects(bkt *bolt.Bucket, objects map[string]Object) error {
+func writeObjects(bkt *bolt.Bucket, objects map[string]ObjectDefinition) error {
 	obkt := bkt.Bucket(bucketKeyObjects)
 	if obkt != nil {
 		err := bkt.DeleteBucket(bucketKeyObjects)

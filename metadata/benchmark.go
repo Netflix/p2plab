@@ -26,6 +26,9 @@ import (
 type Benchmark struct {
 	ID string
 
+	Cluster  Cluster
+	Scenario Scenario
+
 	CreatedAt, UpdatedAt time.Time
 }
 
@@ -163,14 +166,30 @@ func readBenchmark(bkt *bolt.Bucket, benchmark *Benchmark) error {
 		return err
 	}
 
+	cbkt := bkt.Bucket(bucketKeyCluster)
+	if cbkt != nil {
+		err = readCluster(cbkt, &benchmark.Cluster)
+		if err != nil {
+			return err
+		}
+	}
+
+	sbkt := bkt.Bucket(bucketKeyScenario)
+	if sbkt != nil {
+		err = readScenario(sbkt, &benchmark.Scenario)
+		if err != nil {
+			return err
+		}
+	}
+
 	return bkt.ForEach(func(k, v []byte) error {
 		if v == nil {
 			return nil
 		}
 
 		switch string(k) {
-		// case string(bucketKeyField):
-		//  benchmark.Field = string(v)
+		case string(bucketKeyID):
+			benchmark.ID = string(v)
 		}
 
 		return nil
@@ -183,8 +202,44 @@ func writeBenchmark(bkt *bolt.Bucket, benchmark *Benchmark) error {
 		return err
 	}
 
+	cbkt := bkt.Bucket(bucketKeyCluster)
+	if cbkt != nil {
+		err = bkt.DeleteBucket(bucketKeyCluster)
+		if err != nil {
+			return err
+		}
+	}
+
+	cbkt, err = bkt.CreateBucket(bucketKeyCluster)
+	if err != nil {
+		return err
+	}
+
+	err = writeCluster(cbkt, &benchmark.Cluster)
+	if err != nil {
+		return err
+	}
+
+	sbkt := bkt.Bucket(bucketKeyScenario)
+	if sbkt != nil {
+		err = bkt.DeleteBucket(bucketKeyScenario)
+		if err != nil {
+			return err
+		}
+	}
+
+	sbkt, err = bkt.CreateBucket(bucketKeyScenario)
+	if err != nil {
+		return err
+	}
+
+	err = writeScenario(sbkt, &benchmark.Scenario)
+	if err != nil {
+		return err
+	}
+
 	for _, f := range []field{
-		// {bucketKeyField, []byte(benchmark.Field)},
+		{bucketKeyID, []byte(benchmark.ID)},
 	} {
 		err = bkt.Put(f.key, f.value)
 		if err != nil {

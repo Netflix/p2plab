@@ -113,7 +113,12 @@ func listBenchmarkAction(c *cli.Context) error {
 		return err
 	}
 
-	return CommandPrinter(c).Print(benchmarks)
+	l := make([]interface{}, len(benchmarks))
+	for i, b := range benchmarks {
+		l[i] = b.Metadata()
+	}
+
+	return CommandPrinter(c).Print(l)
 }
 
 func reportBenchmarkAction(c *cli.Context) error {

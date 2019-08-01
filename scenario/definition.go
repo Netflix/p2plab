@@ -18,11 +18,11 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/metadata"
 )
 
-func Parse(filename string) (p2plab.ScenarioDefinition, error) {
-	var sdef p2plab.ScenarioDefinition
+func Parse(filename string) (metadata.ScenarioDefinition, error) {
+	var sdef metadata.ScenarioDefinition
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return sdef, err

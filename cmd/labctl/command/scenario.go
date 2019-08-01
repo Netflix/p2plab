@@ -81,7 +81,7 @@ func createScenarioAction(c *cli.Context) error {
 	ctx := CommandContext(c)
 	scenario, err := cln.Scenario().Create(ctx, name, sdef)
 	if err != nil {
-	return err
+		return err
 	}
 
 	log.Info().Msgf("Created scenario %q", scenario.Metadata().ID)

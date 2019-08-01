@@ -169,8 +169,8 @@ func readCluster(bkt *bolt.Bucket, cluster *Cluster) error {
 		}
 
 		switch string(k) {
-		// case string(bucketKeyField):
-		//  cluster.Field = string(v)
+		case string(bucketKeyID):
+			cluster.ID = string(v)
 		}
 
 		return nil
@@ -184,7 +184,7 @@ func writeCluster(bkt *bolt.Bucket, cluster *Cluster) error {
 	}
 
 	for _, f := range []field{
-		// {bucketKeyField, []byte(cluster.Field)},
+		{bucketKeyID, []byte(cluster.ID)},
 	} {
 		err = bkt.Put(f.key, f.value)
 		if err != nil {

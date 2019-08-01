@@ -28,7 +28,10 @@ type benchmarkAPI struct {
 }
 
 func (bapi *benchmarkAPI) Create(ctx context.Context, cluster, scenario string) (p2plab.Benchmark, error) {
-	req := bapi.cln.NewRequest("POST", "/benchmarks")
+	req := bapi.cln.NewRequest("POST", "/benchmarks").
+		Option("cluster", cluster).
+		Option("scenario", scenario)
+
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err

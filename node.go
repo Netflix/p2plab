@@ -23,7 +23,7 @@ import (
 // NodeAPI defines the API for node operations.
 type NodeAPI interface {
 	// Get returns a node.
-	Get(ctx context.Context, id string) (Node, error)
+	Get(ctx context.Context, cluster, id string) (Node, error)
 }
 
 // Node is an instance running the P2P application to be benchmarked.

@@ -17,20 +17,30 @@ package metadata
 import bolt "go.etcd.io/bbolt"
 
 var (
+	// API Resources.
 	bucketKeyVersion    = []byte(schemaVersion)
 	bucketKeyClusters   = []byte("clusters")
 	bucketKeyNodes      = []byte("nodes")
 	bucketKeyScenarios  = []byte("scenarios")
 	bucketKeyBenchmarks = []byte("benchmarks")
 
-	bucketKeyObjects   = []byte("objects")
-	bucketKeySeed      = []byte("seed")
-	bucketKeyBenchmark = []byte("benchmark")
-	bucketKeyType      = []byte("type")
-	bucketKeyReference = []byte("reference")
+	// Scenario buckets.
+	bucketKeyDefinition = []byte("definition")
+	bucketKeyObjects    = []byte("objects")
+	bucketKeySeed       = []byte("seed")
+	bucketKeyBenchmark  = []byte("benchmark")
+	bucketKeyType       = []byte("type")
+	bucketKeyReference  = []byte("reference")
 
+	// Node buckets.
 	bucketKeyLabels = []byte("labels")
 
+	// Benchmark buckets.
+	bucketKeyCluster  = []byte("cluster")
+	bucketKeyScenario = []byte("scenario")
+
+	// Common buckets.
+	bucketKeyID        = []byte("id")
 	bucketKeyCreatedAt = []byte("createdAt")
 	bucketKeyUpdatedAt = []byte("updatedAt")
 )
