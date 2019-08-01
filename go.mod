@@ -49,4 +49,5 @@ require (
 	github.com/uber/jaeger-lib v2.0.0+incompatible // indirect
 	github.com/urfave/cli v1.20.0
 	go.etcd.io/bbolt v1.3.3
+	golang.org/x/xerrors v0.0.0-20190528162220-0421b64034aa // indirect
 )
