@@ -15,16 +15,28 @@
 package nodes
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/metadata"
 	"github.com/stretchr/testify/require"
 )
 
+type testNode struct {
+	id string
+}
+
+func (n *testNode) Metadata() metadata.Node {
+	return metadata.Node{ID: n.id}
+}
+
+func (n *testNode) SSH(ctx context.Context, opts ...p2plab.SSHOption) error {
+	return nil
+}
+
 func newNode(id string) p2plab.Node {
-	return &node{
-		id: id,
-	}
+	return &testNode{id}
 }
 
 func TestNodeSetAdd(t *testing.T) {
