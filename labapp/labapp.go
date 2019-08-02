@@ -69,6 +69,7 @@ func (a *LabApp) Serve(ctx context.Context) error {
 		<-done
 	}()
 
+	encoder, decoder := json.NewEncoder(f), json.NewDecoder(f)
 	go func() {
 		defer close(done)
 		for {
@@ -77,7 +78,7 @@ func (a *LabApp) Serve(ctx context.Context) error {
 				return
 			default:
 				var req labagent.TaskRequest
-				err = json.NewDecoder(f).Decode(&req)
+				err = decoder.Decode(&req)
 				if err != nil {
 					log.Warn().Msgf("failed to decode request: %s", err)
 					continue
@@ -116,7 +117,7 @@ func (a *LabApp) Serve(ctx context.Context) error {
 					Err: taskErr,
 				}
 
-				err = json.NewEncoder(f).Encode(&resp)
+				err = encoder.Encode(&resp)
 				if err != nil {
 					log.Warn().Msgf("failed to encode response: %s", err)
 				}

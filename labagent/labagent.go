@@ -17,6 +17,7 @@ package labagent
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -47,6 +48,8 @@ type LabAgent struct {
 	app        *exec.Cmd
 	appCancel  func()
 	appFifo    io.ReadWriteCloser
+	appEncoder *json.Encoder
+	appDecoder *json.Decoder
 }
 
 func New(root, addr string) (*LabAgent, error) {
@@ -189,6 +192,7 @@ func (a *LabAgent) startApp() error {
 	if err != nil {
 		return err
 	}
+	a.appEncoder, a.appDecoder = json.NewEncoder(a.appFifo), json.NewDecoder(a.appFifo)
 
 	binaryPath := filepath.Join(a.root, LabAppBinary)
 	a.app = exec.CommandContext(appCtx, binaryPath, fmt.Sprintf("--fd-path=%s", fdPath))

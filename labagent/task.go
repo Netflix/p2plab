@@ -16,7 +16,6 @@ package labagent
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 )
 
@@ -38,12 +37,12 @@ type TaskResponse struct {
 
 func (a *LabAgent) sendTask(ctx context.Context, req TaskRequest) (TaskResponse, error) {
 	var resp TaskResponse
-	err := json.NewEncoder(a.appFifo).Encode(&req)
+	err := a.appEncoder.Encode(&req)
 	if err != nil {
 		return resp, err
 	}
 
-	err = json.NewDecoder(a.appFifo).Decode(&resp)
+	err = a.appDecoder.Decode(&resp)
 	if err != nil {
 		return resp, err
 	}
