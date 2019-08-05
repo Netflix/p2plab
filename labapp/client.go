@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package labagent
+package labapp
 
 import (
 	"bytes"
@@ -22,8 +22,6 @@ import (
 	"net/http"
 
 	"github.com/Netflix/p2plab"
-	"github.com/pkg/errors"
-	"github.com/Netflix/p2plab/labapp"
 	"github.com/Netflix/p2plab/pkg/httputil"
 )
 
@@ -44,10 +42,11 @@ func NewClient(addr string) *Client {
 	}
 }
 
-func (c *Client) Run(ctx context.Context, task p2plab.Task) error {
+func (c *Client) Run(ctx context.Context, task p2plab.Task) (TaskResponse, error) {
+	var taskResp TaskResponse
 	content, err := json.MarshalIndent(&task, "", "    ")
 	if err != nil {
-		return err
+		return taskResp, err
 	}
 
 	req := c.NewRequest("POST", "/run").
@@ -55,21 +54,16 @@ func (c *Client) Run(ctx context.Context, task p2plab.Task) error {
 
 	resp, err := req.Send(ctx)
 	if err != nil {
-		return err
+		return taskResp, err
 	}
 	defer resp.Body.Close()
 
-	var taskResp labapp.TaskResponse
 	err = json.NewDecoder(resp.Body).Decode(&taskResp)
 	if err != nil {
-		return err
+		return taskResp, err
 	}
 
-	if taskResp.Err != "" {
-		return errors.New(taskResp.Err)
-	}
-
-	return nil
+	return taskResp, nil
 }
 
 func (c *Client) NewRequest(method, path string, a ...interface{}) *httputil.Request {

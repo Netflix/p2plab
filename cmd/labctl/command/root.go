@@ -15,11 +15,13 @@
 package command
 
 import (
+	"context"
+
 	"github.com/Netflix/p2plab/version"
 	"github.com/urfave/cli"
 )
 
-func App() *cli.App {
+func App(ctx context.Context) *cli.App {
 	app := cli.NewApp()
 	app.Name = "labctl"
 	app.Version = version.Version
@@ -47,7 +49,7 @@ func App() *cli.App {
 	}
 
 	// Setup tracers and context.
-	AttachAppContext(app)
+	AttachAppContext(ctx, app)
 
 	// Setup output printer.
 	AttachAppPrinter(app)

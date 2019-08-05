@@ -35,9 +35,7 @@ var (
 	OutputJSON OutputType = "json"
 )
 
-func AttachAppContext(app *cli.App) {
-	ctx := context.Background()
-
+func AttachAppContext(ctx context.Context, app *cli.App) {
 	tracer, closer := getTracer()
 
 	var span opentracing.Span

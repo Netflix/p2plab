@@ -15,10 +15,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"syscall"
 
 	"github.com/Netflix/p2plab/cmd/labctl/command"
+	"github.com/Netflix/p2plab/cmd/labctl/interrupt"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -33,7 +36,12 @@ func init() {
 }
 
 func main() {
-	app := command.App()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	ih := interrupt.NewInterruptHandler(cancel, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+	defer ih.Close()
+
+	app := command.App(ctx)
 	if err := app.Run(os.Args); err != nil {
 		fmt.Fprintf(os.Stderr, "labctl: %s\n", err)
 		os.Exit(1)

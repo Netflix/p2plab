@@ -20,12 +20,14 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
-	"syscall"
+	"net/http"
+	"time"
 
 	"github.com/Netflix/p2plab"
-	"github.com/Netflix/p2plab/labagent"
+	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/peer"
-	"github.com/containerd/fifo"
+	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/gorilla/mux"
 	cid "github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -33,20 +35,20 @@ import (
 
 type LabApp struct {
 	root   string
-	fifoReader string
-	fifoWriter string
+	addr   string
+	router *mux.Router
 	peer   *peer.Peer
-
-	taskEncoder *json.Encoder
-	taskDecoder *json.Decoder
 }
 
-func New(root, fifoReader, fifoWriter string) *LabApp {
-	return &LabApp{
+func New(root, addr string) *LabApp {
+	r := mux.NewRouter().UseEncodedPath().StrictSlash(true)
+	app := &LabApp{
 		root:   root,
-		fifoReader: fifoReader,
-		fifoWriter: fifoWriter,
+		addr:   addr,
+		router: r,
 	}
+	app.registerRoutes(r)
+	return app
 }
 
 func (a *LabApp) Serve(ctx context.Context) error {
@@ -65,65 +67,51 @@ func (a *LabApp) Serve(ctx context.Context) error {
 		return errors.Wrap(err, "failed to create peer peer")
 	}
 
-	fifoReader, err := fifo.OpenFifo(ctx, a.fifoReader, syscall.O_RDONLY, 0700)
-	if err != nil {
-		return errors.Wrap(err, "failed to open fifo")
-	}
-	defer fifoReader.Close()
-
-	fifoWriter, err := fifo.OpenFifo(ctx, a.fifoWriter, syscall.O_WRONLY, 0700)
-	if err != nil {
-		return errors.Wrap(err, "failed to open fifo")
-	}
-	defer fifoWriter.Close()
-
-	a.taskEncoder, a.taskDecoder = json.NewEncoder(fifoWriter), json.NewDecoder(fifoReader)
-	go a.handleTasks(ctx)
-
 	var addrs []string
 	for _, ma := range a.peer.Host.Addrs() {
 		addrs = append(addrs, ma.String())
 	}
-	log.Info().Msgf("Listening on %s", addrs)
+	log.Info().Msgf("IPFS listening on %s", addrs)
+	go a.peer.Run()
 
-	return a.peer.Run()
-}
-
-func (a *LabApp) handleTasks(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			var task p2plab.Task
-			err := a.taskDecoder.Decode(&task)
-			if err != nil {
-				log.Warn().Msgf("failed to decode request: %s", err)
-				continue
-			}
-
-			var taskErr error
-			ctx := context.Background()
-			switch task.Type {
-			case p2plab.TaskGetDAG:
-				taskErr = a.handleTaskGet(ctx, task.Target)
-			default:
-				taskErr = errors.Errorf("unrecognized task type %q", task.Type)
-			}
-
-			resp := labagent.TaskResponse{
-				Err: taskErr.Error(),
-			}
-
-			err = a.taskEncoder.Encode(&resp)
-			if err != nil {
-				log.Warn().Msgf("failed to encode response: %s", err)
-			}
-		}
+	log.Info().Msgf("labapp listening on %s", a.addr)
+	s := &http.Server{
+		Handler:      a.router,
+		Addr:         a.addr,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
+	return s.ListenAndServe()
 }
 
-func (a *LabApp) handleTaskGet(ctx context.Context, target string) error {
+func (a *LabApp) registerRoutes(r *mux.Router) {
+	api := r.PathPrefix("/api/v0").Subrouter()
+	api.Handle("/run", httputil.ErrorHandler{a.runHandler}).Methods("POST")
+}
+
+func (a *LabApp) runHandler(w http.ResponseWriter, r *http.Request) error {
+	log.Info().Msg("labapp/run")
+
+	var task p2plab.Task
+	err := json.NewDecoder(r.Body).Decode(&task)
+	if err != nil {
+		return err
+	}
+
+	switch task.Type {
+	case p2plab.TaskGetDAG:
+		err = a.getFile(r.Context(), task.Target)
+	default:
+		return errors.Wrapf(errdefs.ErrInvalidArgument, "unrecognized task type: %q", task.Type)
+	}
+
+	resp := TaskResponse{
+		Err: err.Error(),
+	}
+	return httputil.WriteJSON(w, &resp)
+}
+
+func (a *LabApp) getFile(ctx context.Context, target string) error {
 	targetCid, err := cid.Parse(target)
 	if err != nil {
 		return err

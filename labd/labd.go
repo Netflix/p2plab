@@ -54,7 +54,7 @@ func New(root, addr string) (*Labd, error) {
 }
 
 func (d *Labd) Serve(ctx context.Context) error {
-	log.Info().Msgf("APIserver listening on %s", d.addr)
+	log.Info().Msgf("labd listening on %s", d.addr)
 	s := &http.Server{
 		Handler:      d.router,
 		Addr:         d.addr,

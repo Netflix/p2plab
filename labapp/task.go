@@ -12,30 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package labagent
-
-import (
-	"context"
-
-	"github.com/Netflix/p2plab"
-	"github.com/pkg/errors"
-)
+package labapp
 
 type TaskResponse struct {
 	Err string
-}
-
-func (a *LabAgent) sendTask(ctx context.Context, task p2plab.Task) (TaskResponse, error) {
-	var resp TaskResponse
-	err := a.appEncoder.Encode(&task)
-	if err != nil {
-		return resp, errors.Wrap(err, "failed to encode task to labapp")
-	}
-
-	err = a.appDecoder.Decode(&resp)
-	if err != nil {
-		return resp, errors.Wrap(err, "failed to decode task from labapp")
-	}
-
-	return resp, nil
 }
