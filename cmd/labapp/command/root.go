@@ -34,8 +34,12 @@ func App() *cli.App {
 			Value: "./tmp/labapp",
 		},
 		cli.StringFlag{
-			Name:  "fd-path",
-			Usage: "file descriptor path to communicate with labagent",
+			Name:  "fifo-reader",
+			Usage: "file descriptor path to reader fifo with labagent",
+		},
+		cli.StringFlag{
+			Name:  "fifo-writer",
+			Usage: "file descriptor path to writer fifo with labagent",
 		},
 		cli.StringFlag{
 			Name:  "log-level,l",
@@ -53,6 +57,6 @@ func appAction(c *cli.Context) error {
 		return err
 	}
 
-	app := labapp.New(root, c.String("fd-path"))
+	app := labapp.New(root, c.String("fifo-reader"), c.String("fifo-writer"))
 	return app.Serve(context.Background())
 }

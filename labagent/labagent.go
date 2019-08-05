@@ -28,10 +28,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Netflix/p2plab/labd"
+	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/containerd/fifo"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -41,15 +42,16 @@ var (
 )
 
 type LabAgent struct {
-	root       string
-	addr       string
-	router     *mux.Router
-	httpClient *http.Client
-	app        *exec.Cmd
-	appCancel  func()
-	appFifo    io.ReadWriteCloser
-	appEncoder *json.Encoder
-	appDecoder *json.Decoder
+	root          string
+	addr          string
+	router        *mux.Router
+	httpClient    *http.Client
+	app           *exec.Cmd
+	appCancel     func()
+	appFifoWriter io.WriteCloser
+	appFifoReader io.ReadCloser
+	appEncoder    *json.Encoder
+	appDecoder    *json.Decoder
 }
 
 func New(root, addr string) (*LabAgent, error) {
@@ -67,7 +69,7 @@ func New(root, addr string) (*LabAgent, error) {
 	}
 	la.registerRoutes(r)
 
-	err := la.update(context.TODO(), "")
+	err := la.updateApp(context.TODO(), "")
 	if err != nil {
 		return nil, err
 	}
@@ -89,32 +91,38 @@ func (a *LabAgent) Serve(ctx context.Context) error {
 func (a *LabAgent) registerRoutes(r *mux.Router) {
 	api := r.PathPrefix("/api/v0").Subrouter()
 
-	api.Handle("/get", httputil.ErrorHandler{a.getHandler}).Methods("POST")
-	api.Handle("/update", httputil.ErrorHandler{a.updateHandler}).Methods("POST")
+	api.Handle("/run", httputil.ErrorHandler{a.runHandler}).Methods("POST")
 }
 
-func (a *LabAgent) getHandler(w http.ResponseWriter, r *http.Request) error {
-	log.Info().Msg("labagent/get")
+func (a *LabAgent) runHandler(w http.ResponseWriter, r *http.Request) error {
+	log.Info().Msg("labagent/run")
 
-	req := TaskRequest{
-		Type: TaskGet,
-		Args: []string{r.FormValue("cid")},
-	}
-
-	resp, err := a.sendTask(r.Context(), req)
+	var task p2plab.Task
+	err := json.NewDecoder(r.Body).Decode(&task)
 	if err != nil {
 		return err
 	}
 
-	return labd.WriteJSON(w, &resp)
+	switch task.Type {
+	case p2plab.TaskUpdateApp:
+		var resp TaskResponse
+		err = a.updateApp(r.Context(), task.Target)
+		if err != nil {
+			resp.Err = err.Error()
+		}
+		return httputil.WriteJSON(w, &resp)
+	case p2plab.TaskGetDAG:
+		resp, err := a.sendTask(r.Context(), task)
+		if err != nil {
+			return err
+		}
+		return httputil.WriteJSON(w, &resp)
+	default:
+		return errors.Errorf("unrecognized task type: %q", task.Type)
+	}
 }
 
-func (a *LabAgent) updateHandler(w http.ResponseWriter, r *http.Request) error {
-	log.Info().Msg("labagent/update")
-	return a.update(r.Context(), r.FormValue("url"))
-}
-
-func (a *LabAgent) update(ctx context.Context, url string) error {
+func (a *LabAgent) updateApp(ctx context.Context, url string) error {
 	err := a.killApp()
 	if err != nil {
 		return err
@@ -134,10 +142,15 @@ func (a *LabAgent) update(ctx context.Context, url string) error {
 }
 
 func (a *LabAgent) killApp() error {
-	if a.appFifo != nil {
-		err := a.appFifo.Close()
+	if a.appCancel != nil {
+		err := a.appFifoWriter.Close()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to close labapp fifo")
+		}
+
+		err = a.appFifoReader.Close()
+		if err != nil {
+			return errors.Wrap(err, "failed to close labapp fifo")
 		}
 
 		// Kill subprocess.
@@ -145,8 +158,17 @@ func (a *LabAgent) killApp() error {
 
 		err = a.app.Wait()
 		if err != nil {
-			return err
+			exitErr, ok := err.(*exec.ExitError)
+			if !ok {
+				return errors.Wrap(err, "failed to wait for labapp to exit")
+			}
+
+			if exitErr.ProcessState.String() != "signal: killed" {
+				return errors.Wrapf(err, "labapp exited with unexpected status: %q", exitErr.ProcessState)
+			}
 		}
+
+		log.Info().Msg("Successfully killed labapp")
 	}
 
 	return nil
@@ -185,17 +207,22 @@ func (a *LabAgent) startApp() error {
 	var appCtx context.Context
 	appCtx, a.appCancel = context.WithCancel(context.Background())
 
-	fdPath := filepath.Join(a.root, LabAppFifo)
-
 	var err error
-	a.appFifo, err = fifo.OpenFifo(appCtx, fdPath, syscall.O_WRONLY|syscall.O_CREAT|syscall.O_NONBLOCK, 0700)
+	fifoWriter := filepath.Join(a.root, "fifo-writer")
+	a.appFifoWriter, err = fifo.OpenFifo(appCtx, fifoWriter, syscall.O_WRONLY|syscall.O_CREAT|syscall.O_NONBLOCK, 0700)
 	if err != nil {
 		return err
 	}
-	a.appEncoder, a.appDecoder = json.NewEncoder(a.appFifo), json.NewDecoder(a.appFifo)
+
+	fifoReader := filepath.Join(a.root, "fifo-reader")
+	a.appFifoReader, err = fifo.OpenFifo(appCtx, fifoReader, syscall.O_RDONLY|syscall.O_CREAT|syscall.O_NONBLOCK, 0700)
+	if err != nil {
+		return err
+	}
+	a.appEncoder, a.appDecoder = json.NewEncoder(a.appFifoWriter), json.NewDecoder(a.appFifoReader)
 
 	binaryPath := filepath.Join(a.root, LabAppBinary)
-	a.app = exec.CommandContext(appCtx, binaryPath, fmt.Sprintf("--fd-path=%s", fdPath))
+	a.app = exec.CommandContext(appCtx, binaryPath, fmt.Sprintf("--fifo-writer=%s", fifoReader), fmt.Sprintf("--fifo-reader=%s", fifoWriter))
 	a.app.Stdout = os.Stdout
 	a.app.Stderr = os.Stderr
 

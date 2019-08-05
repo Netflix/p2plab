@@ -27,6 +27,8 @@ import (
 type Node struct {
 	ID string
 
+	Address string
+
 	Labels []string
 
 	CreatedAt, UpdatedAt time.Time
@@ -246,6 +248,8 @@ func readNode(bkt *bolt.Bucket, node *Node) error {
 		switch string(k) {
 		case string(bucketKeyID):
 			node.ID = string(v)
+		case string(bucketKeyAddress):
+			node.Address = string(v)
 		}
 
 		return nil
@@ -274,6 +278,7 @@ func writeNode(bkt *bolt.Bucket, node *Node) error {
 
 	for _, f := range []field{
 		{bucketKeyID, []byte(node.ID)},
+		{bucketKeyAddress, []byte(node.Address)},
 	} {
 		err = bkt.Put(f.key, f.value)
 		if err != nil {

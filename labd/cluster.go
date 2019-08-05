@@ -149,7 +149,7 @@ func (c *cluster) Query(ctx context.Context, q p2plab.Query, opts ...p2plab.Quer
 
 	nset := nodes.NewSet()
 	for _, m := range metadatas {
-		nset.Add(&node{cln: c.cln, metadata: m})
+		nset.Add(newNode(c.cln, m))
 	}
 
 	return nset, nil

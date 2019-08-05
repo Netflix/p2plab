@@ -33,7 +33,7 @@ var (
 	bucketKeyReference  = []byte("reference")
 
 	// Node buckets.
-	bucketKeyLabels = []byte("labels")
+	bucketKeyAddress = []byte("address")
 
 	// Benchmark buckets.
 	bucketKeyCluster  = []byte("cluster")
@@ -41,6 +41,7 @@ var (
 
 	// Common buckets.
 	bucketKeyID        = []byte("id")
+	bucketKeyLabels    = []byte("labels")
 	bucketKeyCreatedAt = []byte("createdAt")
 	bucketKeyUpdatedAt = []byte("updatedAt")
 )

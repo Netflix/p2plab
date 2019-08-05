@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/labagent"
 	"github.com/Netflix/p2plab/metadata"
 )
 
@@ -34,39 +35,27 @@ func (napi *nodeAPI) Get(ctx context.Context, cluster, id string) (p2plab.Node, 
 	}
 	defer resp.Body.Close()
 
-	n := node{cln: napi.cln}
-	err = json.NewDecoder(resp.Body).Decode(&n.metadata)
-	if err != nil {
-		return nil, err
-	}
-	return &n, nil
-}
-
-func (napi *nodeAPI) List(ctx context.Context) ([]p2plab.Node, error) {
-	req := napi.cln.NewRequest("GET", "/nodes")
-	resp, err := req.Send(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var metadatas []metadata.Node
-	err = json.NewDecoder(resp.Body).Decode(&metadatas)
+	var m metadata.Node
+	err = json.NewDecoder(resp.Body).Decode(&m)
 	if err != nil {
 		return nil, err
 	}
 
-	var nodes []p2plab.Node
-	for _, m := range metadatas {
-		nodes = append(nodes, &node{cln: napi.cln, metadata: m})
-	}
-
-	return nodes, nil
+	return newNode(napi.cln, m), nil
 }
 
 type node struct {
-	cln      *client
-	metadata metadata.Node
+	labdCln     *client
+	labagentCln *labagent.Client
+	metadata    metadata.Node
+}
+
+func newNode(cln *client, m metadata.Node) *node {
+	return &node{
+		labdCln:     cln,
+		labagentCln: labagent.NewClient(m.Address),
+		metadata:    m,
+	}
 }
 
 func (n *node) Metadata() metadata.Node {
@@ -75,4 +64,8 @@ func (n *node) Metadata() metadata.Node {
 
 func (n *node) SSH(ctx context.Context, opts ...p2plab.SSHOption) error {
 	return nil
+}
+
+func (n *node) Run(ctx context.Context, task p2plab.Task) error {
+	return n.labagentCln.Run(ctx, task)
 }

@@ -119,7 +119,7 @@ func (d *Labd) listClusterHandler(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 
-	return WriteJSON(w, &clusters)
+	return httputil.WriteJSON(w, &clusters)
 }
 
 func (d *Labd) createClusterHandler(w http.ResponseWriter, r *http.Request) error {
@@ -130,12 +130,12 @@ func (d *Labd) createClusterHandler(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	_, err = d.db.CreateNode(r.Context(), cluster.ID, metadata.Node{ID: "node-1"})
+	_, err = d.db.CreateNode(r.Context(), cluster.ID, metadata.Node{ID: "node-1", Address: "http://localhost:7002"})
 	if err != nil {
 		return err
 	}
 
-	return WriteJSON(w, &cluster)
+	return httputil.WriteJSON(w, &cluster)
 }
 
 func (d *Labd) getClusterHandler(w http.ResponseWriter, r *http.Request) error {
@@ -147,7 +147,7 @@ func (d *Labd) getClusterHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	return WriteJSON(w, &cluster)
+	return httputil.WriteJSON(w, &cluster)
 }
 
 func (d *Labd) updateClusterHandler(w http.ResponseWriter, r *http.Request) error {
@@ -161,7 +161,7 @@ func (d *Labd) updateClusterHandler(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	return WriteJSON(w, &cluster)
+	return httputil.WriteJSON(w, &cluster)
 }
 
 func (d *Labd) deleteClusterHandler(w http.ResponseWriter, r *http.Request) error {
@@ -222,7 +222,7 @@ func (d *Labd) queryClusterHandler(w http.ResponseWriter, r *http.Request) error
 		}
 	}
 
-	return WriteJSON(w, &matchedNodes)
+	return httputil.WriteJSON(w, &matchedNodes)
 }
 
 func (d *Labd) getNodeHandler(w http.ResponseWriter, r *http.Request) error {
@@ -234,7 +234,7 @@ func (d *Labd) getNodeHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	return WriteJSON(w, &node)
+	return httputil.WriteJSON(w, &node)
 }
 
 func (d *Labd) scenariosHandler(w http.ResponseWriter, r *http.Request) error {
@@ -267,7 +267,7 @@ func (d *Labd) listScenarioHandler(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 
-	return WriteJSON(w, &scenarios)
+	return httputil.WriteJSON(w, &scenarios)
 }
 
 func (d *Labd) createScenarioHandler(w http.ResponseWriter, r *http.Request) error {
@@ -284,7 +284,7 @@ func (d *Labd) createScenarioHandler(w http.ResponseWriter, r *http.Request) err
 		return err
 	}
 
-	return WriteJSON(w, &scenario)
+	return httputil.WriteJSON(w, &scenario)
 }
 
 func (d *Labd) getScenarioHandler(w http.ResponseWriter, r *http.Request) error {
@@ -296,7 +296,7 @@ func (d *Labd) getScenarioHandler(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 
-	return WriteJSON(w, &scenario)
+	return httputil.WriteJSON(w, &scenario)
 }
 
 func (d *Labd) deleteScenarioHandler(w http.ResponseWriter, r *http.Request) error {
@@ -330,7 +330,7 @@ func (d *Labd) listBenchmarkHandler(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	return WriteJSON(w, &benchmarks)
+	return httputil.WriteJSON(w, &benchmarks)
 }
 
 func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
@@ -360,7 +360,7 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	return WriteJSON(w, &benchmark)
+	return httputil.WriteJSON(w, &benchmark)
 }
 
 func (d *Labd) getBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
@@ -372,7 +372,7 @@ func (d *Labd) getBenchmarkHandler(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 
-	return WriteJSON(w, &benchmark)
+	return httputil.WriteJSON(w, &benchmark)
 }
 
 func (d *Labd) cancelBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
@@ -411,15 +411,6 @@ func (d *Labd) logsBenchmarkHandler(w http.ResponseWriter, r *http.Request) erro
 	}
 	log.Info().Msgf("logs %q", benchmark.ID)
 
-	return nil
-}
-
-func WriteJSON(w http.ResponseWriter, v interface{}) error {
-	content, err := json.MarshalIndent(v, "", "    ")
-	if err != nil {
-		return err
-	}
-	w.Write(content)
 	return nil
 }
 

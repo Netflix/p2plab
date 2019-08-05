@@ -15,12 +15,14 @@
 package labapp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
 	"io/ioutil"
 	"syscall"
 
+	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/labagent"
 	"github.com/Netflix/p2plab/peer"
 	"github.com/containerd/fifo"
@@ -31,14 +33,19 @@ import (
 
 type LabApp struct {
 	root   string
-	fdPath string
+	fifoReader string
+	fifoWriter string
 	peer   *peer.Peer
+
+	taskEncoder *json.Encoder
+	taskDecoder *json.Decoder
 }
 
-func New(root, fdPath string) *LabApp {
+func New(root, fifoReader, fifoWriter string) *LabApp {
 	return &LabApp{
 		root:   root,
-		fdPath: fdPath,
+		fifoReader: fifoReader,
+		fifoWriter: fifoWriter,
 	}
 }
 
@@ -58,72 +65,20 @@ func (a *LabApp) Serve(ctx context.Context) error {
 		return errors.Wrap(err, "failed to create peer peer")
 	}
 
-	f, err := fifo.OpenFifo(ctx, a.fdPath, syscall.O_RDONLY, 0700)
+	fifoReader, err := fifo.OpenFifo(ctx, a.fifoReader, syscall.O_RDONLY, 0700)
 	if err != nil {
 		return errors.Wrap(err, "failed to open fifo")
 	}
-	defer f.Close()
+	defer fifoReader.Close()
 
-	done := make(chan struct{})
-	defer func() {
-		<-done
-	}()
+	fifoWriter, err := fifo.OpenFifo(ctx, a.fifoWriter, syscall.O_WRONLY, 0700)
+	if err != nil {
+		return errors.Wrap(err, "failed to open fifo")
+	}
+	defer fifoWriter.Close()
 
-	encoder, decoder := json.NewEncoder(f), json.NewDecoder(f)
-	go func() {
-		defer close(done)
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				var req labagent.TaskRequest
-				err = decoder.Decode(&req)
-				if err != nil {
-					log.Warn().Msgf("failed to decode request: %s", err)
-					continue
-				}
-
-				ctx := context.Background()
-				var taskErr error
-				switch req.Type {
-				case labagent.TaskGet:
-					if len(req.Args) != 1 {
-						taskErr = errors.Errorf("get must have exactly 1 arg")
-						break
-					}
-
-					target, err := cid.Parse(req.Args[0])
-					if err != nil {
-						taskErr = err
-						break
-					}
-
-					var r io.ReadCloser
-					r, taskErr = a.peer.GetFile(ctx, target)
-					if taskErr == nil {
-						defer r.Close()
-
-						_, err = io.Copy(ioutil.Discard, r)
-						if err != nil {
-							taskErr = err
-						}
-					}
-				default:
-					taskErr = errors.Errorf("unrecognized task type %q", req.Type)
-				}
-
-				resp := labagent.TaskResponse{
-					Err: taskErr,
-				}
-
-				err = encoder.Encode(&resp)
-				if err != nil {
-					log.Warn().Msgf("failed to encode response: %s", err)
-				}
-			}
-		}
-	}()
+	a.taskEncoder, a.taskDecoder = json.NewEncoder(fifoWriter), json.NewDecoder(fifoReader)
+	go a.handleTasks(ctx)
 
 	var addrs []string
 	for _, ma := range a.peer.Host.Addrs() {
@@ -132,4 +87,61 @@ func (a *LabApp) Serve(ctx context.Context) error {
 	log.Info().Msgf("Listening on %s", addrs)
 
 	return a.peer.Run()
+}
+
+func (a *LabApp) handleTasks(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			var task p2plab.Task
+			err := a.taskDecoder.Decode(&task)
+			if err != nil {
+				log.Warn().Msgf("failed to decode request: %s", err)
+				continue
+			}
+
+			var taskErr error
+			ctx := context.Background()
+			switch task.Type {
+			case p2plab.TaskGetDAG:
+				taskErr = a.handleTaskGet(ctx, task.Target)
+			default:
+				taskErr = errors.Errorf("unrecognized task type %q", task.Type)
+			}
+
+			resp := labagent.TaskResponse{
+				Err: taskErr.Error(),
+			}
+
+			err = a.taskEncoder.Encode(&resp)
+			if err != nil {
+				log.Warn().Msgf("failed to encode response: %s", err)
+			}
+		}
+	}
+}
+
+func (a *LabApp) handleTaskGet(ctx context.Context, target string) error {
+	targetCid, err := cid.Parse(target)
+	if err != nil {
+		return err
+	}
+
+	r, err := a.peer.GetFile(ctx, targetCid)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	buf := new(bytes.Buffer)
+	teeReader := io.TeeReader(r, buf)
+
+	_, err = io.Copy(ioutil.Discard, teeReader)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

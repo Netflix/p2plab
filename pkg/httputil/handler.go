@@ -15,6 +15,7 @@
 package httputil
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/rs/zerolog/log"
@@ -57,4 +58,13 @@ func (h ErrorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, e.Error(), http.StatusInternalServerError)
 		}
 	}
+}
+
+func WriteJSON(w http.ResponseWriter, v interface{}) error {
+	content, err := json.MarshalIndent(v, "", "    ")
+	if err != nil {
+		return err
+	}
+	w.Write(content)
+	return nil
 }

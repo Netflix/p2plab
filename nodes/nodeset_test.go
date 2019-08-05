@@ -35,6 +35,10 @@ func (n *testNode) SSH(ctx context.Context, opts ...p2plab.SSHOption) error {
 	return nil
 }
 
+func (n *testNode) Run(ctx context.Context, task p2plab.Task) error {
+	return nil
+}
+
 func newNode(id string) p2plab.Node {
 	return &testNode{id}
 }

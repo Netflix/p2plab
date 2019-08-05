@@ -32,6 +32,10 @@ type Node interface {
 
 	// SSH creates a SSH connection to the node.
 	SSH(ctx context.Context, opts ...SSHOption) error
+
+	// Run executes an task on the node and returns a channel that recieves
+	// progress events on the completion of the task.
+	Run(ctx context.Context, task Task) error
 }
 
 // NodeSet is a group of unique nodes.
@@ -56,3 +60,15 @@ type SSHOption func(SSHSettings) error
 // SSHSetttings specify ssh settings when connecting to a node.
 type SSHSettings struct {
 }
+
+type Task struct {
+	Type   TaskType
+	Target string
+}
+
+type TaskType string
+
+var (
+	TaskUpdateApp TaskType = "update-app"
+	TaskGetDAG    TaskType = "get-dag"
+)

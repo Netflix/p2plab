@@ -16,35 +16,25 @@ package labagent
 
 import (
 	"context"
-	"time"
-)
 
-type TaskRequest struct {
-	Type TaskType
-	Args []string
-}
-
-type TaskType string
-
-var (
-	TaskGet TaskType = "get"
+	"github.com/Netflix/p2plab"
+	"github.com/pkg/errors"
 )
 
 type TaskResponse struct {
-	Err         error
-	TimeElapsed time.Duration
+	Err string
 }
 
-func (a *LabAgent) sendTask(ctx context.Context, req TaskRequest) (TaskResponse, error) {
+func (a *LabAgent) sendTask(ctx context.Context, task p2plab.Task) (TaskResponse, error) {
 	var resp TaskResponse
-	err := a.appEncoder.Encode(&req)
+	err := a.appEncoder.Encode(&task)
 	if err != nil {
-		return resp, err
+		return resp, errors.Wrap(err, "failed to encode task to labapp")
 	}
 
 	err = a.appDecoder.Decode(&resp)
 	if err != nil {
-		return resp, err
+		return resp, errors.Wrap(err, "failed to decode task from labapp")
 	}
 
 	return resp, nil
