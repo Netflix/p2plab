@@ -39,6 +39,16 @@ func App() *cli.App {
 			Value: ":7002",
 		},
 		cli.StringFlag{
+			Name:  "app-root",
+			Usage: "path to labapp's state directory",
+			Value: "./tmp/labapp",
+		},
+		cli.StringFlag{
+			Name:  "app-address,a",
+			Usage: "address for labapp's HTTP server",
+			Value: ":7002",
+		},
+		cli.StringFlag{
 			Name:  "log-level,l",
 			Usage: "set the logging level [debug, info, warn, error, fatal, panic]",
 		},
@@ -56,7 +66,7 @@ func agentAction(c *cli.Context) error {
 		return err
 	}
 
-	agent, err := labagent.New(root, c.String("address"))
+	agent, err := labagent.New(root, c.String("address"), c.String("app-root"), c.String("app-address"))
 	if err != nil {
 		return err
 	}

@@ -67,6 +67,8 @@ func (d *Labd) Serve(ctx context.Context) error {
 func (d *Labd) registerRoutes(r *mux.Router) {
 	api := r.PathPrefix("/api/v0").Subrouter()
 
+	api.HandleFunc("/healthcheck", d.healthcheckHandler)
+
 	clusters := api.PathPrefix("/clusters").Subrouter()
 	clusters.Handle("", httputil.ErrorHandler{d.clustersHandler}).Methods("GET", "POST")
 	clusters.Handle("/{cluster}", httputil.ErrorHandler{d.clusterHandler}).Methods("GET", "PUT", "DELETE")
@@ -85,6 +87,11 @@ func (d *Labd) registerRoutes(r *mux.Router) {
 	benchmarks.Handle("/{benchmark}/cancel", httputil.ErrorHandler{d.cancelBenchmarkHandler}).Methods("PUT")
 	benchmarks.Handle("/{benchmark}/report", httputil.ErrorHandler{d.reportBenchmarkHandler}).Methods("GET")
 	benchmarks.Handle("/{benchmark}/logs", httputil.ErrorHandler{d.logsBenchmarkHandler}).Methods("GET")
+}
+
+func (d *Labd) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
 
 func (d *Labd) clustersHandler(w http.ResponseWriter, r *http.Request) error {

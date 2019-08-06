@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -43,6 +44,8 @@ var (
 type LabAgent struct {
 	root       string
 	addr       string
+	appRoot    string
+	appAddr    string
 	router     *mux.Router
 	httpClient *http.Client
 	app        *exec.Cmd
@@ -50,12 +53,14 @@ type LabAgent struct {
 	appCancel  func()
 }
 
-func New(root, addr string) (*LabAgent, error) {
+func New(root, addr, appRoot, appAddr string) (*LabAgent, error) {
 	r := mux.NewRouter().UseEncodedPath().StrictSlash(true)
 	agent := &LabAgent{
-		root:   root,
-		addr:   addr,
-		router: r,
+		root:    root,
+		addr:    addr,
+		appRoot: appRoot,
+		appAddr: appAddr,
+		router:  r,
 		httpClient: &http.Client{
 			Transport: &http.Transport{
 				Proxy:             http.ProxyFromEnvironment,
@@ -65,11 +70,6 @@ func New(root, addr string) (*LabAgent, error) {
 		appClient: labapp.NewClient("http://localhost:7003"),
 	}
 	agent.registerRoutes(r)
-
-	err := agent.updateApp(context.TODO(), "")
-	if err != nil {
-		return nil, err
-	}
 
 	return agent, nil
 }
@@ -108,6 +108,10 @@ func (a *LabAgent) runHandler(w http.ResponseWriter, r *http.Request) error {
 		}
 		return httputil.WriteJSON(w, &resp)
 	case p2plab.TaskGetDAG:
+		if a.appCancel == nil {
+			return errors.Wrapf(errdefs.ErrInvalidArgument, "no labapp currently running")
+		}
+
 		resp, err := a.appClient.Run(r.Context(), task)
 		if err != nil {
 			return err
@@ -194,7 +198,7 @@ func (a *LabAgent) startApp() error {
 	appCtx, a.appCancel = context.WithCancel(context.Background())
 
 	binaryPath := filepath.Join(a.root, LabAppBinary)
-	a.app = exec.CommandContext(appCtx, binaryPath)
+	a.app = exec.CommandContext(appCtx, binaryPath, fmt.Sprintf("--root=%s", a.appRoot), fmt.Sprintf("--address=%s", a.appAddr))
 	a.app.Stdout = os.Stdout
 	a.app.Stderr = os.Stderr
 
