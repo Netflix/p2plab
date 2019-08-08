@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Netflix/p2plab"
-	"github.com/pkg/errors"
 	"github.com/Netflix/p2plab/labapp"
+	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/pkg/errors"
 )
 
 type Client struct {
@@ -44,7 +44,7 @@ func NewClient(addr string) *Client {
 	}
 }
 
-func (c *Client) Run(ctx context.Context, task p2plab.Task) error {
+func (c *Client) Run(ctx context.Context, task metadata.Task) error {
 	content, err := json.MarshalIndent(&task, "", "    ")
 	if err != nil {
 		return err

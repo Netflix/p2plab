@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
 )
 
@@ -42,7 +42,7 @@ func NewClient(addr string) *Client {
 	}
 }
 
-func (c *Client) Run(ctx context.Context, task p2plab.Task) (TaskResponse, error) {
+func (c *Client) Run(ctx context.Context, task metadata.Task) (TaskResponse, error) {
 	var taskResp TaskResponse
 	content, err := json.MarshalIndent(&task, "", "    ")
 	if err != nil {

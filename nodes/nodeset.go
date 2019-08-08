@@ -43,6 +43,10 @@ func (s *nodeSet) Remove(n p2plab.Node) {
 	delete(s.set, n.Metadata().ID)
 }
 
+func (s *nodeSet) Get(id string) p2plab.Node {
+	return s.set[id]
+}
+
 func (s *nodeSet) Slice() []p2plab.Node {
 	var slice []p2plab.Node
 	for _, n := range s.set {

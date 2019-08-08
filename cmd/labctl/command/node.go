@@ -15,7 +15,7 @@
 package command
 
 import (
-	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/metadata"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -63,7 +63,7 @@ func sshNodeAction(c *cli.Context) error {
 }
 
 func runNodeAction(c *cli.Context) error {
-	if c.NArg() < 3{
+	if c.NArg() < 3 {
 		return errors.New("cluster id, node id, task type must be provided")
 	}
 
@@ -78,11 +78,11 @@ func runNodeAction(c *cli.Context) error {
 		return err
 	}
 
-	var task p2plab.Task
+	var task metadata.Task
 
-	taskType := p2plab.TaskType(c.Args().Get(2))
+	taskType := metadata.TaskType(c.Args().Get(2))
 	switch taskType {
-	case p2plab.TaskGetDAG, p2plab.TaskUpdateApp:
+	case metadata.TaskGet, metadata.TaskUpdate:
 		task.Type = taskType
 	default:
 		return errors.Errorf("unrecognized task type: %q", taskType)

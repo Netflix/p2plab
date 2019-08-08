@@ -27,9 +27,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/labapp"
+	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -93,21 +93,21 @@ func (a *LabAgent) registerRoutes(r *mux.Router) {
 func (a *LabAgent) runHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("labagent/run")
 
-	var task p2plab.Task
+	var task metadata.Task
 	err := json.NewDecoder(r.Body).Decode(&task)
 	if err != nil {
 		return err
 	}
 
 	switch task.Type {
-	case p2plab.TaskUpdateApp:
+	case metadata.TaskUpdate:
 		var resp labapp.TaskResponse
 		err = a.updateApp(r.Context(), task.Target)
 		if err != nil {
 			resp.Err = err.Error()
 		}
 		return httputil.WriteJSON(w, &resp)
-	case p2plab.TaskGetDAG:
+	case metadata.TaskGet:
 		if a.appCancel == nil {
 			return errors.Wrapf(errdefs.ErrInvalidArgument, "no labapp currently running")
 		}

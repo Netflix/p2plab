@@ -41,7 +41,8 @@ require (
 	github.com/libp2p/go-stream-muxer v0.1.0 // indirect
 	github.com/libp2p/go-tcp-transport v0.1.0
 	github.com/libp2p/go-ws-transport v0.1.0
-	github.com/moby/buildkit v0.3.3
+	github.com/moby/buildkit v0.6.0
+	github.com/multiformats/go-multiaddr v0.0.4
 	github.com/multiformats/go-multihash v0.0.5
 	github.com/opencontainers/go-digest v1.0.0-rc1
 	github.com/opencontainers/image-spec v1.0.1
@@ -53,6 +54,5 @@ require (
 	github.com/uber/jaeger-lib v2.0.0+incompatible // indirect
 	github.com/urfave/cli v1.20.0
 	go.etcd.io/bbolt v1.3.3
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 )
-
-replace github.com/containerd/containerd => github.com/hinshun/containerd v0.2.1-0.20190602215134-c3f4eaaf1470

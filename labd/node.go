@@ -66,6 +66,6 @@ func (n *node) SSH(ctx context.Context, opts ...p2plab.SSHOption) error {
 	return nil
 }
 
-func (n *node) Run(ctx context.Context, task p2plab.Task) error {
+func (n *node) Run(ctx context.Context, task metadata.Task) error {
 	return n.labagentCln.Run(ctx, task)
 }

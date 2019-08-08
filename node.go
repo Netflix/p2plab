@@ -35,7 +35,7 @@ type Node interface {
 
 	// Run executes an task on the node and returns a channel that recieves
 	// progress events on the completion of the task.
-	Run(ctx context.Context, task Task) error
+	Run(ctx context.Context, task metadata.Task) error
 }
 
 // NodeSet is a group of unique nodes.
@@ -50,6 +50,8 @@ type NodeSet interface {
 
 	Contains(node Node) bool
 
+	Get(id string) Node
+
 	// Slice returns a slice of nodes from the set.
 	Slice() []Node
 }
@@ -60,15 +62,3 @@ type SSHOption func(SSHSettings) error
 // SSHSetttings specify ssh settings when connecting to a node.
 type SSHSettings struct {
 }
-
-type Task struct {
-	Type   TaskType
-	Target string
-}
-
-type TaskType string
-
-var (
-	TaskUpdateApp TaskType = "update-app"
-	TaskGetDAG    TaskType = "get-dag"
-)

@@ -25,6 +25,7 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/errdefs"
+	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/peer"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/gorilla/mux"
@@ -83,14 +84,14 @@ func (a *LabApp) registerRoutes(r *mux.Router) {
 func (a *LabApp) runHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("labapp/run")
 
-	var task p2plab.Task
+	var task metadata.Task
 	err := json.NewDecoder(r.Body).Decode(&task)
 	if err != nil {
 		return err
 	}
 
 	switch task.Type {
-	case p2plab.TaskGetDAG:
+	case metadata.TaskGet:
 		err = a.getFile(r.Context(), task.Target)
 	default:
 		return errors.Wrapf(errdefs.ErrInvalidArgument, "unrecognized task type: %q", task.Type)

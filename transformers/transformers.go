@@ -12,4 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package scenarios
+package transformers
+
+import (
+	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/transformers/oci"
+	"github.com/pkg/errors"
+)
+
+func GetTransformer(objectType string) (p2plab.Transformer, error) {
+	switch objectType {
+	case "oci":
+		return oci.New(), nil
+	default:
+		return nil, errors.Errorf("unrecognized object type: %q", objectType)
+	}
+}

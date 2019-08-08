@@ -27,7 +27,7 @@ type client struct {
 	base       string
 }
 
-func NewClient(addr string) (p2plab.LabdAPI, error) {
+func NewClient(addr string) p2plab.LabdAPI {
 	return &client{
 		httpClient: &http.Client{
 			Transport: &http.Transport{
@@ -36,7 +36,7 @@ func NewClient(addr string) (p2plab.LabdAPI, error) {
 			},
 		},
 		base: fmt.Sprintf("%s/api/v0", addr),
-	}, nil
+	}
 }
 
 func (c *client) Cluster() p2plab.ClusterAPI {

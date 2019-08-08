@@ -25,6 +25,7 @@ import (
 	"github.com/Netflix/p2plab/nodes"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/query"
+	"github.com/Netflix/p2plab/scenarios"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
 )
@@ -356,16 +357,39 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
+	ns, err := d.db.ListNodes(ctx, cid)
+	if err != nil {
+		return err
+	}
+
+	nset := nodes.NewSet()
+	for _, n := range ns {
+		nset.Add(&node{metadata: n})
+	}
+
+	plan, err := scenarios.Plan(ctx, nset, scenario.Definition)
+	if err != nil {
+		return err
+	}
+
 	benchmark := metadata.Benchmark{
 		ID:       time.Now().Format(time.RFC3339Nano),
 		Cluster:  cluster,
 		Scenario: scenario,
+		Plan:     plan,
 	}
 
 	benchmark, err = d.db.CreateBenchmark(ctx, benchmark)
 	if err != nil {
 		return err
 	}
+
+	go func() {
+		err = scenarios.Run(ctx, nset, plan)
+		if err != nil {
+			log.Warn().Msgf("failed to run benchmark %q: %s", benchmark.ID, err)
+		}
+	}()
 
 	return httputil.WriteJSON(w, &benchmark)
 }

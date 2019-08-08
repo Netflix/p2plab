@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/Netflix/p2plab/errdefs"
+	cid "github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	bolt "go.etcd.io/bbolt"
 )
@@ -28,9 +29,30 @@ type Benchmark struct {
 
 	Cluster  Cluster
 	Scenario Scenario
+	Plan     ScenarioPlan
 
 	CreatedAt, UpdatedAt time.Time
 }
+
+type ScenarioPlan struct {
+	Objects map[string]cid.Cid
+
+	Seed map[string]Task
+
+	Benchmark map[string]Task
+}
+
+type Task struct {
+	Type   TaskType
+	Target string
+}
+
+type TaskType string
+
+var (
+	TaskUpdate TaskType = "update"
+	TaskGet    TaskType = "get"
+)
 
 func (m *DB) GetBenchmark(ctx context.Context, id string) (Benchmark, error) {
 	var benchmark Benchmark

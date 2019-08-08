@@ -13,3 +13,26 @@
 // limitations under the License.
 
 package scenarios
+
+import (
+	"context"
+
+	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/metadata"
+)
+
+// stdout
+
+// objects:
+// 	ubuntu -> QmA
+
+// seed:
+// 	node-1 get QmA-1
+// 	node-2 get QmA-2
+
+// benchmark:
+// 	node-3 get QmA
+
+func Plan(ctx context.Context, nset p2plab.NodeSet, sdef metadata.ScenarioDefinition) (metadata.ScenarioPlan, error) {
+	return metadata.ScenarioPlan{}, nil
+}

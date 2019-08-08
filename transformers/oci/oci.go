@@ -22,17 +22,16 @@ import (
 	"net/http"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/pkg/digestconv"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
-	"github.com/hinshun/ipcs/digestconv"
 	cid "github.com/ipfs/go-cid"
 	"github.com/moby/buildkit/util/contentutil"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 )
 
 type transformer struct {
@@ -89,7 +88,7 @@ func Convert(ctx context.Context, peer p2plab.Peer, fetcher remotes.Fetcher, buf
 		childrenHandler,
 	)
 
-	err = images.Dispatch(ctx, handler, desc)
+	err = images.Dispatch(ctx, handler, nil, desc)
 	if err != nil {
 		return ocispec.Descriptor{}, errors.Wrap(err, "failed to dispatch")
 	}
@@ -106,7 +105,7 @@ func DispatchConvertHandler(f images.HandlerFunc, peer p2plab.Peer, fetcher remo
 
 		conversions := make(map[digest.Digest]ocispec.Descriptor)
 		handler := ConvertHandler(conversions, peer, fetcher, buffer)
-		err = images.Dispatch(ctx, handler, children...)
+		err = images.Dispatch(ctx, handler, nil, children...)
 		if err != nil {
 			return children, errors.Wrap(err, "failed to sub-dispatch")
 		}
@@ -170,7 +169,6 @@ func BuildManifestHandler(f images.HandlerFunc, peer p2plab.Peer, provider conte
 			if err != nil {
 				return nil, err
 			}
-			log.Info().Msgf("Original manifest:\n%s", string(p))
 
 			var manifest ocispec.Manifest
 			err = json.Unmarshal(p, &manifest)
@@ -187,7 +185,6 @@ func BuildManifestHandler(f images.HandlerFunc, peer p2plab.Peer, provider conte
 			if err != nil {
 				return nil, err
 			}
-			log.Info().Msgf("Original manifest list:\n%s", string(p))
 
 			var index ocispec.Index
 			err = json.Unmarshal(p, &index)
@@ -203,7 +200,6 @@ func BuildManifestHandler(f images.HandlerFunc, peer p2plab.Peer, provider conte
 		if err != nil {
 			return nil, err
 		}
-		log.Info().Msgf("Converted manifest:\n%s", string(blob))
 
 		desc.Size = int64(len(blob))
 		desc.Digest, err = AddBlob(ctx, peer, bytes.NewReader(blob))

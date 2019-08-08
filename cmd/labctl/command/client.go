@@ -21,10 +21,7 @@ import (
 )
 
 func ResolveClient(c *cli.Context) (p2plab.LabdAPI, error) {
-	cln, err := labd.NewClient(c.GlobalString("address"))
-	if err != nil {
-		return nil, err
-	}
-
+	cln := labd.NewClient(c.GlobalString("address"))
+	// TODO: healthcheck
 	return cln, nil
 }
