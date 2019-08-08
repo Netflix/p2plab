@@ -37,7 +37,7 @@ type LabApp struct {
 	root   string
 	addr   string
 	router *mux.Router
-	peer   *peer.Peer
+	peer   p2plab.Peer
 }
 
 func New(root, addr string) *LabApp {
@@ -52,35 +52,26 @@ func New(root, addr string) *LabApp {
 }
 
 func (a *LabApp) Serve(ctx context.Context) error {
-	ds, err := peer.NewDatastore(a.root)
-	if err != nil {
-		return errors.Wrap(err, "failed to create datastore")
-	}
-
-	host, r, err := peer.NewLibp2pPeer(ctx)
-	if err != nil {
-		return errors.Wrap(err, "failed to create libp2p peer")
-	}
-
-	a.peer, err = peer.NewPeer(ctx, ds, host, r)
+	var err error
+	a.peer, err = peer.NewPeer(ctx, a.root)
 	if err != nil {
 		return errors.Wrap(err, "failed to create peer peer")
 	}
 
 	var addrs []string
-	for _, ma := range a.peer.Host.Addrs() {
+	for _, ma := range a.peer.Host().Addrs() {
 		addrs = append(addrs, ma.String())
 	}
 	log.Info().Msgf("IPFS listening on %s", addrs)
-	go a.peer.Run()
 
-	log.Info().Msgf("labapp listening on %s", a.addr)
 	s := &http.Server{
 		Handler:      a.router,
 		Addr:         a.addr,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
+	log.Info().Msgf("labapp listening on %s", a.addr)
+
 	return s.ListenAndServe()
 }
 
@@ -117,7 +108,7 @@ func (a *LabApp) getFile(ctx context.Context, target string) error {
 		return err
 	}
 
-	r, err := a.peer.GetFile(ctx, targetCid)
+	r, err := a.peer.Get(ctx, targetCid)
 	if err != nil {
 		return err
 	}

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Netflix/p2plab"
 	bitswap "github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	blockservice "github.com/ipfs/go-blockservice"
@@ -34,6 +35,7 @@ import (
 	ws "github.com/libp2p/go-ws-transport"
 	multihash "github.com/multiformats/go-multihash"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 func init() {
@@ -43,22 +45,30 @@ func init() {
 }
 
 var (
-	defaultReprovideInterval = 12 * time.Hour
+	ReprovideInterval = 12 * time.Hour
 )
 
-type Peer struct {
-	ipld.DAGService
-	Host      host.Host
-
-	ctx    context.Context
-	r      routing.ContentRouting
-	ds     datastore.Batching
-	bs     blockstore.Blockstore
-	bserv  blockservice.BlockService
+type peer struct {
+	h      host.Host
+	dserv  ipld.DAGService
 	system provider.System
+	r      routing.ContentRouting
+	bserv  blockservice.BlockService
+	bs     blockstore.Blockstore
+	ds     datastore.Batching
 }
 
-func NewPeer(ctx context.Context, ds datastore.Batching, h host.Host, r routing.ContentRouting) (*Peer, error) {
+func NewPeer(ctx context.Context, root string) (p2plab.Peer, error) {
+	ds, err := NewDatastore(root)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create datastore")
+	}
+
+	h, r, err := NewLibp2pPeer(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create libp2p peer")
+	}
+
 	bs, err := NewBlockstore(ctx, ds)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create blockstore")
@@ -72,52 +82,80 @@ func NewPeer(ctx context.Context, ds datastore.Batching, h host.Host, r routing.
 		return nil, errors.Wrap(err, "failed to create provider system")
 	}
 
-	return &Peer{
-		ctx:        ctx,
-		DAGService: dag.NewDAGService(bserv),
-		Host:          h,
-		r:          r,
-		ds:         ds,
-		bs:         bs,
-		bserv:      bserv,
-		system:     system,
+	go func() {
+		system.Run()
+
+		select {
+		case <-ctx.Done():
+			err := system.Close()
+			if err != nil {
+				log.Warn().Msgf("failed to close provider: %q", err)
+			}
+
+			err = bserv.Close()
+			if err != nil {
+				log.Warn().Msgf("failed to close block service: %q", err)
+			}
+		}
+	}()
+
+	dserv := dag.NewDAGService(bserv)
+	return &peer{
+		h:      h,
+		dserv:  dserv,
+		system: system,
+		r:      r,
+		bserv:  bserv,
+		bs:     bs,
+		ds:     ds,
 	}, nil
 }
 
-func (p *Peer) Run() error {
-	p.system.Run()
-
-	select {
-	case <-p.ctx.Done():
-		err := p.system.Close()
-		if err != nil {
-			return err
-		}
-		return p.bserv.Close()
-	}
+func (p *peer) Host() host.Host {
+	return p.h
 }
 
-// AddParams contains all of the configurable parameters needed to specify the
-// importing process of a file.
-type AddParams struct {
-	Layout    string
-	Chunker   string
-	RawLeaves bool
-	Hidden    bool
-	Shard     bool
-	NoCopy    bool
-	HashFunc  string
+func (p *peer) DAGService() ipld.DAGService {
+	return p.dserv
 }
 
-// AddFile chunks and adds content to the DAGService from a reader. The content
+func (p *peer) Provider() provider.System {
+	return p.system
+}
+
+func (p *peer) ContentRouting() routing.ContentRouting {
+	return p.r
+}
+
+func (p *peer) BlockService() blockservice.BlockService {
+	return p.bserv
+}
+
+func (p *peer) Blockstore() blockstore.Blockstore {
+	return p.bs
+}
+
+func (p *peer) Datastore() datastore.Batching {
+	return p.ds
+}
+
+// Add chunks and adds content to the DAGService from a reader. The content
 // is stored as a UnixFS DAG (default for IPFS). It returns the root
 // ipld.Node.
-func (p *Peer) AddFile(r io.Reader, params *AddParams) (ipld.Node, error) {
-	if params == nil {
-		params = &AddParams{}
+func (p *peer) Add(ctx context.Context, r io.Reader, opts ...p2plab.AddOption) (ipld.Node, error) {
+	settings := p2plab.AddSettings{
+		Layout:    "balanced",
+		Chunker:   "size-262144",
+		RawLeaves: false,
+		Hidden:    false,
+		NoCopy:    false,
+		HashFunc:  "sha2-256",
 	}
-	if params.HashFunc == "" {
-		params.HashFunc = "sha2-256"
+	for _, opt := range opts {
+		err := opt(&settings)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	prefix, err := dag.PrefixForCidVersion(1)
@@ -125,21 +163,21 @@ func (p *Peer) AddFile(r io.Reader, params *AddParams) (ipld.Node, error) {
 		return nil, errors.Wrap(err, "unrecognized CID version")
 	}
 
-	hashFuncCode, ok := multihash.Names[strings.ToLower(params.HashFunc)]
+	hashFuncCode, ok := multihash.Names[strings.ToLower(settings.HashFunc)]
 	if !ok {
-		return nil, errors.Wrapf(err, "unrecognized hash function %q", params.HashFunc)
+		return nil, errors.Wrapf(err, "unrecognized hash function %q", settings.HashFunc)
 	}
 	prefix.MhType = hashFuncCode
 
 	dbp := helpers.DagBuilderParams{
-		Dagserv:    p,
-		RawLeaves:  params.RawLeaves,
+		Dagserv:    p.dserv,
+		RawLeaves:  settings.RawLeaves,
 		Maxlinks:   helpers.DefaultLinksPerBlock,
-		NoCopy:     params.NoCopy,
+		NoCopy:     settings.NoCopy,
 		CidBuilder: &prefix,
 	}
 
-	chnk, err := chunker.FromString(r, params.Chunker)
+	chnk, err := chunker.FromString(r, settings.Chunker)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create chunker")
 	}
@@ -150,26 +188,26 @@ func (p *Peer) AddFile(r io.Reader, params *AddParams) (ipld.Node, error) {
 	}
 
 	var n ipld.Node
-	switch params.Layout {
+	switch settings.Layout {
 	case "trickle":
 		n, err = trickle.Layout(dbh)
-	case "balanced", "":
+	case "balanced":
 		n, err = balanced.Layout(dbh)
 	default:
-		return nil, errors.Errorf("unrecognized layout %q", params.Layout)
+		return nil, errors.Errorf("unrecognized layout %q", settings.Layout)
 	}
 
 	return n, err
 }
 
-// GetFile returns a reader to a file as identified by its root CID. The file
+// Get returns a reader to a file as identified by its root CID. The file
 // must have been added as a UnixFS DAG (default for IPFS).
-func (p *Peer) GetFile(ctx context.Context, c cid.Cid) (ufsio.ReadSeekCloser, error) {
-	n, err := p.Get(ctx, c)
+func (p *peer) Get(ctx context.Context, c cid.Cid) (ufsio.ReadSeekCloser, error) {
+	n, err := p.dserv.Get(ctx, c)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get file %q", c)
 	}
-	return ufsio.NewDagReader(ctx, n, p)
+	return ufsio.NewDagReader(ctx, n, p.dserv)
 }
 
 func NewDatastore(path string) (datastore.Batching, error) {
@@ -241,7 +279,7 @@ func NewProviderSystem(ctx context.Context, ds datastore.Batching, bs blockstore
 	}
 
 	prov := simple.NewProvider(ctx, queue, r)
-	reprov := simple.NewReprovider(ctx, 12*time.Hour, r, simple.NewBlockstoreProvider(bs))
+	reprov := simple.NewReprovider(ctx, ReprovideInterval, r, simple.NewBlockstoreProvider(bs))
 	system := provider.NewSystem(prov, reprov)
 	return system, nil
 }

@@ -3,7 +3,7 @@ module github.com/Netflix/p2plab
 go 1.12
 
 require (
-	github.com/containerd/containerd v1.2.7
+	github.com/containerd/containerd v1.3.0-0.20190507210959-7c1e88399ec0
 	github.com/containerd/fifo v0.0.0-20190226154929-a9fb20d87448
 	github.com/gobwas/glob v0.2.3
 	github.com/gorilla/mux v1.7.3
@@ -28,19 +28,23 @@ require (
 	github.com/ipfs/interface-go-ipfs-core v0.0.8
 	github.com/libp2p/go-libp2p v0.2.0
 	github.com/libp2p/go-libp2p-core v0.0.6
-	github.com/libp2p/go-libp2p-host v0.0.3 // indirect
+	github.com/libp2p/go-libp2p-host v0.0.3
 	github.com/libp2p/go-libp2p-interface-connmgr v0.0.5 // indirect
 	github.com/libp2p/go-libp2p-kad-dht v0.1.1
 	github.com/libp2p/go-libp2p-mplex v0.2.1
 	github.com/libp2p/go-libp2p-net v0.0.2 // indirect
 	github.com/libp2p/go-libp2p-protocol v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-pubsub v0.1.0 // indirect
+	github.com/libp2p/go-libp2p-routing v0.1.0
 	github.com/libp2p/go-libp2p-secio v0.1.0
 	github.com/libp2p/go-libp2p-transport v0.0.5 // indirect
 	github.com/libp2p/go-stream-muxer v0.1.0 // indirect
 	github.com/libp2p/go-tcp-transport v0.1.0
 	github.com/libp2p/go-ws-transport v0.1.0
+	github.com/moby/buildkit v0.3.3
 	github.com/multiformats/go-multihash v0.0.5
+	github.com/opencontainers/go-digest v1.0.0-rc1
+	github.com/opencontainers/image-spec v1.0.1
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.8.1
 	github.com/rs/zerolog v1.14.3
@@ -50,3 +54,5 @@ require (
 	github.com/urfave/cli v1.20.0
 	go.etcd.io/bbolt v1.3.3
 )
+
+replace github.com/containerd/containerd => github.com/hinshun/containerd v0.2.1-0.20190602215134-c3f4eaaf1470
