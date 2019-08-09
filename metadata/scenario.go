@@ -28,6 +28,8 @@ type Scenario struct {
 
 	Definition ScenarioDefinition
 
+	Labels []string
+
 	CreatedAt, UpdatedAt time.Time
 }
 
@@ -204,7 +206,7 @@ func readScenario(bkt *bolt.Bucket, scenario *Scenario) error {
 		return err
 	}
 
-	sdef, err := readDefinition(bkt)
+	sdef, err := readScenarioDefinition(bkt)
 	if err != nil {
 		return err
 	}
@@ -224,7 +226,7 @@ func readScenario(bkt *bolt.Bucket, scenario *Scenario) error {
 	})
 }
 
-func readDefinition(bkt *bolt.Bucket) (ScenarioDefinition, error) {
+func readScenarioDefinition(bkt *bolt.Bucket) (ScenarioDefinition, error) {
 	var sdef ScenarioDefinition
 
 	dbkt := bkt.Bucket(bucketKeyDefinition)
@@ -259,7 +261,7 @@ func writeScenario(bkt *bolt.Bucket, scenario *Scenario) error {
 		return err
 	}
 
-	err = writeDefinition(bkt, scenario.Definition)
+	err = writeScenarioDefinition(bkt, scenario.Definition)
 	if err != nil {
 		return err
 	}
@@ -276,7 +278,7 @@ func writeScenario(bkt *bolt.Bucket, scenario *Scenario) error {
 	return nil
 }
 
-func writeDefinition(bkt *bolt.Bucket, sdef ScenarioDefinition) error {
+func writeScenarioDefinition(bkt *bolt.Bucket, sdef ScenarioDefinition) error {
 	dbkt := bkt.Bucket(bucketKeyDefinition)
 	if dbkt != nil {
 		err := bkt.DeleteBucket(bucketKeyDefinition)
@@ -378,59 +380,6 @@ func writeObjects(bkt *bolt.Bucket, objects map[string]ObjectDefinition) error {
 			if err != nil {
 				return err
 			}
-		}
-	}
-
-	return nil
-}
-
-func readMap(bkt *bolt.Bucket, name []byte) (map[string]string, error) {
-	mbkt := bkt.Bucket(name)
-	if mbkt == nil {
-		return nil, nil
-	}
-
-	m := map[string]string{}
-	err := mbkt.ForEach(func(k, v []byte) error {
-		m[string(k)] = string(v)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return m, nil
-}
-
-func writeMap(bkt *bolt.Bucket, name []byte, m map[string]string) error {
-	// Remove existing map to prevent merging.
-	mbkt := bkt.Bucket(name)
-	if mbkt != nil {
-		err := bkt.DeleteBucket(name)
-		if err != nil {
-			return err
-		}
-	}
-
-	if len(m) == 0 {
-		return nil
-	}
-
-	var err error
-	mbkt, err = bkt.CreateBucket(name)
-	if err != nil {
-		return err
-	}
-
-	for k, v := range m {
-		if v == "" {
-			delete(m, k)
-			continue
-		}
-
-		err := mbkt.Put([]byte(k), []byte(v))
-		if err != nil {
-			return errors.Wrapf(err, "failed to set key value %q=%q", k, v)
 		}
 	}
 

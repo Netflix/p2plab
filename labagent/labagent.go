@@ -102,7 +102,7 @@ func (a *LabAgent) runHandler(w http.ResponseWriter, r *http.Request) error {
 	switch task.Type {
 	case metadata.TaskUpdate:
 		var resp labapp.TaskResponse
-		err = a.updateApp(r.Context(), task.Target)
+		err = a.updateApp(r.Context(), task.Subject)
 		if err != nil {
 			resp.Err = err.Error()
 		}

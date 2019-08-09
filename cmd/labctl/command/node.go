@@ -89,7 +89,7 @@ func runNodeAction(c *cli.Context) error {
 	}
 
 	if c.NArg() == 4 {
-		task.Target = c.Args().Get(3)
+		task.Subject = c.Args().Get(3)
 	}
 
 	err = node.Run(ctx, task)

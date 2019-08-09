@@ -16,6 +16,7 @@ package metadata
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/Netflix/p2plab/errdefs"
@@ -26,7 +27,21 @@ import (
 type Cluster struct {
 	ID string
 
+	Definition ClusterDefinition
+
+	Labels []string
+
 	CreatedAt, UpdatedAt time.Time
+}
+
+type ClusterDefinition struct {
+	Groups []ClusterGroup
+}
+
+type ClusterGroup struct {
+	Size         int
+	InstanceType string
+	Region       string
 }
 
 func (m *DB) GetCluster(ctx context.Context, id string) (Cluster, error) {
@@ -163,6 +178,12 @@ func readCluster(bkt *bolt.Bucket, cluster *Cluster) error {
 		return err
 	}
 
+	cdef, err := readClusterDefinition(bkt)
+	if err != nil {
+		return err
+	}
+	cluster.Definition = cdef
+
 	return bkt.ForEach(func(k, v []byte) error {
 		if v == nil {
 			return nil
@@ -177,8 +198,49 @@ func readCluster(bkt *bolt.Bucket, cluster *Cluster) error {
 	})
 }
 
+func readClusterDefinition(bkt *bolt.Bucket) (ClusterDefinition, error) {
+	var cdef ClusterDefinition
+
+	dbkt := bkt.Bucket(bucketKeyDefinition)
+	if dbkt == nil {
+		return cdef, nil
+	}
+
+	gbkt := bkt.Bucket([]byte("0"))
+	for gbkt != nil {
+		var group ClusterGroup
+		err := gbkt.ForEach(func(k, v []byte) error {
+			switch string(k) {
+			case string(bucketKeySize):
+				size, err := strconv.Atoi(string(v))
+				if err != nil {
+					return err
+				}
+				group.Size = size
+			case string(bucketKeyInstanceType):
+				group.InstanceType = string(v)
+			case string(bucketKeyRegion):
+				group.Region = string(v)
+			}
+			return nil
+		})
+		if err != nil {
+			return cdef, err
+		}
+
+		cdef.Groups = append(cdef.Groups, group)
+	}
+
+	return cdef, nil
+}
+
 func writeCluster(bkt *bolt.Bucket, cluster *Cluster) error {
 	err := WriteTimestamps(bkt, cluster.CreatedAt, cluster.UpdatedAt)
+	if err != nil {
+		return err
+	}
+
+	err = writeClusterDefinition(bkt, cluster.Definition)
 	if err != nil {
 		return err
 	}
@@ -189,6 +251,41 @@ func writeCluster(bkt *bolt.Bucket, cluster *Cluster) error {
 		err = bkt.Put(f.key, f.value)
 		if err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+func writeClusterDefinition(bkt *bolt.Bucket, cdef ClusterDefinition) error {
+	dbkt := bkt.Bucket(bucketKeyDefinition)
+	if dbkt != nil {
+		err := bkt.DeleteBucket(bucketKeyDefinition)
+		if err != nil {
+			return err
+		}
+	}
+
+	dbkt, err := bkt.CreateBucket(bucketKeyDefinition)
+	if err != nil {
+		return err
+	}
+
+	for i, group := range cdef.Groups {
+		gbkt, err := dbkt.CreateBucket([]byte(strconv.Itoa(i)))
+		if err != nil {
+			return err
+		}
+
+		for _, f := range []field{
+			{bucketKeySize, []byte(strconv.Itoa(group.Size))},
+			{bucketKeyInstanceType, []byte(group.InstanceType)},
+			{bucketKeyRegion, []byte(group.Region)},
+		} {
+			err = gbkt.Put(f.key, f.value)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

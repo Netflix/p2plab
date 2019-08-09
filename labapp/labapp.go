@@ -92,7 +92,7 @@ func (a *LabApp) runHandler(w http.ResponseWriter, r *http.Request) error {
 
 	switch task.Type {
 	case metadata.TaskGet:
-		err = a.getFile(r.Context(), task.Target)
+		err = a.getFile(r.Context(), task.Subject)
 	default:
 		return errors.Wrapf(errdefs.ErrInvalidArgument, "unrecognized task type: %q", task.Type)
 	}

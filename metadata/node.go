@@ -16,7 +16,6 @@ package metadata
 
 import (
 	"context"
-	"sort"
 	"time"
 
 	"github.com/Netflix/p2plab/errdefs"
@@ -122,20 +121,6 @@ func (m *DB) CreateNode(ctx context.Context, cluster string, node Node) (Node, e
 }
 
 func (m *DB) LabelNodes(ctx context.Context, cluster string, ids, addLabels, removeLabels []string) ([]Node, error) {
-	if len(ids) == 0 {
-		return nil, nil
-	}
-
-	addSet := make(map[string]struct{})
-	for _, l := range addLabels {
-		addSet[l] = struct{}{}
-	}
-
-	removeSet := make(map[string]struct{})
-	for _, l := range removeLabels {
-		removeSet[l] = struct{}{}
-	}
-
 	var nodes []Node
 	err := m.Update(func(tx *bolt.Tx) error {
 		bkt, err := createNodesBucket(tx, cluster)
@@ -143,48 +128,10 @@ func (m *DB) LabelNodes(ctx context.Context, cluster string, ids, addLabels, rem
 			return err
 		}
 
-		for _, id := range ids {
-			cbkt := bkt.Bucket([]byte(id))
-			if cbkt == nil {
-				return errors.Wrapf(errdefs.ErrNotFound, "node %q", id)
-			}
-
-			lbkt := cbkt.Bucket(bucketKeyLabels)
-
-			var labels []string
-			if lbkt != nil {
-				err = lbkt.ForEach(func(k, v []byte) error {
-					if _, ok := removeSet[string(k)]; ok {
-						return nil
-					}
-
-					labels = append(labels, string(k))
-					delete(addSet, string(k))
-					return nil
-				})
-				if err != nil {
-					return err
-				}
-
-				err = cbkt.DeleteBucket(bucketKeyLabels)
-				if err != nil {
-					return err
-				}
-			}
-
-			for l, _ := range addSet {
-				labels = append(labels, l)
-			}
-			sort.Strings(labels)
-
-			lbkt, err = cbkt.CreateBucket(bucketKeyLabels)
-			if err != nil {
-				return err
-			}
-
+		err = writeLabels(bkt, ids, addLabels, removeLabels, func(ibkt *bolt.Bucket, id string, labels []string) error {
 			var node Node
 			node.ID = id
-			err = readNode(cbkt, &node)
+			err = readNode(ibkt, &node)
 			if err != nil {
 				return err
 			}
@@ -192,11 +139,15 @@ func (m *DB) LabelNodes(ctx context.Context, cluster string, ids, addLabels, rem
 			node.Labels = labels
 			node.UpdatedAt = time.Now().UTC()
 
-			err = writeNode(cbkt, &node)
+			err = writeNode(ibkt, &node)
 			if err != nil {
 				return err
 			}
 			nodes = append(nodes, node)
+			return nil
+		})
+		if err != nil {
+			return err
 		}
 
 		return nil

@@ -24,13 +24,17 @@ var (
 	bucketKeyScenarios  = []byte("scenarios")
 	bucketKeyBenchmarks = []byte("benchmarks")
 
+	// Cluster buckets.
+	bucketKeySize         = []byte("size")
+	bucketKeyInstanceType = []byte("instanceType")
+	bucketKeyRegion       = []byte("region")
+
 	// Scenario buckets.
-	bucketKeyDefinition = []byte("definition")
-	bucketKeyObjects    = []byte("objects")
-	bucketKeySeed       = []byte("seed")
-	bucketKeyBenchmark  = []byte("benchmark")
-	bucketKeyType       = []byte("type")
-	bucketKeyReference  = []byte("reference")
+	bucketKeyObjects   = []byte("objects")
+	bucketKeySeed      = []byte("seed")
+	bucketKeyBenchmark = []byte("benchmark")
+	bucketKeyType      = []byte("type")
+	bucketKeyReference = []byte("reference")
 
 	// Node buckets.
 	bucketKeyAddress = []byte("address")
@@ -38,12 +42,15 @@ var (
 	// Benchmark buckets.
 	bucketKeyCluster  = []byte("cluster")
 	bucketKeyScenario = []byte("scenario")
+	bucketKeyPlan     = []byte("plan")
+	bucketKeySubject  = []byte("subject")
 
 	// Common buckets.
-	bucketKeyID        = []byte("id")
-	bucketKeyLabels    = []byte("labels")
-	bucketKeyCreatedAt = []byte("createdAt")
-	bucketKeyUpdatedAt = []byte("updatedAt")
+	bucketKeyID         = []byte("id")
+	bucketKeyLabels     = []byte("labels")
+	bucketKeyCreatedAt  = []byte("createdAt")
+	bucketKeyUpdatedAt  = []byte("updatedAt")
+	bucketKeyDefinition = []byte("definition")
 )
 
 func getBucket(tx *bolt.Tx, keys ...[]byte) *bolt.Bucket {

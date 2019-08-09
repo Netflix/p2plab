@@ -31,6 +31,8 @@ type Benchmark struct {
 	Scenario Scenario
 	Plan     ScenarioPlan
 
+	Labels []string
+
 	CreatedAt, UpdatedAt time.Time
 }
 
@@ -43,8 +45,9 @@ type ScenarioPlan struct {
 }
 
 type Task struct {
-	Type   TaskType
-	Target string
+	Type    TaskType
+
+	Subject string
 }
 
 type TaskType string
@@ -204,6 +207,14 @@ func readBenchmark(bkt *bolt.Bucket, benchmark *Benchmark) error {
 		}
 	}
 
+	pbkt := bkt.Bucket(bucketKeyPlan)
+	if pbkt != nil {
+		err = readPlan(pbkt, &benchmark.Plan)
+		if err != nil {
+			return err
+		}
+	}
+
 	return bkt.ForEach(func(k, v []byte) error {
 		if v == nil {
 			return nil
@@ -216,6 +227,78 @@ func readBenchmark(bkt *bolt.Bucket, benchmark *Benchmark) error {
 
 		return nil
 	})
+}
+
+func readPlan(bkt *bolt.Bucket, plan *ScenarioPlan) error {
+	pbkt := bkt.Bucket(bucketKeyPlan)
+	if pbkt == nil {
+		return nil
+	}
+
+	m, err := readMap(pbkt, bucketKeyObjects)
+	if err != nil {
+		return nil
+	}
+
+	objects := make(map[string]cid.Cid)
+	for k, v := range m {
+		objects[k], err = cid.Parse(v)
+		if err != nil {
+			return err
+		}
+	}
+	plan.Objects = objects
+
+	seed, err := readTaskMap(pbkt, bucketKeySeed)
+	if err != nil {
+		return nil
+	}
+	plan.Seed = seed
+
+	benchmark, err := readTaskMap(pbkt, bucketKeyBenchmark)
+	if err != nil {
+		return nil
+	}
+	plan.Benchmark = benchmark
+
+	return nil
+}
+
+func readTaskMap(bkt *bolt.Bucket, name []byte) (map[string]Task, error) {
+	tbkt := bkt.Bucket(name)
+	if tbkt == nil {
+		return nil, nil
+	}
+
+	tasks := make(map[string]Task)
+	err := tbkt.ForEach(func(id, v []byte) error {
+		ibkt := tbkt.Bucket(id)
+		if ibkt == nil {
+			return nil
+		}
+
+		var task Task
+		err := ibkt.ForEach(func(k, v []byte) error {
+			switch string(k) {
+			case string(bucketKeyType):
+				task.Type = TaskType(v)
+			case string(bucketKeySubject):
+				task.Subject = string(v)
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		tasks[string(id)] = task
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return tasks, nil
 }
 
 func writeBenchmark(bkt *bolt.Bucket, benchmark *Benchmark) error {
@@ -260,12 +343,102 @@ func writeBenchmark(bkt *bolt.Bucket, benchmark *Benchmark) error {
 		return err
 	}
 
+	pbkt, err := bkt.CreateBucket(bucketKeyPlan)
+	if err != nil {
+		err = bkt.DeleteBucket(bucketKeyPlan)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = writePlan(pbkt, &benchmark.Plan)
+	if err != nil {
+		return err
+	}
+
 	for _, f := range []field{
 		{bucketKeyID, []byte(benchmark.ID)},
 	} {
 		err = bkt.Put(f.key, f.value)
 		if err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+func writePlan(bkt *bolt.Bucket, plan *ScenarioPlan) error {
+	obkt := bkt.Bucket(bucketKeyObjects)
+	if obkt != nil {
+		err := bkt.DeleteBucket(bucketKeyObjects)
+		if err != nil {
+			return err
+		}
+	}
+
+	var err error
+	obkt, err = bkt.CreateBucket(bucketKeyObjects)
+	if err != nil {
+		return err
+	}
+
+	var m map[string]string
+	for k, v := range plan.Objects {
+		m[k] = v.String()
+	}
+
+	err = writeMap(obkt, bucketKeyObjects, m)
+	if err != nil {
+		return err
+	}
+
+	err = writeTaskMap(bkt, bucketKeySeed, plan.Seed)
+	if err != nil {
+		return err
+	}
+
+	err = writeTaskMap(bkt, bucketKeyBenchmark, plan.Benchmark)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writeTaskMap(bkt *bolt.Bucket, name []byte, stage map[string]Task) error {
+	mbkt := bkt.Bucket(name)
+	if mbkt != nil {
+		err := bkt.DeleteBucket(name)
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(stage) == 0 {
+		return nil
+	}
+
+	var err error
+	mbkt, err = bkt.CreateBucket(name)
+	if err != nil {
+		return err
+	}
+
+	for id, task := range stage {
+		tbkt, err := mbkt.CreateBucket([]byte(id))
+		if err != nil {
+			return err
+		}
+
+		for _, f := range []field{
+			{bucketKeyType, []byte(task.Type)},
+			{bucketKeySubject, []byte(task.Subject)},
+		} {
+			err = tbkt.Put(f.key, f.value)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
