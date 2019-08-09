@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/containerd/containerd v1.3.0-0.20190507210959-7c1e88399ec0
 	github.com/containerd/fifo v0.0.0-20190226154929-a9fb20d87448
+	github.com/docker/docker v1.14.0-0.20190319215453-e7b5f7dbe98c
 	github.com/gobwas/glob v0.2.3
 	github.com/gorilla/mux v1.7.3
 	github.com/hinshun/ipcs v0.0.0-20190711215856-07f13a7097d0

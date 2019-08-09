@@ -12,26 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package terraform
+package providers
 
 import (
-	"context"
-
 	"github.com/Netflix/p2plab"
-	"github.com/Netflix/p2plab/metadata"
+	"github.com/Netflix/p2plab/providers/terraform"
+	"github.com/pkg/errors"
 )
 
-type provider struct {
-}
-
-func New() p2plab.PeerProvider {
-	return &provider{}
-}
-
-func (p *provider) CreatePeerGroup(ctx context.Context, id string, cdef metadata.ClusterDefinition) (*p2plab.PeerGroup, error) {
-	return nil, nil
-}
-
-func (p *provider) DestroyPeerGroup(ctx context.Context, pg *p2plab.PeerGroup) error {
-	return nil
+func GetPeerProvider(providerType, root string) (p2plab.PeerProvider, error) {
+	switch providerType {
+	case "terraform":
+		return terraform.New(root)
+	default:
+		return nil, errors.Errorf("unrecognized peer provider type: %q", providerType)
+	}
 }

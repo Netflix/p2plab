@@ -62,17 +62,17 @@ var (
 	ReprovideInterval = 12 * time.Hour
 )
 
-type peer struct {
-	h      host.Host
-	dserv  ipld.DAGService
-	system provider.System
-	r      routing.ContentRouting
-	bserv  blockservice.BlockService
-	bs     blockstore.Blockstore
-	ds     datastore.Batching
+type Peer struct {
+	host.Host
+	ipld.DAGService
+	provider.System
+	routing.ContentRouting
+	blockservice.BlockService
+	blockstore.Blockstore
+	datastore.Batching
 }
 
-func New(ctx context.Context, root string) (p2plab.Peer, error) {
+func New(ctx context.Context, root string) (*Peer, error) {
 	ds, err := NewDatastore(root)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create datastore")
@@ -114,49 +114,21 @@ func New(ctx context.Context, root string) (p2plab.Peer, error) {
 	}()
 
 	dserv := dag.NewDAGService(bserv)
-	return &peer{
-		h:      h,
-		dserv:  dserv,
-		system: system,
-		r:      r,
-		bserv:  bserv,
-		bs:     bs,
-		ds:     ds,
+	return &Peer{
+		Host:           h,
+		DAGService:     dserv,
+		System:         system,
+		ContentRouting: r,
+		BlockService:   bserv,
+		Blockstore:     bs,
+		Batching:       ds,
 	}, nil
-}
-
-func (p *peer) Host() host.Host {
-	return p.h
-}
-
-func (p *peer) DAGService() ipld.DAGService {
-	return p.dserv
-}
-
-func (p *peer) Provider() provider.System {
-	return p.system
-}
-
-func (p *peer) ContentRouting() routing.ContentRouting {
-	return p.r
-}
-
-func (p *peer) BlockService() blockservice.BlockService {
-	return p.bserv
-}
-
-func (p *peer) Blockstore() blockstore.Blockstore {
-	return p.bs
-}
-
-func (p *peer) Datastore() datastore.Batching {
-	return p.ds
 }
 
 // Add chunks and adds content to the DAGService from a reader. The content
 // is stored as a UnixFS DAG (default for IPFS). It returns the root
 // ipld.Node.
-func (p *peer) Add(ctx context.Context, r io.Reader, opts ...p2plab.AddOption) (ipld.Node, error) {
+func (p *Peer) Add(ctx context.Context, r io.Reader, opts ...p2plab.AddOption) (ipld.Node, error) {
 	settings := p2plab.AddSettings{
 		Layout:    "balanced",
 		Chunker:   "size-262144",
@@ -184,7 +156,7 @@ func (p *peer) Add(ctx context.Context, r io.Reader, opts ...p2plab.AddOption) (
 	prefix.MhType = hashFuncCode
 
 	dbp := helpers.DagBuilderParams{
-		Dagserv:    p.dserv,
+		Dagserv:    p.DAGService,
 		RawLeaves:  settings.RawLeaves,
 		Maxlinks:   helpers.DefaultLinksPerBlock,
 		NoCopy:     settings.NoCopy,
@@ -216,12 +188,12 @@ func (p *peer) Add(ctx context.Context, r io.Reader, opts ...p2plab.AddOption) (
 
 // Get returns a reader to a file as identified by its root CID. The file
 // must have been added as a UnixFS DAG (default for IPFS).
-func (p *peer) Get(ctx context.Context, c cid.Cid) (ufsio.ReadSeekCloser, error) {
-	n, err := p.dserv.Get(ctx, c)
+func (p *Peer) Get(ctx context.Context, c cid.Cid) (ufsio.ReadSeekCloser, error) {
+	n, err := p.DAGService.Get(ctx, c)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get file %q", c)
 	}
-	return ufsio.NewDagReader(ctx, n, p.dserv)
+	return ufsio.NewDagReader(ctx, n, p.DAGService)
 }
 
 func NewDatastore(path string) (datastore.Batching, error) {

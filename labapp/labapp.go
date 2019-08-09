@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/peer"
@@ -38,7 +37,7 @@ type LabApp struct {
 	root   string
 	addr   string
 	router *mux.Router
-	peer   p2plab.Peer
+	peer   *peer.Peer
 }
 
 func New(root, addr string) *LabApp {
@@ -60,7 +59,7 @@ func (a *LabApp) Serve(ctx context.Context) error {
 	}
 
 	var addrs []string
-	for _, ma := range a.peer.Host().Addrs() {
+	for _, ma := range a.peer.Host.Addrs() {
 		addrs = append(addrs, ma.String())
 	}
 	log.Info().Msgf("IPFS listening on %s", addrs)

@@ -60,10 +60,10 @@ func run(addr, ref string) error {
 	}
 
 	var addrs []string
-	for _, ma := range p.Host().Addrs() {
+	for _, ma := range p.Host.Addrs() {
 		addrs = append(addrs, ma.String())
 	}
-	log.Info().Str("id", p.Host().ID().String()).Strs("listen", addrs).Msg("Starting libp2p peer")
+	log.Info().Str("id", p.Host.ID().String()).Strs("listen", addrs).Msg("Starting libp2p peer")
 
 	targetAddr, err := multiaddr.NewMultiaddr(addr)
 	if err != nil {
@@ -75,7 +75,7 @@ func run(addr, ref string) error {
 		return err
 	}
 
-	err = p.Host().Connect(ctx, *targetInfo)
+	err = p.Host.Connect(ctx, *targetInfo)
 	if err != nil {
 		return err
 	}

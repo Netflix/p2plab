@@ -25,6 +25,8 @@ var (
 
 	// ErrInvalidArgument is returned when a invalid argument was given.
 	ErrInvalidArgument = errors.New("invalid argument")
+
+	ErrUnavailable = errors.New("unavailable")
 )
 
 func IsAlreadyExists(err error) bool {
@@ -37,4 +39,8 @@ func IsNotFound(err error) bool {
 
 func IsInvalidArgument(err error) bool {
 	return errors.Cause(err) == ErrInvalidArgument
+}
+
+func IsUnavailable(err error) bool {
+	return errors.Cause(err) == ErrUnavailable
 }
