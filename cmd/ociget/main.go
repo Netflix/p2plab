@@ -54,7 +54,7 @@ func run(addr, ref string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	p, err := peer.NewPeer(ctx, "./tmp/get")
+	p, err := peer.New(ctx, "./tmp/get")
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func run(addr, ref string) error {
 	for _, ma := range p.Host().Addrs() {
 		addrs = append(addrs, ma.String())
 	}
-	log.Info().Msgf("Peer %q listening on %s", p.Host().ID(), addrs)
+	log.Info().Str("id", p.Host().ID().String()).Strs("listen", addrs).Msg("Starting libp2p peer")
 
 	targetAddr, err := multiaddr.NewMultiaddr(addr)
 	if err != nil {
@@ -79,7 +79,7 @@ func run(addr, ref string) error {
 	if err != nil {
 		return err
 	}
-	log.Info().Msgf("Connected to peer %q", targetAddr)
+	log.Info().Str("addr", targetAddr.String()).Msg("Connected to peer")
 
 	c, err := cid.Parse(ref)
 	if err != nil {

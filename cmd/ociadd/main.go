@@ -51,7 +51,7 @@ func run(ref string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	p, err := peer.NewPeer(ctx, "./tmp/ociadd")
+	p, err := peer.New(ctx, "./tmp/ociadd")
 	if err != nil {
 		return err
 	}
@@ -60,16 +60,18 @@ func run(ref string) error {
 	for _, ma := range p.Host().Addrs() {
 		addrs = append(addrs, ma.String())
 	}
-	log.Info().Msgf("Peer %q listening on %s", p.Host().ID(), addrs)
+	log.Info().Str("id", p.Host().ID().String()).Strs("listen", addrs).Msg("Starting libp2p peer")
 
 	transformer := oci.New()
 	c, err := transformer.Transform(ctx, p, ref, nil)
 	if err != nil {
 		return err
 	}
-	log.Info().Msgf("Converted OCI image %q to IPLD DAG %q", ref, c)
+	log.Info().Str("ref", ref).Str("cid", c.String()).Msg("Converted OCI image to IPLD DAG")
 
-	log.Info().Msgf("Get the converted file on disk by running:\n\ngo run ./cmd/ociget %s/ipfs/%s %s\n", p.Host().Addrs()[0], p.Host().ID(), c)
+	log.Info().Msgf("Retrieve manifest from another p2plab/peer by running:\n\ngo run ./cmd/ociget %s/p2p/%s %s\n", p.Host().Addrs()[0], p.Host().ID(), c)
+
+	log.Info().Msgf("Connect to this peer from IPFS daemon:\n\nipfs swarm connect %s/p2p/%s\nipfs cat %s\n", p.Host().Addrs()[0], p.Host().ID(), c)
 
 	fmt.Print("Press 'Enter' to terminate peer...")
 	_, err = bufio.NewReader(os.Stdin).ReadBytes('\n')

@@ -32,6 +32,8 @@ import (
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type transformer struct {
@@ -148,6 +150,14 @@ func ConvertHandler(conversions map[digest.Digest]ocispec.Descriptor, peer p2pla
 		}
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to convert %q [%s]", desc.Digest, desc.MediaType)
+		}
+
+		if log.Logger.GetLevel() == zerolog.DebugLevel {
+			c, err := digestconv.DigestToCid(target.Digest)
+			if err != nil {
+				return nil, err
+			}
+			log.Debug().Str("mediaType", desc.MediaType).Str("source", desc.Digest.String()).Str("cid", c.String()).Int64("size", desc.Size).Msg("Added blob to peer")
 		}
 
 		conversions[desc.Digest] = target

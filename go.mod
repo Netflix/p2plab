@@ -48,7 +48,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.8.1
-	github.com/rs/zerolog v1.14.3
+	github.com/rs/zerolog v1.14.4-0.20190719171043-b806a5ecbe53
 	github.com/stretchr/testify v1.3.0
 	github.com/uber/jaeger-client-go v2.16.0+incompatible
 	github.com/uber/jaeger-lib v2.0.0+incompatible // indirect

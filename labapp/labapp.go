@@ -54,7 +54,7 @@ func New(root, addr string) *LabApp {
 
 func (a *LabApp) Serve(ctx context.Context) error {
 	var err error
-	a.peer, err = peer.NewPeer(ctx, a.root)
+	a.peer, err = peer.New(ctx, a.root)
 	if err != nil {
 		return errors.Wrap(err, "failed to create peer peer")
 	}

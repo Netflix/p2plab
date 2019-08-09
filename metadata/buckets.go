@@ -34,7 +34,7 @@ var (
 	bucketKeySeed      = []byte("seed")
 	bucketKeyBenchmark = []byte("benchmark")
 	bucketKeyType      = []byte("type")
-	bucketKeyReference = []byte("reference")
+	bucketKeySource = []byte("source")
 
 	// Node buckets.
 	bucketKeyAddress = []byte("address")

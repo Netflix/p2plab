@@ -54,7 +54,7 @@ type ObjectDefinition struct {
 	// retrieved. Types must be one of the following: ["oci-image"].
 	Type string `json:"type"`
 
-	Reference string `json:"reference"`
+	Source string `json:"source"`
 
 	// Chunker specify which chunking algorithm to use to chunk the data into IPLD
 	// blocks.
@@ -328,8 +328,8 @@ func readObjects(bkt *bolt.Bucket) (map[string]ObjectDefinition, error) {
 			switch string(k) {
 			case string(bucketKeyType):
 				object.Type = string(v)
-			case string(bucketKeyReference):
-				object.Reference = string(v)
+			case string(bucketKeySource):
+				object.Source = string(v)
 			}
 			return nil
 		})
@@ -374,7 +374,7 @@ func writeObjects(bkt *bolt.Bucket, objects map[string]ObjectDefinition) error {
 
 		for _, f := range []field{
 			{bucketKeyType, []byte(object.Type)},
-			{bucketKeyReference, []byte(object.Reference)},
+			{bucketKeySource, []byte(object.Source)},
 		} {
 			err = nbkt.Put(f.key, f.value)
 			if err != nil {

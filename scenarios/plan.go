@@ -16,23 +16,92 @@ package scenarios
 
 import (
 	"context"
+	"sync"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/actions"
 	"github.com/Netflix/p2plab/metadata"
+	"github.com/Netflix/p2plab/query"
+	"github.com/Netflix/p2plab/transformers"
+	"golang.org/x/sync/errgroup"
 )
 
-// stdout
+func Plan(ctx context.Context, peer p2plab.Peer, nset p2plab.NodeSet, sdef metadata.ScenarioDefinition) (metadata.ScenarioPlan, error) {
+	plan := metadata.ScenarioPlan{
+		Seed:      make(map[string]metadata.Task),
+		Benchmark: make(map[string]metadata.Task),
+	}
 
-// objects:
-// 	ubuntu -> QmA
+	objects, ctx := errgroup.WithContext(ctx)
 
-// seed:
-// 	node-1 get QmA-1
-// 	node-2 get QmA-2
+	var mu sync.Mutex
+	for name, odef := range sdef.Objects {
+		objects.Go(func() error {
+			t, err := transformers.GetTransformer(odef.Type)
+			if err != nil {
+				return err
+			}
 
-// benchmark:
-// 	node-3 get QmA
+			c, err := t.Transform(ctx, peer, odef.Source, nil)
+			if err != nil {
+				return err
+			}
 
-func Plan(ctx context.Context, nset p2plab.NodeSet, sdef metadata.ScenarioDefinition) (metadata.ScenarioPlan, error) {
-	return metadata.ScenarioPlan{}, nil
+			mu.Lock()
+			plan.Objects[name] = c
+			mu.Unlock()
+			return nil
+		})
+	}
+
+	for q, a := range sdef.Seed {
+		qry, err := query.Parse(q)
+		if err != nil {
+			return plan, err
+		}
+
+		mset, err := qry.Match(ctx, nset)
+		if err != nil {
+			return plan, err
+		}
+
+		action, err := actions.Parse(a)
+		if err != nil {
+			return plan, err
+		}
+
+		taskMap, err := action.Tasks(ctx, mset)
+		if err != nil {
+			return plan, err
+		}
+
+		plan.Seed = taskMap
+	}
+
+	// TODO: Refactor `Seed` and `Benchmark` into arbitrary `Stages`.
+	for q, a := range sdef.Benchmark {
+		qry, err := query.Parse(q)
+		if err != nil {
+			return plan, err
+		}
+
+		mset, err := qry.Match(ctx, nset)
+		if err != nil {
+			return plan, err
+		}
+
+		action, err := actions.Parse(a)
+		if err != nil {
+			return plan, err
+		}
+
+		taskMap, err := action.Tasks(ctx, mset)
+		if err != nil {
+			return plan, err
+		}
+
+		plan.Benchmark = taskMap
+	}
+
+	return plan, nil
 }

@@ -367,7 +367,7 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 		nset.Add(&node{metadata: n})
 	}
 
-	plan, err := scenarios.Plan(ctx, nset, scenario.Definition)
+	plan, err := scenarios.Plan(ctx, nil, nset, scenario.Definition)
 	if err != nil {
 		return err
 	}
