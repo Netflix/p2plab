@@ -470,26 +470,22 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 		nset.Add(newNode(nil, n))
 	}
 
+	log.Info().Str("cluster", cid).Str("scenario", sid).Msg("Creating scenario plan")
+	plan, err := scenarios.Plan(ctx, d.seeder, nset, scenario.Definition)
+	if err != nil {
+		return err
+	}
+
 	uuid := time.Now().Format(time.RFC3339Nano)
-	benchmarkDir := filepath.Join(d.root, "benchmarks", uuid, "seeder")
-
-	seeder, err := peer.New(ctx, benchmarkDir)
-	if err != nil {
-		return err
-	}
-
-	plan, err := scenarios.Plan(ctx, seeder, nset, scenario.Definition)
-	if err != nil {
-		return err
-	}
-
 	benchmark := metadata.Benchmark{
 		ID:       uuid,
+		Status:   metadata.BenchmarkBenchmarking,
 		Cluster:  cluster,
 		Scenario: scenario,
 		Plan:     plan,
 	}
 
+	log.Info().Str("benchmark", benchmark.ID).Msg("Creating benchmark")
 	benchmark, err = d.db.CreateBenchmark(ctx, benchmark)
 	if err != nil {
 		return err
@@ -499,9 +495,18 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 		seederID := string(d.seeder.Host.ID())
 		seederAddr := fmt.Sprintf("%s/p2p/%s", d.seeder.Host.Addrs()[0].String(), seederID)
 
+		log.Info().Str("cluster", cid).Str("scenario", sid).Str("benchmark", benchmark.ID).Msg("Running scenario plan")
 		err = scenarios.Run(ctx, nset, plan, seederID, seederAddr)
 		if err != nil {
-			log.Warn().Msgf("failed to run benchmark %q: %s", benchmark.ID, err)
+			log.Warn().Str("benchmark", benchmark.ID).Msgf("failed to run scenario plan: %s", err)
+			return
+		}
+
+		log.Info().Str("cluster", cid).Str("scenario", sid).Str("benchmark", benchmark.ID).Msg("Benchmark completed")
+		benchmark.Status = metadata.BenchmarkDone
+		_, err = d.db.UpdateBenchmark(ctx, benchmark)
+		if err != nil {
+			log.Warn().Str("benchmark", benchmark.ID).Msgf("failed to update benchmark: %s", err)
 		}
 	}()
 
