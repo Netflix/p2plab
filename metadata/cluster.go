@@ -27,12 +27,25 @@ import (
 type Cluster struct {
 	ID string
 
+	Status ClusterStatus
+
 	Definition ClusterDefinition
 
 	Labels []string
 
 	CreatedAt, UpdatedAt time.Time
 }
+
+type ClusterStatus string
+
+var (
+	ClusterCreating   ClusterStatus = "creating"
+	ClusterConnecting ClusterStatus = "connecting"
+	ClusterCreated    ClusterStatus = "created"
+	ClusterDestroying ClusterStatus = "destroying"
+	ClusterDestroyed  ClusterStatus = "destroyed"
+	ClusterError      ClusterStatus = "error"
+)
 
 type ClusterDefinition struct {
 	Groups []ClusterGroup
@@ -47,7 +60,7 @@ type ClusterGroup struct {
 func (m *DB) GetCluster(ctx context.Context, id string) (Cluster, error) {
 	var cluster Cluster
 
-	err := m.View(func(tx *bolt.Tx) error {
+	err := m.View(ctx, func(tx *bolt.Tx) error {
 		bkt := getClustersBucket(tx)
 		if bkt == nil {
 			return errors.Wrapf(errdefs.ErrNotFound, "cluster %q", id)
@@ -75,7 +88,7 @@ func (m *DB) GetCluster(ctx context.Context, id string) (Cluster, error) {
 
 func (m *DB) ListClusters(ctx context.Context) ([]Cluster, error) {
 	var clusters []Cluster
-	err := m.View(func(tx *bolt.Tx) error {
+	err := m.View(ctx, func(tx *bolt.Tx) error {
 		bkt := getClustersBucket(tx)
 		if bkt == nil {
 			return nil
@@ -106,7 +119,7 @@ func (m *DB) ListClusters(ctx context.Context) ([]Cluster, error) {
 }
 
 func (m *DB) CreateCluster(ctx context.Context, cluster Cluster) (Cluster, error) {
-	err := m.Update(func(tx *bolt.Tx) error {
+	err := m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt, err := createClustersBucket(tx)
 		if err != nil {
 			return err
@@ -136,7 +149,7 @@ func (m *DB) UpdateCluster(ctx context.Context, cluster Cluster) (Cluster, error
 		return Cluster{}, errors.Wrapf(errdefs.ErrInvalidArgument, "cluster id required for update")
 	}
 
-	err := m.Update(func(tx *bolt.Tx) error {
+	err := m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt, err := createClustersBucket(tx)
 		if err != nil {
 			return err
@@ -158,7 +171,7 @@ func (m *DB) UpdateCluster(ctx context.Context, cluster Cluster) (Cluster, error
 }
 
 func (m *DB) DeleteCluster(ctx context.Context, id string) error {
-	return m.Update(func(tx *bolt.Tx) error {
+	return m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt := getClustersBucket(tx)
 		if bkt == nil {
 			return errors.Wrapf(errdefs.ErrNotFound, "cluster %q", id)
@@ -192,6 +205,8 @@ func readCluster(bkt *bolt.Bucket, cluster *Cluster) error {
 		switch string(k) {
 		case string(bucketKeyID):
 			cluster.ID = string(v)
+		case string(bucketKeyStatus):
+			cluster.Status = ClusterStatus(v)
 		}
 
 		return nil
@@ -247,6 +262,7 @@ func writeCluster(bkt *bolt.Bucket, cluster *Cluster) error {
 
 	for _, f := range []field{
 		{bucketKeyID, []byte(cluster.ID)},
+		{bucketKeyStatus, []byte(cluster.Status)},
 	} {
 		err = bkt.Put(f.key, f.value)
 		if err != nil {

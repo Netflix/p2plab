@@ -21,9 +21,11 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/labapp"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/pkg/errors"
 )
 
@@ -42,6 +44,24 @@ func NewClient(addr string) *Client {
 		},
 		base: fmt.Sprintf("%s/api/v0", addr),
 	}
+}
+
+func (c *Client) PeerInfo(ctx context.Context) (peerstore.PeerInfo, error) {
+	req := c.NewRequest("GET", "/peerInfo")
+
+	var peerInfo peerstore.PeerInfo
+	resp, err := req.Send(ctx)
+	if err != nil {
+		return peerInfo, err
+	}
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(&peerInfo)
+	if err != nil {
+		return peerInfo, err
+	}
+
+	return peerInfo, nil
 }
 
 func (c *Client) Run(ctx context.Context, task metadata.Task) error {
@@ -69,6 +89,10 @@ func (c *Client) Run(ctx context.Context, task metadata.Task) error {
 		return errors.New(taskResp.Err)
 	}
 
+	return nil
+}
+
+func (c *Client) SSH(ctx context.Context, opts ...p2plab.SSHOption) error {
 	return nil
 }
 

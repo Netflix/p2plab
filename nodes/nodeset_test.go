@@ -20,6 +20,7 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,6 +30,10 @@ type testNode struct {
 
 func (n *testNode) Metadata() metadata.Node {
 	return metadata.Node{ID: n.id}
+}
+
+func (n *testNode) PeerInfo(ctx context.Context) (peerstore.PeerInfo, error) {
+	return peerstore.PeerInfo{}, nil
 }
 
 func (n *testNode) SSH(ctx context.Context, opts ...p2plab.SSHOption) error {

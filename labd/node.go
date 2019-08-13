@@ -45,27 +45,20 @@ func (napi *nodeAPI) Get(ctx context.Context, cluster, id string) (p2plab.Node, 
 }
 
 type node struct {
-	labdCln     *client
-	labagentCln *labagent.Client
-	metadata    metadata.Node
+	p2plab.Agent
+
+	labdCln  *client
+	metadata metadata.Node
 }
 
 func newNode(cln *client, m metadata.Node) *node {
 	return &node{
-		labdCln:     cln,
-		labagentCln: labagent.NewClient(m.Address),
-		metadata:    m,
+		Agent:    labagent.NewClient(m.Address),
+		labdCln:  cln,
+		metadata: m,
 	}
 }
 
 func (n *node) Metadata() metadata.Node {
 	return n.metadata
-}
-
-func (n *node) SSH(ctx context.Context, opts ...p2plab.SSHOption) error {
-	return nil
-}
-
-func (n *node) Run(ctx context.Context, task metadata.Task) error {
-	return n.labagentCln.Run(ctx, task)
 }

@@ -75,7 +75,7 @@ var (
 func (m *DB) GetScenario(ctx context.Context, id string) (Scenario, error) {
 	var scenario Scenario
 
-	err := m.View(func(tx *bolt.Tx) error {
+	err := m.View(ctx, func(tx *bolt.Tx) error {
 		bkt := getScenariosBucket(tx)
 		if bkt == nil {
 			return errors.Wrapf(errdefs.ErrNotFound, "scenario %q", id)
@@ -103,7 +103,7 @@ func (m *DB) GetScenario(ctx context.Context, id string) (Scenario, error) {
 
 func (m *DB) ListScenarios(ctx context.Context) ([]Scenario, error) {
 	var scenarios []Scenario
-	err := m.View(func(tx *bolt.Tx) error {
+	err := m.View(ctx, func(tx *bolt.Tx) error {
 		bkt := getScenariosBucket(tx)
 		if bkt == nil {
 			return nil
@@ -134,7 +134,7 @@ func (m *DB) ListScenarios(ctx context.Context) ([]Scenario, error) {
 }
 
 func (m *DB) CreateScenario(ctx context.Context, scenario Scenario) (Scenario, error) {
-	err := m.Update(func(tx *bolt.Tx) error {
+	err := m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt, err := createScenariosBucket(tx)
 		if err != nil {
 			return err
@@ -164,7 +164,7 @@ func (m *DB) UpdateScenario(ctx context.Context, scenario Scenario) (Scenario, e
 		return Scenario{}, errors.Wrapf(errdefs.ErrInvalidArgument, "scenario id required for update")
 	}
 
-	err := m.Update(func(tx *bolt.Tx) error {
+	err := m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt, err := createScenariosBucket(tx)
 		if err != nil {
 			return err
@@ -186,7 +186,7 @@ func (m *DB) UpdateScenario(ctx context.Context, scenario Scenario) (Scenario, e
 }
 
 func (m *DB) DeleteScenario(ctx context.Context, id string) error {
-	return m.Update(func(tx *bolt.Tx) error {
+	return m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt := getScenariosBucket(tx)
 		if bkt == nil {
 			return errors.Wrapf(errdefs.ErrNotFound, "scenario %q", id)

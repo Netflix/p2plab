@@ -16,6 +16,7 @@ package terraform
 
 import (
 	"context"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -25,6 +26,7 @@ import (
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 type provider struct {
@@ -42,7 +44,7 @@ type BackendVars struct {
 
 type ClusterVars struct {
 	ID                    string
-	ClusterGroupsByRegion []RegionalClusterGroup
+	RegionalClusterGroups []RegionalClusterGroup
 }
 
 type RegionalClusterGroup struct {
@@ -50,15 +52,25 @@ type RegionalClusterGroup struct {
 	Groups []metadata.ClusterGroup
 }
 
-func New(root string) (p2plab.PeerProvider, error) {
+func New(root string) (p2plab.NodeProvider, error) {
 	tfvarsPath := filepath.Join(root, "terraform/terraform.tfvars")
-	tfvars, err := template.New("terraform.tfvars").Parse(tfvarsPath)
+	tfvarsContent, err := ioutil.ReadFile(tfvarsPath)
 	if err != nil {
 		return nil, err
 	}
 
-	maintfPath := filepath.Join(root, "terraform/terraform.maintf")
-	maintf, err := template.New("main.tf").Parse(maintfPath)
+	tfvars, err := template.New("terraform.tfvars").Parse(string(tfvarsContent))
+	if err != nil {
+		return nil, err
+	}
+
+	maintfPath := filepath.Join(root, "terraform/main.tf")
+	maintfContent, err := ioutil.ReadFile(maintfPath)
+	if err != nil {
+		return nil, err
+	}
+
+	maintf, err := template.New("main.tf").Parse(string(maintfContent))
 	if err != nil {
 		return nil, err
 	}
@@ -71,50 +83,66 @@ func New(root string) (p2plab.PeerProvider, error) {
 	}, nil
 }
 
-func (p *provider) CreatePeerGroup(ctx context.Context, id string, cdef metadata.ClusterDefinition) (*p2plab.PeerGroup, error) {
+func (p *provider) CreateNodeGroup(ctx context.Context, id string, cdef metadata.ClusterDefinition) (*p2plab.NodeGroup, error) {
+	log.Debug().Str("id", id).Msg("Preparing cluster directory")
 	clusterDir, err := p.prepareClusterDir(id)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to prepare cluster directory")
 	}
 
+	log.Debug().Str("id", id).Str("dir", clusterDir).Msg("Executing tfvars template")
 	err = p.executeTfvarsTemplate(id, cdef)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to execute tfvars template")
 	}
 
+	log.Debug().Str("id", id).Str("dir", clusterDir).Msg("Creating terraform handler")
 	t, err := NewTerraform(ctx, clusterDir)
-	if err != nil {
-		return nil, err
+	if err != nil { 
+		return nil, errors.Wrap(err, "failed to create terraform handler")
 	}
 	p.terraformById[id] = t
 
-	// addrs, err := t.Apply(ctx)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	pg := &p2plab.PeerGroup{ID: id}
-	// for _, addr := range addrs {
-	// 	pg.Peers = append(pg.Peers, labagent.NewClient(addr))
-	// }
-
-	return pg, nil
-}
-
-func (p *provider) DestroyPeerGroup(ctx context.Context, pg *p2plab.PeerGroup) error {
-	t, ok := p.terraformById[pg.ID]
-	if !ok {
-		return errors.Wrapf(errdefs.ErrNotFound, "terraform not found for %q", pg.ID)
+	log.Debug().Str("id", id).Str("dir", clusterDir).Msg("Terraform applying")
+	ns, err := t.Apply(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to terraform destroy")
 	}
 
+	return &p2plab.NodeGroup{
+		ID:    id,
+		Nodes: ns,
+	}, nil
+}
+
+func (p *provider) DestroyNodeGroup(ctx context.Context, ng *p2plab.NodeGroup) error {
+	t, ok := p.terraformById[ng.ID]
+	if !ok {
+		log.Debug().Str("id", ng.ID).Msg("Creating terraform handler")
+		var err error
+		clusterDir := filepath.Join(p.root, ng.ID, "terraform")
+		t, err = NewTerraform(ctx, clusterDir)
+		if err != nil {
+			return errors.Wrap(err, "failed to create terraform handler")
+		}
+		p.terraformById[ng.ID] = t
+	}
+
+	log.Debug().Str("id", ng.ID).Msg("Terraform destroying")
 	err := t.Destroy(ctx)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to terraform destroy")
 	}
 	defer t.Close()
 
-	delete(p.terraformById, pg.ID)
-	return p.destroyClusterDir(pg.ID)
+	delete(p.terraformById, ng.ID)
+	log.Debug().Str("id", ng.ID).Msg("Removing cluster directory")
+	err = p.destroyClusterDir(ng.ID)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove cluster directory")
+	}
+
+	return nil
 }
 
 func (p *provider) prepareClusterDir(id string) (clusterDir string, err error) {
@@ -143,7 +171,17 @@ func (p *provider) prepareClusterDir(id string) (clusterDir string, err error) {
 		"modules/labagent/outputs.tf",
 		"modules/labagent/variables.tf",
 	} {
-		err = os.Symlink(filepath.Join(terraformDir, p), filepath.Join(clusterDir, p))
+		dst, err := filepath.Abs(filepath.Join(terraformDir, p))
+		if err != nil {
+			return clusterDir, err
+		}
+
+		src, err := filepath.Abs(filepath.Join(clusterDir, p))
+		if err != nil {
+			return clusterDir, err
+		}
+
+		err = os.Symlink(dst, src)
 		if err != nil {
 			return clusterDir, err
 		}
@@ -178,13 +216,16 @@ func (p *provider) destroyClusterDir(id string) error {
 func (p *provider) executeTfvarsTemplate(id string, cdef metadata.ClusterDefinition) error {
 	vars := ClusterVars{ID: id}
 
-	clusterGroupsByRegion := make(map[string]*RegionalClusterGroup)
+	clusterGroupsByRegion := map[string]*RegionalClusterGroup{
+		"us-west-2": &RegionalClusterGroup{Region: "us-west-2"},
+		"us-east-1": &RegionalClusterGroup{Region: "us-east-1"},
+		"eu-west-1": &RegionalClusterGroup{Region: "eu-west-1"},
+	}
+
 	for _, group := range cdef.Groups {
 		rcg, ok := clusterGroupsByRegion[group.Region]
 		if !ok {
-			rcg = &RegionalClusterGroup{
-				Region: group.Region,
-			}
+			return errors.Wrapf(errdefs.ErrInvalidArgument, "unsupported region %q", group.Region)
 		}
 
 		rcg.Groups = append(rcg.Groups, group)
@@ -192,10 +233,10 @@ func (p *provider) executeTfvarsTemplate(id string, cdef metadata.ClusterDefinit
 	}
 
 	for _, rcg := range clusterGroupsByRegion {
-		vars.ClusterGroupsByRegion = append(vars.ClusterGroupsByRegion, *rcg)
+		vars.RegionalClusterGroups = append(vars.RegionalClusterGroups, *rcg)
 	}
-	sort.SliceStable(vars.ClusterGroupsByRegion, func(i, j int) bool {
-		return vars.ClusterGroupsByRegion[i].Region < vars.ClusterGroupsByRegion[j].Region
+	sort.SliceStable(vars.RegionalClusterGroups, func(i, j int) bool {
+		return vars.RegionalClusterGroups[i].Region < vars.RegionalClusterGroups[j].Region
 	})
 
 	tfvarsPath := filepath.Join(p.root, id, "terraform/terraform.tfvars")

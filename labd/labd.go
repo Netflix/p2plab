@@ -17,24 +17,34 @@ package labd
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/nodes"
+	"github.com/Netflix/p2plab/peer"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/Netflix/p2plab/providers"
 	"github.com/Netflix/p2plab/query"
 	"github.com/Netflix/p2plab/scenarios"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	bolt "go.etcd.io/bbolt"
+	"golang.org/x/sync/errgroup"
 )
 
 type Labd struct {
-	root   string
-	addr   string
-	db     *metadata.DB
-	router *mux.Router
+	root     string
+	addr     string
+	db       *metadata.DB
+	router   *mux.Router
+	seeder   *peer.Peer
+	provider p2plab.NodeProvider
 }
 
 func New(root, addr string) (*Labd, error) {
@@ -43,11 +53,18 @@ func New(root, addr string) (*Labd, error) {
 		return nil, err
 	}
 
+	provider, err := providers.GetNodeProvider(filepath.Join(root, "clusters"), "terraform")
+	if err != nil {
+		return nil, err
+	}
+
 	r := mux.NewRouter().UseEncodedPath().StrictSlash(true)
 	d := &Labd{
-		addr:   addr,
-		db:     db,
-		router: r,
+		root:     root,
+		addr:     addr,
+		db:       db,
+		router:   r,
+		provider: provider,
 	}
 	d.registerRoutes(r)
 
@@ -55,12 +72,17 @@ func New(root, addr string) (*Labd, error) {
 }
 
 func (d *Labd) Serve(ctx context.Context) error {
+	var err error
+	d.seeder, err = peer.New(ctx, filepath.Join(d.root, "seeder"))
+	if err != nil {
+		return errors.Wrap(err, "failed to create seeder peer")
+	}
+
 	log.Info().Msgf("labd listening on %s", d.addr)
 	s := &http.Server{
 		Handler:      d.router,
 		Addr:         d.addr,
 		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
 	}
 	return s.ListenAndServe()
 }
@@ -133,12 +155,95 @@ func (d *Labd) listClusterHandler(w http.ResponseWriter, r *http.Request) error 
 func (d *Labd) createClusterHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("cluster/create")
 
-	cluster, err := d.db.CreateCluster(r.Context(), metadata.Cluster{ID: r.FormValue("id")})
+	var cdef metadata.ClusterDefinition
+	err := json.NewDecoder(r.Body).Decode(&cdef)
 	if err != nil {
 		return err
 	}
 
-	_, err = d.db.CreateNode(r.Context(), cluster.ID, metadata.Node{ID: "node-1", Address: "http://localhost:7002"})
+	ctx := r.Context()
+	id := r.FormValue("id")
+	cluster, err := d.db.CreateCluster(ctx, metadata.Cluster{
+		ID:         id,
+		Status:     metadata.ClusterCreating,
+		Definition: cdef,
+	})
+	if err != nil {
+		return err
+	}
+
+	ng, err := d.provider.CreateNodeGroup(ctx, id, cdef)
+	if err != nil {
+		return err
+	}
+
+	var mns []metadata.Node
+	cluster.Status = metadata.ClusterConnecting
+	err = d.db.Update(ctx, func(tx *bolt.Tx) error {
+		ctx = metadata.WithTransactionContext(ctx, tx)
+
+		var err error
+		cluster, err = d.db.UpdateCluster(ctx, cluster)
+		if err != nil {
+			return err
+		}
+
+		mns, err = d.db.CreateNodes(ctx, cluster.ID, ng.Nodes)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	var ns []p2plab.Node
+	for _, n := range mns {
+		ns = append(ns, newNode(nil, n))
+	}
+
+	peerAddrs := make([]string, len(ns))
+	collectPeerAddrs, ctx := errgroup.WithContext(ctx)
+	for i, n := range ns {
+		collectPeerAddrs.Go(func() error {
+			peerInfo, err := n.PeerInfo(ctx)
+			if err != nil {
+				return err
+			}
+
+			if len(peerInfo.Addrs) == 0 {
+				return errors.Errorf("peer %q has zero addresses", n.Metadata().Address)
+			}
+
+			peerAddrs[i] = fmt.Sprintf("%s/p2p/%s", peerInfo.Addrs[0], peerInfo.ID)
+			return nil
+		})
+	}
+
+	err = collectPeerAddrs.Wait()
+	if err != nil {
+		return err
+	}
+
+	connectPeers, ctx := errgroup.WithContext(ctx)
+	for _, n := range ns {
+		connectPeers.Go(func() error {
+			return n.Run(ctx, metadata.Task{
+				Type:    metadata.TaskConnect,
+				Subject: strings.Join(peerAddrs, ","),
+			})
+		})
+	}
+
+	err = connectPeers.Wait()
+	if err != nil {
+		return err
+	}
+
+	cluster.Status = metadata.ClusterCreated
+	cluster, err = d.db.UpdateCluster(ctx, cluster)
 	if err != nil {
 		return err
 	}
@@ -176,11 +281,43 @@ func (d *Labd) deleteClusterHandler(w http.ResponseWriter, r *http.Request) erro
 	log.Info().Msg("cluster/delete")
 
 	vars := mux.Vars(r)
-	err := d.db.DeleteCluster(r.Context(), vars["cluster"])
+	ctx := r.Context()
+	id := vars["cluster"]
+
+	cluster, err := d.db.GetCluster(ctx, id)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to get cluster %q", id)
 	}
 
+	if cluster.Status != metadata.ClusterDestroying {
+		cluster.Status = metadata.ClusterDestroying
+		cluster, err = d.db.UpdateCluster(ctx, cluster)
+		if err != nil {
+			return errors.Wrap(err, "failed to update cluster status to destroying")
+		}
+	}
+
+	ns, err := d.db.ListNodes(ctx, cluster.ID)
+	if err != nil {
+		return errors.Wrap(err, "failed to list nodes")
+	}
+
+	ng := &p2plab.NodeGroup{
+		ID:    cluster.ID,
+		Nodes: ns,
+	}
+
+	err = d.provider.DestroyNodeGroup(ctx, ng)
+	if err != nil {
+		return errors.Wrap(err, "failed to destroy node group")
+	}
+
+	err = d.db.DeleteCluster(ctx, cluster.ID)
+	if err != nil {
+		return errors.Wrap(err, "failed to delete cluster metadata")
+	}
+
+	log.Info().Msg("Destroyed cluster")
 	return nil
 }
 
@@ -367,13 +504,21 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 		nset.Add(&node{metadata: n})
 	}
 
-	plan, err := scenarios.Plan(ctx, nil, nset, scenario.Definition)
+	uuid := time.Now().Format(time.RFC3339Nano)
+	benchmarkDir := filepath.Join(d.root, "benchmarks", uuid, "seeder")
+
+	seeder, err := peer.New(ctx, benchmarkDir)
+	if err != nil {
+		return err
+	}
+
+	plan, err := scenarios.Plan(ctx, seeder, nset, scenario.Definition)
 	if err != nil {
 		return err
 	}
 
 	benchmark := metadata.Benchmark{
-		ID:       time.Now().Format(time.RFC3339Nano),
+		ID:       uuid,
 		Cluster:  cluster,
 		Scenario: scenario,
 		Plan:     plan,
@@ -385,7 +530,10 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 	}
 
 	go func() {
-		err = scenarios.Run(ctx, nset, plan)
+		seederID := string(d.seeder.Host.ID())
+		seederAddr := fmt.Sprintf("%s/p2p/%s", d.seeder.Host.Addrs()[0].String(), seederID)
+
+		err = scenarios.Run(ctx, nset, plan, seederID, seederAddr)
 		if err != nil {
 			log.Warn().Msgf("failed to run benchmark %q: %s", benchmark.ID, err)
 		}

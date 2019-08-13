@@ -41,6 +41,7 @@ import (
 	ufsio "github.com/ipfs/go-unixfs/io"
 	libp2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-core/host"
+	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	mplex "github.com/libp2p/go-libp2p-mplex"
@@ -50,6 +51,7 @@ import (
 	multihash "github.com/multiformats/go-multihash"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 )
 
 func init() {
@@ -123,6 +125,28 @@ func New(ctx context.Context, root string) (*Peer, error) {
 		Blockstore:     bs,
 		Batching:       ds,
 	}, nil
+}
+
+func (p *Peer) Connect(ctx context.Context, infos []libp2ppeer.AddrInfo) error {
+	g, ctx := errgroup.WithContext(ctx)
+	for _, info := range infos {
+		g.Go(func() error {
+			return p.Host.Connect(ctx, info)
+		})
+	}
+
+	return g.Wait()
+}
+
+func (p *Peer) Disconnect(ctx context.Context, ids []libp2ppeer.ID) error {
+	g, ctx := errgroup.WithContext(ctx)
+	for _, id := range ids {
+		g.Go(func() error {
+			return p.Host.Network().ClosePeer(id)
+		})
+	}
+
+	return g.Wait()
 }
 
 // Add chunks and adds content to the DAGService from a reader. The content
@@ -213,7 +237,7 @@ func NewLibp2pPeer(ctx context.Context) (host.Host, routing.ContentRouting, erro
 	security := libp2p.Security(secio.ID, secio.New)
 
 	listenAddrs := libp2p.ListenAddrStrings(
-		"/ip4/0.0.0.0/tcp/0",
+		"/ip4/0.0.0.0/tcp/4001",
 	)
 
 	var dht *kaddht.IpfsDHT

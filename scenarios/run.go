@@ -24,7 +24,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func Run(ctx context.Context, nset p2plab.NodeSet, plan metadata.ScenarioPlan) error {
+func Run(ctx context.Context, nset p2plab.NodeSet, plan metadata.ScenarioPlan, seederID, seederAddr string) error {
 	seed, ctx := errgroup.WithContext(ctx)
 	for id, task := range plan.Seed {
 		seed.Go(func() error {
@@ -33,13 +33,35 @@ func Run(ctx context.Context, nset p2plab.NodeSet, plan metadata.ScenarioPlan) e
 				return errors.Wrapf(errdefs.ErrNotFound, "could not find node %q in node set", id)
 			}
 
-			return n.Run(ctx, task)
+			err := n.Run(ctx, metadata.Task{
+				Type:    metadata.TaskConnect,
+				Subject: seederAddr,
+			})
+			if err != nil {
+				return errors.Wrap(err, "failed to connect to seeding peer")
+			}
+
+			err = n.Run(ctx, task)
+			if err != nil {
+				return errors.Wrap(err, "failed to run seeding task")
+			}
+
+			err = n.Run(ctx, metadata.Task{
+				Type:    metadata.TaskDisconnect,
+				Subject: seederID,
+			})
+			if err != nil {
+				return errors.Wrap(err, "failed to disconnect from seeding peer")
+			}
+
+			return nil
 		})
 	}
 	err := seed.Wait()
 	if err != nil {
 		return err
 	}
+
 
 	benchmark, ctx := errgroup.WithContext(ctx)
 	for id, task := range plan.Benchmark {

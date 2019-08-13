@@ -34,7 +34,7 @@ var (
 	bucketKeySeed      = []byte("seed")
 	bucketKeyBenchmark = []byte("benchmark")
 	bucketKeyType      = []byte("type")
-	bucketKeySource = []byte("source")
+	bucketKeySource    = []byte("source")
 
 	// Node buckets.
 	bucketKeyAddress = []byte("address")
@@ -47,6 +47,7 @@ var (
 
 	// Common buckets.
 	bucketKeyID         = []byte("id")
+	bucketKeyStatus     = []byte("status")
 	bucketKeyLabels     = []byte("labels")
 	bucketKeyCreatedAt  = []byte("createdAt")
 	bucketKeyUpdatedAt  = []byte("updatedAt")

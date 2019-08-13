@@ -27,7 +27,7 @@ type client struct {
 	base       string
 }
 
-func NewClient(addr string) p2plab.LabdAPI {
+func NewClient(addr string) p2plab.ControlAPI {
 	return &client{
 		httpClient: &http.Client{
 			Transport: &http.Transport{

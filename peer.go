@@ -18,24 +18,17 @@ import (
 	"context"
 	"io"
 
-	"github.com/Netflix/p2plab/metadata"
 	cid "github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	ufsio "github.com/ipfs/go-unixfs/io"
+	"github.com/libp2p/go-libp2p-core/peer"
 )
 
-type PeerProvider interface {
-	CreatePeerGroup(ctx context.Context, id string, cdef metadata.ClusterDefinition) (*PeerGroup, error)
-
-	DestroyPeerGroup(ctx context.Context, pg *PeerGroup) error
-}
-
-type PeerGroup struct {
-	ID    string
-	Peers []Peer
-}
-
 type Peer interface {
+	Connect(ctx context.Context, infos []peer.AddrInfo) error
+
+	Disconnect(ctx context.Context, ids []peer.ID) error
+
 	Add(ctx context.Context, r io.Reader, opts ...AddOption) (ipld.Node, error)
 
 	Get(ctx context.Context, c cid.Cid) (ufsio.ReadSeekCloser, error)

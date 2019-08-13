@@ -48,29 +48,6 @@ type Benchmark interface {
 	Logs(ctx context.Context, opt ...LogsOption) (io.ReadCloser, error)
 }
 
-// BenchmarkStatus is the current status of a benchmark.
-type BenchmarkStatus string
-
-var (
-	// BenchmarkInit indicates that the benchmark is initializing and converting
-	// objects used in the benchmark.
-	BenchmarkInit BenchmarkStatus = "init"
-
-	// BenchmarkSeeding indicates that the benchmark is seeding the cluster with
-	// the initial objects.
-	BenchmarkSeeding BenchmarkStatus = "seeding"
-
-	// BenchmarkRunning indicates that the benchmark is executing and metrics are
-	// being collected.
-	BenchmarkRunning BenchmarkStatus = "running"
-
-	// BenchmarkDone indicates the benchmark has executed to completion.
-	BenchmarkDone BenchmarkStatus = "done"
-
-	// BenchmarkError indicates the benchmark has exited with an error.
-	BenchmarkError BenchmarkStatus = "error"
-)
-
 // Report is a benchmark summary on how the P2P application behaved during the
 // benchmark.
 type Report interface {

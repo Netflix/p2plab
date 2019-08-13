@@ -17,11 +17,15 @@ package terraform
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"sort"
 
 	"github.com/Netflix/p2plab/errdefs"
+	"github.com/Netflix/p2plab/metadata"
 	"github.com/pkg/errors"
 )
 
@@ -30,8 +34,17 @@ type Terraform struct {
 	leaseCh chan struct{}
 }
 
+type Output struct {
+	InstancesByRegion map[string]Instances
+}
+
+type Instances struct {
+	IDs        []string `json:"ids"`
+	PrivateIPs []string `json:"private_ips"`
+}
+
 func NewTerraform(ctx context.Context, root string) (*Terraform, error) {
-	leaseCh := make(chan struct{})
+	leaseCh := make(chan struct{}, 1)
 	leaseCh <- struct{}{}
 
 	t := &Terraform{
@@ -47,34 +60,79 @@ func NewTerraform(ctx context.Context, root string) (*Terraform, error) {
 	return t, nil
 }
 
-func (t *Terraform) Apply(ctx context.Context) ([]string, error) {
-	lease, ok := <-t.leaseCh
-	if !ok {
-		return nil, errors.Wrapf(errdefs.ErrUnavailable, "terraform operation already in progress")
-	}
-	defer func() {
-		t.leaseCh <- lease
-	}()
-
-	stdout, stderr := new(bytes.Buffer), new(bytes.Buffer)
-	err := t.terraformWithStdio(ctx, stdout, stderr, "apply")
+func (t *Terraform) Apply(ctx context.Context) ([]metadata.Node, error) {
+	err := t.acquireLease()
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		t.leaseCh <- struct{}{}
+	}()
 
-	return nil, nil
+	err = t.terraform(ctx, "apply", "-auto-approve")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to auto-approve apply templates")
+	}
+
+	stdout := new(bytes.Buffer)
+	err = t.terraformWithStdio(ctx, stdout, ioutil.Discard, "output", "-json")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to execute json output")
+	}
+
+	var output Output
+	err = json.NewDecoder(stdout).Decode(&output)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to decode json output")
+	}
+
+	var regions []string
+	for region := range output.InstancesByRegion {
+		regions = append(regions, region)
+	}
+	sort.Strings(regions)
+
+	var nodes []metadata.Node
+	for _, region := range regions {
+		instances := output.InstancesByRegion[region]
+
+		if len(instances.IDs) != len(instances.PrivateIPs) {
+			return nil, errors.Errorf("number of instance ids (%d) don't match number of private ips (%d)", len(instances.IDs), len(instances.PrivateIPs))
+		}
+
+		for i := 0; i < len(instances.IDs); i++ {
+			nodes = append(nodes, metadata.Node{
+				ID:      instances.IDs[i],
+				Address: instances.PrivateIPs[i],
+			})
+		}
+	}
+
+	return nodes, nil
 }
 
 func (t *Terraform) Destroy(ctx context.Context) error {
-	lease, ok := <-t.leaseCh
-	if !ok {
-		return errors.Wrapf(errdefs.ErrUnavailable, "terraform operation already in progress")
+	err := t.acquireLease()
+	if err != nil {
+		return err
 	}
 	defer func() {
-		t.leaseCh <- lease
+		t.leaseCh <- struct{}{}
 	}()
 
-	return t.terraform(ctx, "destroy")
+	return t.terraform(ctx, "destroy", "-auto-approve")
+}
+
+func (t *Terraform) acquireLease() error {
+	select {
+	case _, ok := <-t.leaseCh:
+		if !ok {
+			return errors.Wrapf(errdefs.ErrUnavailable, "terraform handler leases chan already closed")
+		}
+		return nil
+	default:
+		return errors.Wrapf(errdefs.ErrUnavailable, "terraform operation already in progress")
+	}
 }
 
 func (t *Terraform) Close() {
@@ -88,6 +146,7 @@ func (t *Terraform) terraform(ctx context.Context, args ...string) error {
 func (t *Terraform) terraformWithStdio(ctx context.Context, stdout, stderr io.Writer, args ...string) error {
 	cmd := exec.CommandContext(ctx, "terraform", args...)
 	cmd.Dir = t.root
+	cmd.Stdin = nil
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	return cmd.Run()

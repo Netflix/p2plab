@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -82,19 +83,19 @@ func (r *Request) Body(value interface{}) *Request {
 func (r *Request) Send(ctx context.Context) (*http.Response, error) {
 	req, err := http.NewRequest(r.Method, r.url(), r.body)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create new http request")
 	}
 
 	// dump, err := httputil.DumpRequest(req, false)
 	// if err != nil {
 	// 	return nil, err
 	// }
-	// log.Debug().Msgf("dump:\n%s", string(dump))
+	// fmt.Printf("dump:\n%s\n", string(dump))
 
 	req = req.WithContext(ctx)
 	resp, err := r.Client.Do(req)
 	if err != nil {
-		return resp, err
+		return resp, errors.Wrap(err, "failed to do http request")
 	}
 
 	if resp.StatusCode >= http.StatusBadRequest {
@@ -104,7 +105,7 @@ func (r *Request) Send(ctx context.Context) (*http.Response, error) {
 			log.Error().Msgf("failed to read body: %s", err)
 		}
 
-		return nil, fmt.Errorf("got bad status [%d]: %s", resp.StatusCode, body)
+		return nil, errors.Errorf("got bad status [%d]: %s", resp.StatusCode, body)
 	}
 
 	return resp, nil

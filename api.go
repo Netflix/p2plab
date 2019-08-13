@@ -14,8 +14,8 @@
 
 package p2plab
 
-// Labd defines APIs for labd.
-type LabdAPI interface {
+// ControlAPI defines APIs for labd.
+type ControlAPI interface {
 	// Cluster returns an implementaiton of Cluster API.
 	Cluster() ClusterAPI
 

@@ -20,7 +20,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-func ResolveClient(c *cli.Context) (p2plab.LabdAPI, error) {
+func ResolveClient(c *cli.Context) (p2plab.ControlAPI, error) {
 	cln := labd.NewClient(c.GlobalString("address"))
 	// TODO: healthcheck
 	return cln, nil

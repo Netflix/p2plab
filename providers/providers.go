@@ -20,11 +20,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-func GetPeerProvider(providerType, root string) (p2plab.PeerProvider, error) {
+func GetNodeProvider(root, providerType string) (p2plab.NodeProvider, error) {
 	switch providerType {
 	case "terraform":
 		return terraform.New(root)
 	default:
-		return nil, errors.Errorf("unrecognized peer provider type: %q", providerType)
+		return nil, errors.Errorf("unrecognized node provider type: %q", providerType)
 	}
 }

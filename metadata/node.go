@@ -36,7 +36,7 @@ type Node struct {
 func (m *DB) GetNode(ctx context.Context, cluster, id string) (Node, error) {
 	var node Node
 
-	err := m.View(func(tx *bolt.Tx) error {
+	err := m.View(ctx, func(tx *bolt.Tx) error {
 		bkt := getNodesBucket(tx, cluster)
 		if bkt == nil {
 			return errors.Wrapf(errdefs.ErrNotFound, "node %q", id)
@@ -64,7 +64,7 @@ func (m *DB) GetNode(ctx context.Context, cluster, id string) (Node, error) {
 
 func (m *DB) ListNodes(ctx context.Context, cluster string) ([]Node, error) {
 	var nodes []Node
-	err := m.View(func(tx *bolt.Tx) error {
+	err := m.View(ctx, func(tx *bolt.Tx) error {
 		bkt := getNodesBucket(tx, cluster)
 		if bkt == nil {
 			return nil
@@ -95,34 +95,57 @@ func (m *DB) ListNodes(ctx context.Context, cluster string) ([]Node, error) {
 }
 
 func (m *DB) CreateNode(ctx context.Context, cluster string, node Node) (Node, error) {
-	err := m.Update(func(tx *bolt.Tx) error {
+	nodes, err := m.CreateNodes(ctx, cluster, []Node{node})
+	if err != nil {
+		return Node{}, err
+	}
+
+	if len(nodes) != 1 {
+		return Node{}, errors.New("failed to retrieve created node")
+	}
+
+	return nodes[0], nil
+}
+
+func (m *DB) CreateNodes(ctx context.Context, cluster string, nodes []Node) ([]Node, error) {
+	err := m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt, err := createNodesBucket(tx, cluster)
 		if err != nil {
 			return err
 		}
 
-		cbkt, err := bkt.CreateBucket([]byte(node.ID))
-		if err != nil {
-			if err != bolt.ErrBucketExists {
+		for i, node := range nodes {
+			cbkt, err := bkt.CreateBucket([]byte(node.ID))
+			if err != nil {
+				if err != bolt.ErrBucketExists {
+					return err
+				}
+
+				return errors.Wrapf(errdefs.ErrAlreadyExists, "node %q", node.ID)
+			}
+
+			node.CreatedAt = time.Now().UTC()
+			node.UpdatedAt = node.CreatedAt
+			err = writeNode(cbkt, &node)
+			if err != nil {
 				return err
 			}
 
-			return errors.Wrapf(errdefs.ErrAlreadyExists, "node %q", node.ID)
+			nodes[i] = node
 		}
 
-		node.CreatedAt = time.Now().UTC()
-		node.UpdatedAt = node.CreatedAt
-		return writeNode(cbkt, &node)
+		return nil
+
 	})
 	if err != nil {
-		return Node{}, err
+		return nil, err
 	}
-	return node, err
+	return nodes, err
 }
 
 func (m *DB) LabelNodes(ctx context.Context, cluster string, ids, addLabels, removeLabels []string) ([]Node, error) {
 	var nodes []Node
-	err := m.Update(func(tx *bolt.Tx) error {
+	err := m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt, err := createNodesBucket(tx, cluster)
 		if err != nil {
 			return err
@@ -160,7 +183,7 @@ func (m *DB) LabelNodes(ctx context.Context, cluster string, ids, addLabels, rem
 }
 
 func (m *DB) DeleteNode(ctx context.Context, cluster, id string) error {
-	return m.Update(func(tx *bolt.Tx) error {
+	return m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt := getNodesBucket(tx, cluster)
 		if bkt == nil {
 			return errors.Wrapf(errdefs.ErrNotFound, "node %q", id)

@@ -21,6 +21,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Netflix/p2plab/errdefs"
@@ -29,6 +30,9 @@ import (
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/gorilla/mux"
 	cid "github.com/ipfs/go-cid"
+	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	multiaddr "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -55,7 +59,7 @@ func (a *LabApp) Serve(ctx context.Context) error {
 	var err error
 	a.peer, err = peer.New(ctx, a.root)
 	if err != nil {
-		return errors.Wrap(err, "failed to create peer peer")
+		return errors.Wrap(err, "failed to create peer")
 	}
 
 	var addrs []string
@@ -68,7 +72,6 @@ func (a *LabApp) Serve(ctx context.Context) error {
 		Handler:      a.router,
 		Addr:         a.addr,
 		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
 	}
 	log.Info().Msgf("labapp listening on %s", a.addr)
 
@@ -77,7 +80,16 @@ func (a *LabApp) Serve(ctx context.Context) error {
 
 func (a *LabApp) registerRoutes(r *mux.Router) {
 	api := r.PathPrefix("/api/v0").Subrouter()
+	api.Handle("/peerInfo", httputil.ErrorHandler{a.peerInfoHandler}).Methods("GET")
 	api.Handle("/run", httputil.ErrorHandler{a.runHandler}).Methods("POST")
+}
+
+func (a *LabApp) peerInfoHandler(w http.ResponseWriter, r *http.Request) error {
+	peerInfo := peerstore.PeerInfo{
+		ID:    a.peer.Host.ID(),
+		Addrs: a.peer.Host.Addrs(),
+	}
+	return httputil.WriteJSON(w, &peerInfo)
 }
 
 func (a *LabApp) runHandler(w http.ResponseWriter, r *http.Request) error {
@@ -89,9 +101,21 @@ func (a *LabApp) runHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	ctx := r.Context()
 	switch task.Type {
 	case metadata.TaskGet:
-		err = a.getFile(r.Context(), task.Subject)
+		err = a.getFile(ctx, task.Subject)
+	case metadata.TaskConnect:
+		addrs := strings.Split(task.Subject, ",")
+		err = a.connect(ctx, addrs)
+	case metadata.TaskDisconnect:
+		rawIDs := strings.Split(task.Subject, ",")
+		var ids []libp2ppeer.ID
+		for _, id := range rawIDs {
+			ids = append(ids, libp2ppeer.ID(id))
+		}
+
+		err = a.disconnect(ctx, ids)
 	default:
 		return errors.Wrapf(errdefs.ErrInvalidArgument, "unrecognized task type: %q", task.Type)
 	}
@@ -123,4 +147,27 @@ func (a *LabApp) getFile(ctx context.Context, target string) error {
 	}
 
 	return nil
+}
+
+func (a *LabApp) connect(ctx context.Context, addrs []string) error {
+	var infos []libp2ppeer.AddrInfo
+	for _, addr := range addrs {
+		ma, err := multiaddr.NewMultiaddr(addr)
+		if err != nil {
+			return err
+		}
+
+		info, err := libp2ppeer.AddrInfoFromP2pAddr(ma)
+		if err != nil {
+			return err
+		}
+
+		infos = append(infos, *info)
+	}
+
+	return a.peer.Connect(ctx, infos)
+}
+
+func (a *LabApp) disconnect(ctx context.Context, ids []libp2ppeer.ID) error {
+	return a.peer.Disconnect(ctx, ids)
 }

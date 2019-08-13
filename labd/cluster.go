@@ -15,6 +15,7 @@
 package labd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"strings"
@@ -22,6 +23,7 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/nodes"
+	"github.com/pkg/errors"
 )
 
 type clusterAPI struct {
@@ -39,9 +41,24 @@ func (capi *clusterAPI) Create(ctx context.Context, id string, opts ...p2plab.Cr
 		}
 	}
 
+	cdef := metadata.ClusterDefinition{
+		Groups: []metadata.ClusterGroup{
+			{
+				Size:         settings.Size,
+				InstanceType: "t2.micro",
+				Region:       "us-west-2",
+			},
+		},
+	}
+
+	content, err := json.MarshalIndent(&cdef, "", "    ")
+	if err != nil {
+		return nil, err
+	}
+
 	req := capi.cln.NewRequest("POST", "/clusters").
 		Option("id", id).
-		Option("size", settings.Size)
+		Body(bytes.NewReader(content))
 
 	resp, err := req.Send(ctx)
 	if err != nil {
@@ -109,7 +126,7 @@ func (c *cluster) Remove(ctx context.Context) error {
 	req := c.cln.NewRequest("DELETE", "/clusters/%s", c.metadata.ID)
 	resp, err := req.Send(ctx)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to remove cluster %q", c.metadata.ID)
 	}
 	defer resp.Body.Close()
 

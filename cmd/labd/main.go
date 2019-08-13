@@ -26,7 +26,7 @@ func init() {
 	// UNIX Time is faster and smaller than most timestamps. If you set
 	// zerolog.TimeFieldFormat to an empty string, logs will write with UNIX
 	// time.
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
 }
 
 func main() {

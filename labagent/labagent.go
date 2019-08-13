@@ -80,14 +80,29 @@ func (a *LabAgent) Serve(ctx context.Context) error {
 		Handler:      a.router,
 		Addr:         a.addr,
 		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
 	}
+
+	// TODO: remove when S3 update flow is complete
+	err := a.updateApp(ctx, "")
+	if err != nil {
+		return err
+	}
+
 	return s.ListenAndServe()
 }
 
 func (a *LabAgent) registerRoutes(r *mux.Router) {
 	api := r.PathPrefix("/api/v0").Subrouter()
+	api.Handle("/peerInfo", httputil.ErrorHandler{a.runHandler}).Methods("GET")
 	api.Handle("/run", httputil.ErrorHandler{a.runHandler}).Methods("POST")
+}
+
+func (a *LabAgent) peerInfoHandler(w http.ResponseWriter, r *http.Request) error {
+	peerInfo, err := a.appClient.PeerInfo(r.Context())
+	if err != nil {
+		return err
+	}
+	return httputil.WriteJSON(w, &peerInfo)
 }
 
 func (a *LabAgent) runHandler(w http.ResponseWriter, r *http.Request) error {
@@ -107,7 +122,7 @@ func (a *LabAgent) runHandler(w http.ResponseWriter, r *http.Request) error {
 			resp.Err = err.Error()
 		}
 		return httputil.WriteJSON(w, &resp)
-	case metadata.TaskGet:
+	case metadata.TaskGet, metadata.TaskConnect:
 		if a.appCancel == nil {
 			return errors.Wrapf(errdefs.ErrInvalidArgument, "no labapp currently running")
 		}

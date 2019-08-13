@@ -27,6 +27,8 @@ import (
 type Benchmark struct {
 	ID string
 
+	Status BenchmarkStatus
+
 	Cluster  Cluster
 	Scenario Scenario
 	Plan     ScenarioPlan
@@ -35,6 +37,21 @@ type Benchmark struct {
 
 	CreatedAt, UpdatedAt time.Time
 }
+
+// BenchmarkStatus is the current status of a benchmark.
+type BenchmarkStatus string
+
+var (
+	BenchmarkTransforming BenchmarkStatus = "transforming"
+
+	BenchmarkSeeding BenchmarkStatus = "seeding"
+
+	BenchmarkBenchmarking BenchmarkStatus = "benchmarking"
+
+	BenchmarkDone BenchmarkStatus = "done"
+
+	BenchmarkError BenchmarkStatus = "error"
+)
 
 type ScenarioPlan struct {
 	Objects map[string]cid.Cid
@@ -45,7 +62,7 @@ type ScenarioPlan struct {
 }
 
 type Task struct {
-	Type    TaskType
+	Type TaskType
 
 	Subject string
 }
@@ -53,14 +70,16 @@ type Task struct {
 type TaskType string
 
 var (
-	TaskUpdate TaskType = "update"
-	TaskGet    TaskType = "get"
+	TaskUpdate     TaskType = "update"
+	TaskGet        TaskType = "get"
+	TaskConnect    TaskType = "connect"
+	TaskDisconnect TaskType = "disconnect"
 )
 
 func (m *DB) GetBenchmark(ctx context.Context, id string) (Benchmark, error) {
 	var benchmark Benchmark
 
-	err := m.View(func(tx *bolt.Tx) error {
+	err := m.View(ctx, func(tx *bolt.Tx) error {
 		bkt := getBenchmarksBucket(tx)
 		if bkt == nil {
 			return errors.Wrapf(errdefs.ErrNotFound, "benchmark %q", id)
@@ -88,7 +107,7 @@ func (m *DB) GetBenchmark(ctx context.Context, id string) (Benchmark, error) {
 
 func (m *DB) ListBenchmarks(ctx context.Context) ([]Benchmark, error) {
 	var benchmarks []Benchmark
-	err := m.View(func(tx *bolt.Tx) error {
+	err := m.View(ctx, func(tx *bolt.Tx) error {
 		bkt := getBenchmarksBucket(tx)
 		if bkt == nil {
 			return nil
@@ -119,7 +138,7 @@ func (m *DB) ListBenchmarks(ctx context.Context) ([]Benchmark, error) {
 }
 
 func (m *DB) CreateBenchmark(ctx context.Context, benchmark Benchmark) (Benchmark, error) {
-	err := m.Update(func(tx *bolt.Tx) error {
+	err := m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt, err := createBenchmarksBucket(tx)
 		if err != nil {
 			return err
@@ -149,7 +168,7 @@ func (m *DB) UpdateBenchmark(ctx context.Context, benchmark Benchmark) (Benchmar
 		return Benchmark{}, errors.Wrapf(errdefs.ErrInvalidArgument, "benchmark id required for update")
 	}
 
-	err := m.Update(func(tx *bolt.Tx) error {
+	err := m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt, err := createBenchmarksBucket(tx)
 		if err != nil {
 			return err
@@ -171,7 +190,7 @@ func (m *DB) UpdateBenchmark(ctx context.Context, benchmark Benchmark) (Benchmar
 }
 
 func (m *DB) DeleteBenchmark(ctx context.Context, id string) error {
-	return m.Update(func(tx *bolt.Tx) error {
+	return m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt := getBenchmarksBucket(tx)
 		if bkt == nil {
 			return errors.Wrapf(errdefs.ErrNotFound, "benchmark %q", id)
@@ -223,6 +242,8 @@ func readBenchmark(bkt *bolt.Bucket, benchmark *Benchmark) error {
 		switch string(k) {
 		case string(bucketKeyID):
 			benchmark.ID = string(v)
+		case string(bucketKeyStatus):
+			benchmark.Status = BenchmarkStatus(v)
 		}
 
 		return nil
@@ -358,6 +379,7 @@ func writeBenchmark(bkt *bolt.Bucket, benchmark *Benchmark) error {
 
 	for _, f := range []field{
 		{bucketKeyID, []byte(benchmark.ID)},
+		{bucketKeyStatus, []byte(benchmark.Status)},
 	} {
 		err = bkt.Put(f.key, f.value)
 		if err != nil {

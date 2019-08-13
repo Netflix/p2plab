@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/Netflix/p2plab/metadata"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
 )
 
 // NodeAPI defines the API for node operations.
@@ -28,14 +29,30 @@ type NodeAPI interface {
 
 // Node is an instance running the P2P application to be benchmarked.
 type Node interface {
+	Agent
+
 	Metadata() metadata.Node
+}
+
+type Agent interface {
+	PeerInfo(ctx context.Context) (peerstore.PeerInfo, error)
 
 	// SSH creates a SSH connection to the node.
 	SSH(ctx context.Context, opts ...SSHOption) error
 
-	// Run executes an task on the node and returns a channel that recieves
-	// progress events on the completion of the task.
+	// Run executes an task on the node.
 	Run(ctx context.Context, task metadata.Task) error
+}
+
+type NodeProvider interface {
+	CreateNodeGroup(ctx context.Context, id string, cdef metadata.ClusterDefinition) (*NodeGroup, error)
+
+	DestroyNodeGroup(ctx context.Context, ng *NodeGroup) error
+}
+
+type NodeGroup struct {
+	ID    string
+	Nodes []metadata.Node
 }
 
 // NodeSet is a group of unique nodes.
