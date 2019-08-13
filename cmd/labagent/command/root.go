@@ -44,9 +44,9 @@ func App() *cli.App {
 			Value: "./tmp/labapp",
 		},
 		cli.StringFlag{
-			Name:  "app-address,a",
+			Name:  "app-address",
 			Usage: "address for labapp's HTTP server",
-			Value: ":7002",
+			Value: "http://localhost:7003",
 		},
 		cli.StringFlag{
 			Name:  "log-level,l",

@@ -21,6 +21,7 @@ require (
 	github.com/ipfs/go-ipfs-files v0.0.3
 	github.com/ipfs/go-ipfs-http-client v0.0.2
 	github.com/ipfs/go-ipfs-provider v0.1.0
+	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipfs-util v0.0.1
 	github.com/ipfs/go-ipld-cbor v0.0.2
 	github.com/ipfs/go-ipld-format v0.0.2
@@ -39,6 +40,7 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-routing v0.1.0
 	github.com/libp2p/go-libp2p-secio v0.1.0
+	github.com/libp2p/go-libp2p-swarm v0.1.0
 	github.com/libp2p/go-libp2p-transport v0.0.5 // indirect
 	github.com/libp2p/go-stream-muxer v0.1.0 // indirect
 	github.com/libp2p/go-tcp-transport v0.1.0

@@ -35,7 +35,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	bolt "go.etcd.io/bbolt"
-	"golang.org/x/sync/errgroup"
 )
 
 type Labd struct {
@@ -80,9 +79,9 @@ func (d *Labd) Serve(ctx context.Context) error {
 
 	log.Info().Msgf("labd listening on %s", d.addr)
 	s := &http.Server{
-		Handler:      d.router,
-		Addr:         d.addr,
-		ReadTimeout:  10 * time.Second,
+		Handler:     d.router,
+		Addr:        d.addr,
+		ReadTimeout: 10 * time.Second,
 	}
 	return s.ListenAndServe()
 }
@@ -199,45 +198,12 @@ func (d *Labd) createClusterHandler(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	var ns []p2plab.Node
+	nset := nodes.NewSet()
 	for _, n := range mns {
-		ns = append(ns, newNode(nil, n))
+		nset.Add(newNode(nil, n))
 	}
 
-	peerAddrs := make([]string, len(ns))
-	collectPeerAddrs, ctx := errgroup.WithContext(ctx)
-	for i, n := range ns {
-		collectPeerAddrs.Go(func() error {
-			peerInfo, err := n.PeerInfo(ctx)
-			if err != nil {
-				return err
-			}
-
-			if len(peerInfo.Addrs) == 0 {
-				return errors.Errorf("peer %q has zero addresses", n.Metadata().Address)
-			}
-
-			peerAddrs[i] = fmt.Sprintf("%s/p2p/%s", peerInfo.Addrs[0], peerInfo.ID)
-			return nil
-		})
-	}
-
-	err = collectPeerAddrs.Wait()
-	if err != nil {
-		return err
-	}
-
-	connectPeers, ctx := errgroup.WithContext(ctx)
-	for _, n := range ns {
-		connectPeers.Go(func() error {
-			return n.Run(ctx, metadata.Task{
-				Type:    metadata.TaskConnect,
-				Subject: strings.Join(peerAddrs, ","),
-			})
-		})
-	}
-
-	err = connectPeers.Wait()
+	err = nodes.Connect(ctx, nset)
 	if err != nil {
 		return err
 	}
@@ -494,14 +460,14 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	ns, err := d.db.ListNodes(ctx, cid)
+	mns, err := d.db.ListNodes(ctx, cid)
 	if err != nil {
 		return err
 	}
 
 	nset := nodes.NewSet()
-	for _, n := range ns {
-		nset.Add(&node{metadata: n})
+	for _, n := range mns {
+		nset.Add(newNode(nil, n))
 	}
 
 	uuid := time.Now().Format(time.RFC3339Nano)

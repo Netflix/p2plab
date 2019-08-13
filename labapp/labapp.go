@@ -85,6 +85,7 @@ func (a *LabApp) registerRoutes(r *mux.Router) {
 }
 
 func (a *LabApp) peerInfoHandler(w http.ResponseWriter, r *http.Request) error {
+	log.Info().Msg("labapp/peerInfo")
 	peerInfo := peerstore.PeerInfo{
 		ID:    a.peer.Host.ID(),
 		Addrs: a.peer.Host.Addrs(),
@@ -120,8 +121,9 @@ func (a *LabApp) runHandler(w http.ResponseWriter, r *http.Request) error {
 		return errors.Wrapf(errdefs.ErrInvalidArgument, "unrecognized task type: %q", task.Type)
 	}
 
-	resp := TaskResponse{
-		Err: err.Error(),
+	var resp TaskResponse
+	if err != nil {
+		resp.Err = err.Error()
 	}
 	return httputil.WriteJSON(w, &resp)
 }
@@ -141,11 +143,12 @@ func (a *LabApp) getFile(ctx context.Context, target string) error {
 	buf := new(bytes.Buffer)
 	teeReader := io.TeeReader(r, buf)
 
-	_, err = io.Copy(ioutil.Discard, teeReader)
+	n, err := io.Copy(ioutil.Discard, teeReader)
 	if err != nil {
 		return err
 	}
 
+	log.Info().Str("cid", targetCid.String()).Int64("bytes", n).Msg("Got file from peers")
 	return nil
 }
 
@@ -165,9 +168,20 @@ func (a *LabApp) connect(ctx context.Context, addrs []string) error {
 		infos = append(infos, *info)
 	}
 
-	return a.peer.Connect(ctx, infos)
+	err := a.peer.Connect(ctx, infos)
+	if err != nil {
+		return err
+	}
+
+	log.Info().Int("peers", len(addrs)).Msg("Connected to peers")
+	return nil
 }
 
 func (a *LabApp) disconnect(ctx context.Context, ids []libp2ppeer.ID) error {
-	return a.peer.Disconnect(ctx, ids)
+	err := a.peer.Disconnect(ctx, ids)
+	if err != nil {
+		return err
+	}
+	log.Info().Int("peers", len(ids)).Msg("Disconnected from peers")
+	return nil
 }

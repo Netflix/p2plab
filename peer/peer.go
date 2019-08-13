@@ -32,6 +32,7 @@ import (
 	provider "github.com/ipfs/go-ipfs-provider"
 	"github.com/ipfs/go-ipfs-provider/queue"
 	"github.com/ipfs/go-ipfs-provider/simple"
+	nilrouting "github.com/ipfs/go-ipfs-routing/none"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
@@ -43,9 +44,9 @@ import (
 	host "github.com/libp2p/go-libp2p-core/host"
 	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
-	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	mplex "github.com/libp2p/go-libp2p-mplex"
 	secio "github.com/libp2p/go-libp2p-secio"
+	swarm "github.com/libp2p/go-libp2p-swarm"
 	tcp "github.com/libp2p/go-tcp-transport"
 	ws "github.com/libp2p/go-ws-transport"
 	multihash "github.com/multiformats/go-multihash"
@@ -131,7 +132,11 @@ func (p *Peer) Connect(ctx context.Context, infos []libp2ppeer.AddrInfo) error {
 	g, ctx := errgroup.WithContext(ctx)
 	for _, info := range infos {
 		g.Go(func() error {
-			return p.Host.Connect(ctx, info)
+			err := p.Host.Connect(ctx, info)
+			if err != nil && errors.Cause(err) != swarm.ErrDialToSelf {
+				return err
+			}
+			return nil
 		})
 	}
 
@@ -142,7 +147,13 @@ func (p *Peer) Disconnect(ctx context.Context, ids []libp2ppeer.ID) error {
 	g, ctx := errgroup.WithContext(ctx)
 	for _, id := range ids {
 		g.Go(func() error {
-			return p.Host.Network().ClosePeer(id)
+			err := p.Host.Network().ClosePeer(id)
+			if err != nil {
+				return err
+			}
+
+			p.Host.Peerstore().ClearAddrs(id)
+			return nil
 		})
 	}
 
@@ -240,13 +251,13 @@ func NewLibp2pPeer(ctx context.Context) (host.Host, routing.ContentRouting, erro
 		"/ip4/0.0.0.0/tcp/4001",
 	)
 
-	var dht *kaddht.IpfsDHT
-	newDHT := func(h host.Host) (routing.PeerRouting, error) {
-		var err error
-		dht, err = kaddht.New(ctx, h)
-		return dht, err
-	}
-	routing := libp2p.Routing(newDHT)
+	// var dht *kaddht.IpfsDHT
+	// newDHT := func(h host.Host) (routing.PeerRouting, error) {
+	// 	var err error
+	// 	dht, err = kaddht.New(ctx, h)
+	// 	return dht, err
+	// }
+	// routing := libp2p.Routing(libp2p.NilRouterOption)
 
 	host, err := libp2p.New(
 		ctx,
@@ -254,13 +265,15 @@ func NewLibp2pPeer(ctx context.Context) (host.Host, routing.ContentRouting, erro
 		listenAddrs,
 		muxers,
 		security,
-		routing,
+		// routing,
 	)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to create libp2p host")
 	}
 
-	return host, dht, nil
+	r, _ := nilrouting.ConstructNilRouting(nil, nil, nil, nil)
+	return host, r, nil
+	// return host, dht, nil
 }
 
 func NewBlockstore(ctx context.Context, ds datastore.Batching) (blockstore.Blockstore, error) {

@@ -15,7 +15,6 @@
 package command
 
 import (
-	"github.com/Netflix/p2plab/metadata"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -29,11 +28,6 @@ var nodeCommand = cli.Command{
 			Name:   "ssh",
 			Usage:  "SSH into a node.",
 			Action: sshNodeAction,
-		},
-		{
-			Name:   "run",
-			Usage:  "Runs a task on a node.",
-			Action: runNodeAction,
 		},
 	},
 }
@@ -55,44 +49,6 @@ func sshNodeAction(c *cli.Context) error {
 	}
 
 	err = node.SSH(ctx)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func runNodeAction(c *cli.Context) error {
-	if c.NArg() < 3 {
-		return errors.New("cluster id, node id, task type must be provided")
-	}
-
-	cln, err := ResolveClient(c)
-	if err != nil {
-		return err
-	}
-
-	ctx := CommandContext(c)
-	node, err := cln.Node().Get(ctx, c.Args().Get(0), c.Args().Get(1))
-	if err != nil {
-		return err
-	}
-
-	var task metadata.Task
-
-	taskType := metadata.TaskType(c.Args().Get(2))
-	switch taskType {
-	case metadata.TaskGet, metadata.TaskUpdate:
-		task.Type = taskType
-	default:
-		return errors.Errorf("unrecognized task type: %q", taskType)
-	}
-
-	if c.NArg() == 4 {
-		task.Subject = c.Args().Get(3)
-	}
-
-	err = node.Run(ctx, task)
 	if err != nil {
 		return err
 	}

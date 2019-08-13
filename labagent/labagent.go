@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,6 +48,7 @@ type LabAgent struct {
 	addr       string
 	appRoot    string
 	appAddr    string
+	appPort    string
 	router     *mux.Router
 	httpClient *http.Client
 	app        *exec.Cmd
@@ -54,12 +57,23 @@ type LabAgent struct {
 }
 
 func New(root, addr, appRoot, appAddr string) (*LabAgent, error) {
+	u, err := url.Parse(appAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	_, port, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		return nil, err
+	}
+
 	r := mux.NewRouter().UseEncodedPath().StrictSlash(true)
 	agent := &LabAgent{
 		root:    root,
 		addr:    addr,
 		appRoot: appRoot,
 		appAddr: appAddr,
+		appPort: port,
 		router:  r,
 		httpClient: &http.Client{
 			Transport: &http.Transport{
@@ -67,7 +81,7 @@ func New(root, addr, appRoot, appAddr string) (*LabAgent, error) {
 				DisableKeepAlives: true,
 			},
 		},
-		appClient: labapp.NewClient("http://localhost:7003"),
+		appClient: labapp.NewClient(appAddr),
 	}
 	agent.registerRoutes(r)
 
@@ -77,9 +91,9 @@ func New(root, addr, appRoot, appAddr string) (*LabAgent, error) {
 func (a *LabAgent) Serve(ctx context.Context) error {
 	log.Info().Msgf("labagent listening on %s", a.addr)
 	s := &http.Server{
-		Handler:      a.router,
-		Addr:         a.addr,
-		ReadTimeout:  10 * time.Second,
+		Handler:     a.router,
+		Addr:        a.addr,
+		ReadTimeout: 10 * time.Second,
 	}
 
 	// TODO: remove when S3 update flow is complete
@@ -93,11 +107,12 @@ func (a *LabAgent) Serve(ctx context.Context) error {
 
 func (a *LabAgent) registerRoutes(r *mux.Router) {
 	api := r.PathPrefix("/api/v0").Subrouter()
-	api.Handle("/peerInfo", httputil.ErrorHandler{a.runHandler}).Methods("GET")
+	api.Handle("/peerInfo", httputil.ErrorHandler{a.peerInfoHandler}).Methods("GET")
 	api.Handle("/run", httputil.ErrorHandler{a.runHandler}).Methods("POST")
 }
 
 func (a *LabAgent) peerInfoHandler(w http.ResponseWriter, r *http.Request) error {
+	log.Info().Msg("labagent/peerInfo")
 	peerInfo, err := a.appClient.PeerInfo(r.Context())
 	if err != nil {
 		return err
@@ -122,7 +137,7 @@ func (a *LabAgent) runHandler(w http.ResponseWriter, r *http.Request) error {
 			resp.Err = err.Error()
 		}
 		return httputil.WriteJSON(w, &resp)
-	case metadata.TaskGet, metadata.TaskConnect:
+	case metadata.TaskGet, metadata.TaskConnect, metadata.TaskDisconnect:
 		if a.appCancel == nil {
 			return errors.Wrapf(errdefs.ErrInvalidArgument, "no labapp currently running")
 		}
@@ -213,7 +228,7 @@ func (a *LabAgent) startApp() error {
 	appCtx, a.appCancel = context.WithCancel(context.Background())
 
 	binaryPath := filepath.Join(a.root, LabAppBinary)
-	a.app = exec.CommandContext(appCtx, binaryPath, fmt.Sprintf("--root=%s", a.appRoot), fmt.Sprintf("--address=%s", a.appAddr))
+	a.app = exec.CommandContext(appCtx, binaryPath, fmt.Sprintf("--root=%s", a.appRoot), fmt.Sprintf("--address=:%s", a.appPort))
 	a.app.Stdout = os.Stdout
 	a.app.Stderr = os.Stderr
 
