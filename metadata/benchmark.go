@@ -254,14 +254,16 @@ func readPlan(bkt *bolt.Bucket, plan *ScenarioPlan) error {
 		return nil
 	}
 
-	objects := make(map[string]cid.Cid)
-	for k, v := range m {
-		objects[k], err = cid.Parse(v)
-		if err != nil {
-			return err
+	if m != nil {
+		objects := make(map[string]cid.Cid)
+		for k, v := range m {
+			objects[k], err = cid.Parse(v)
+			if err != nil {
+				return err
+			}
 		}
+		plan.Objects = objects
 	}
-	plan.Objects = objects
 
 	plan.Seed, err = readTaskMap(bkt, bucketKeySeed)
 	if err != nil {
@@ -355,12 +357,17 @@ func writeBenchmark(bkt *bolt.Bucket, benchmark *Benchmark) error {
 		return err
 	}
 
-	pbkt, err := bkt.CreateBucket(bucketKeyPlan)
-	if err != nil {
+	pbkt := bkt.Bucket(bucketKeyPlan)
+	if pbkt != nil {
 		err = bkt.DeleteBucket(bucketKeyPlan)
 		if err != nil {
 			return err
 		}
+	}
+
+	pbkt, err = bkt.CreateBucket(bucketKeyPlan)
+	if err != nil {
+		return err
 	}
 
 	err = writePlan(pbkt, &benchmark.Plan)
