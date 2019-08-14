@@ -20,10 +20,11 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
+	cid "github.com/ipfs/go-cid"
 )
 
-func Parse(a string) (p2plab.Action, error) {
-	return &dummyAction{a}, nil
+func Parse(objects map[string]cid.Cid, a string) (p2plab.Action, error) {
+	return &dummyAction{objects[a].String()}, nil
 }
 
 type dummyAction struct {

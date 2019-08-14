@@ -403,12 +403,12 @@ func writePlan(bkt *bolt.Bucket, plan *ScenarioPlan) error {
 		return err
 	}
 
-	var m map[string]string
+	m := make(map[string]string)
 	for k, v := range plan.Objects {
 		m[k] = v.String()
 	}
 
-	err = writeMap(obkt, bucketKeyObjects, m)
+	err = writeMap(bkt, bucketKeyObjects, m)
 	if err != nil {
 		return err
 	}

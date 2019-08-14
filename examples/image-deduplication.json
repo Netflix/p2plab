@@ -1,11 +1,11 @@
 {
 	"objects": {
 		"ubuntu-v1": {
-			"type": "container-image",
+			"type": "oci",
 			"source": "docker.io/library/ubuntu:xenial-20190610"
 		},
 		"ubuntu-v2": {
-			"type": "container-image",
+			"type": "oci",
 			"source": "docker.io/library/ubuntu:xenial-20190720"
 		}
 	},

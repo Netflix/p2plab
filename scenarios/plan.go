@@ -58,6 +58,11 @@ func Plan(ctx context.Context, peer p2plab.Peer, nset p2plab.NodeSet, sdef metad
 		})
 	}
 
+	err := objects.Wait()
+	if err != nil {
+		return plan, nil
+	}
+
 	log.Info().Msg("Planning scenario seed")
 	for q, a := range sdef.Seed {
 		qry, err := query.Parse(q)
@@ -70,7 +75,7 @@ func Plan(ctx context.Context, peer p2plab.Peer, nset p2plab.NodeSet, sdef metad
 			return plan, err
 		}
 
-		action, err := actions.Parse(a)
+		action, err := actions.Parse(plan.Objects, a)
 		if err != nil {
 			return plan, err
 		}
@@ -96,7 +101,7 @@ func Plan(ctx context.Context, peer p2plab.Peer, nset p2plab.NodeSet, sdef metad
 			return plan, err
 		}
 
-		action, err := actions.Parse(a)
+		action, err := actions.Parse(plan.Objects, a)
 		if err != nil {
 			return plan, err
 		}
@@ -107,11 +112,6 @@ func Plan(ctx context.Context, peer p2plab.Peer, nset p2plab.NodeSet, sdef metad
 		}
 
 		plan.Benchmark = taskMap
-	}
-
-	err := objects.Wait()
-	if err != nil {
-		return plan, nil
 	}
 
 	return plan, nil

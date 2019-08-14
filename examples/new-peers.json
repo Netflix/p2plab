@@ -1,7 +1,7 @@
 {
 	"objects": {
 		"ubuntu": {
-			"type": "container-image",
+			"type": "oci",
 			"source": "docker.io/library/ubuntu:latest"
 		}
 	},

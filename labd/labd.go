@@ -508,7 +508,6 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 	}
 
 	seederAddr := fmt.Sprintf("%s/p2p/%s", d.seeder.Host().Addrs()[1], d.seeder.Host().ID())
-
 	log.Info().Str("cluster", cid).Str("scenario", sid).Str("benchmark", benchmark.ID).Msg("Running scenario plan")
 	err = scenarios.Run(ctx, nset, plan, seederAddr)
 	if err != nil {
