@@ -44,10 +44,10 @@ type BackendVars struct {
 
 type ClusterVars struct {
 	ID                    string
-	RegionalClusterGroups []RegionalClusterGroup
+	RegionalClusterGroups []RegionalClusterGroups
 }
 
-type RegionalClusterGroup struct {
+type RegionalClusterGroups struct {
 	Region string
 	Groups []metadata.ClusterGroup
 }
@@ -98,13 +98,13 @@ func (p *provider) CreateNodeGroup(ctx context.Context, id string, cdef metadata
 
 	log.Debug().Str("id", id).Str("dir", clusterDir).Msg("Creating terraform handler")
 	t, err := NewTerraform(ctx, clusterDir)
-	if err != nil { 
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to create terraform handler")
 	}
 	p.terraformById[id] = t
 
 	log.Debug().Str("id", id).Str("dir", clusterDir).Msg("Terraform applying")
-	ns, err := t.Apply(ctx)
+	ns, err := t.Apply(ctx, id, cdef)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to terraform destroy")
 	}
@@ -216,10 +216,10 @@ func (p *provider) destroyClusterDir(id string) error {
 func (p *provider) executeTfvarsTemplate(id string, cdef metadata.ClusterDefinition) error {
 	vars := ClusterVars{ID: id}
 
-	clusterGroupsByRegion := map[string]*RegionalClusterGroup{
-		"us-west-2": &RegionalClusterGroup{Region: "us-west-2"},
-		"us-east-1": &RegionalClusterGroup{Region: "us-east-1"},
-		"eu-west-1": &RegionalClusterGroup{Region: "eu-west-1"},
+	clusterGroupsByRegion := map[string]RegionalClusterGroups{
+		"us-west-2": RegionalClusterGroups{Region: "us-west-2"},
+		"us-east-1": RegionalClusterGroups{Region: "us-east-1"},
+		"eu-west-1": RegionalClusterGroups{Region: "eu-west-1"},
 	}
 
 	for _, group := range cdef.Groups {
@@ -233,7 +233,7 @@ func (p *provider) executeTfvarsTemplate(id string, cdef metadata.ClusterDefinit
 	}
 
 	for _, rcg := range clusterGroupsByRegion {
-		vars.RegionalClusterGroups = append(vars.RegionalClusterGroups, *rcg)
+		vars.RegionalClusterGroups = append(vars.RegionalClusterGroups, rcg)
 	}
 	sort.SliceStable(vars.RegionalClusterGroups, func(i, j int) bool {
 		return vars.RegionalClusterGroups[i].Region < vars.RegionalClusterGroups[j].Region

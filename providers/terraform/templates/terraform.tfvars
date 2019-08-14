@@ -4,7 +4,7 @@ labagents = {
     {{range .RegionalClusterGroups}}
     {{.Region}} = {
         {{range $i, $group := .Groups}}
-        labagent-{{$.ID}}-{{$i}} = {
+        {{$.ID}}-{{$i}} = {
             size          = {{$group.Size}}
             instance_type = "{{$group.InstanceType}}"
         }

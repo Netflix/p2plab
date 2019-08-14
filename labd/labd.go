@@ -171,23 +171,31 @@ func (d *Labd) createClusterHandler(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
+	log.Info().Str("cluster", id).Msg("Creating node group")
 	ng, err := d.provider.CreateNodeGroup(ctx, id, cdef)
 	if err != nil {
 		return err
 	}
 
+	content, err := json.MarshalIndent(&ng, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("NodeGroup:\n%s\n", string(content))
+
+	log.Info().Str("cluster", id).Msg("Updating metadata with new nodes")
 	var mns []metadata.Node
 	cluster.Status = metadata.ClusterConnecting
 	err = d.db.Update(ctx, func(tx *bolt.Tx) error {
-		ctx = metadata.WithTransactionContext(ctx, tx)
-
 		var err error
-		cluster, err = d.db.UpdateCluster(ctx, cluster)
+		tctx := metadata.WithTransactionContext(ctx, tx)
+		cluster, err = d.db.UpdateCluster(tctx, cluster)
 		if err != nil {
 			return err
 		}
 
-		mns, err = d.db.CreateNodes(ctx, cluster.ID, ng.Nodes)
+		mns, err = d.db.CreateNodes(tctx, cluster.ID, ng.Nodes)
 		if err != nil {
 			return err
 		}
@@ -203,11 +211,13 @@ func (d *Labd) createClusterHandler(w http.ResponseWriter, r *http.Request) erro
 		nset.Add(newNode(nil, n))
 	}
 
-	err = nodes.Connect(ctx, nset)
-	if err != nil {
-		return err
-	}
+	log.Info().Str("cluster", id).Msg("Connecting cluster")
+	// err = nodes.Connect(ctx, nset)
+	// if err != nil {
+	// 	return err
+	// }
 
+	log.Info().Str("cluster", id).Msg("Updating cluster metadata")
 	cluster.Status = metadata.ClusterCreated
 	cluster, err = d.db.UpdateCluster(ctx, cluster)
 	if err != nil {
@@ -479,7 +489,7 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 	uuid := time.Now().Format(time.RFC3339Nano)
 	benchmark := metadata.Benchmark{
 		ID:       uuid,
-		Status:   metadata.BenchmarkBenchmarking,
+		Status:   metadata.BenchmarkRunning,
 		Cluster:  cluster,
 		Scenario: scenario,
 		Plan:     plan,

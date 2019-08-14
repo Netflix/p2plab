@@ -234,23 +234,21 @@ func readScenarioDefinition(bkt *bolt.Bucket) (ScenarioDefinition, error) {
 		return sdef, nil
 	}
 
-	objects, err := readObjects(dbkt)
+	var err error
+	sdef.Objects, err = readObjects(dbkt)
 	if err != nil {
 		return sdef, err
 	}
-	sdef.Objects = objects
 
-	seed, err := readMap(dbkt, bucketKeySeed)
+	sdef.Seed, err = readMap(dbkt, bucketKeySeed)
 	if err != nil {
 		return sdef, err
 	}
-	sdef.Seed = seed
 
-	benchmark, err := readMap(dbkt, bucketKeyBenchmark)
+	sdef.Benchmark, err = readMap(dbkt, bucketKeyBenchmark)
 	if err != nil {
 		return sdef, err
 	}
-	sdef.Benchmark = benchmark
 
 	return sdef, nil
 }

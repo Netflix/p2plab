@@ -45,27 +45,4 @@ resource "aws_launch_template" "labagent" {
   iam_instance_profile {
     name = var.labagent_instance_profile
   }
-
-  tag_specifications {
-    resource_type = "instance"
-
-    tags = {
-      ClusterID = var.cluster_id
-    }
-  }
-}
-
-data "aws_instances" "labagent" {
-	count = "${length(var.labagents) > 0 ? 1 : 0}"
-
-  instance_state_names = ["running"]
-
-  filter {
-    name   = "tag:ClusterID"
-    values = [var.cluster_id]
-  }
-
-  depends_on = [
-    aws_autoscaling_group.labagent,
-  ]
 }

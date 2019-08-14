@@ -112,7 +112,7 @@ func writeMap(bkt *bolt.Bucket, name []byte, m map[string]string) error {
 
 type labelCallback func(bkt *bolt.Bucket, id string, labels []string) error
 
-func writeLabels(bkt *bolt.Bucket, ids, addLabels, removeLabels []string, cb labelCallback) error {
+func batchUpdateLabels(bkt *bolt.Bucket, ids, addLabels, removeLabels []string, cb labelCallback) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -133,9 +133,8 @@ func writeLabels(bkt *bolt.Bucket, ids, addLabels, removeLabels []string, cb lab
 			return errors.Wrapf(errdefs.ErrNotFound, "%q", id)
 		}
 
-		lbkt := ibkt.Bucket(bucketKeyLabels)
-
 		var labels []string
+		lbkt := ibkt.Bucket(bucketKeyLabels)
 		if lbkt != nil {
 			err := lbkt.ForEach(func(k, v []byte) error {
 				if _, ok := removeSet[string(k)]; ok {
@@ -150,10 +149,6 @@ func writeLabels(bkt *bolt.Bucket, ids, addLabels, removeLabels []string, cb lab
 				return err
 			}
 
-			err = ibkt.DeleteBucket(bucketKeyLabels)
-			if err != nil {
-				return err
-			}
 		}
 
 		for l, _ := range addSet {
@@ -161,15 +156,51 @@ func writeLabels(bkt *bolt.Bucket, ids, addLabels, removeLabels []string, cb lab
 		}
 		sort.Strings(labels)
 
+		err := cb(ibkt, id, labels)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func readLabels(bkt *bolt.Bucket) ([]string, error) {
+	var labels []string
+	lbkt := bkt.Bucket(bucketKeyLabels)
+	if lbkt != nil {
+		err := lbkt.ForEach(func(k, v []byte) error {
+			labels = append(labels, string(k))
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return labels, nil
+}
+
+func writeLabels(bkt *bolt.Bucket, labels []string) error {
+	lbkt := bkt.Bucket(bucketKeyLabels)
+	if lbkt != nil {
+		err := bkt.DeleteBucket(bucketKeyLabels)
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(labels) > 0 {
 		var err error
-		lbkt, err = ibkt.CreateBucket(bucketKeyLabels)
+		lbkt, err = bkt.CreateBucket(bucketKeyLabels)
 		if err != nil {
 			return err
 		}
 
-		err = cb(ibkt, id, labels)
-		if err != nil {
-			return err
+		for _, l := range labels {
+			err = lbkt.Put([]byte(l), nil)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

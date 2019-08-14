@@ -55,6 +55,7 @@ type ClusterGroup struct {
 	Size         int
 	InstanceType string
 	Region       string
+	Labels       []string
 }
 
 func (m *DB) GetCluster(ctx context.Context, id string) (Cluster, error) {
@@ -191,11 +192,10 @@ func readCluster(bkt *bolt.Bucket, cluster *Cluster) error {
 		return err
 	}
 
-	cdef, err := readClusterDefinition(bkt)
+	cluster.Definition, err = readClusterDefinition(bkt)
 	if err != nil {
 		return err
 	}
-	cluster.Definition = cdef
 
 	return bkt.ForEach(func(k, v []byte) error {
 		if v == nil {
@@ -221,10 +221,19 @@ func readClusterDefinition(bkt *bolt.Bucket) (ClusterDefinition, error) {
 		return cdef, nil
 	}
 
-	gbkt := bkt.Bucket([]byte("0"))
+	i := 0
+	gbkt := dbkt.Bucket([]byte(strconv.Itoa(i)))
 	for gbkt != nil {
-		var group ClusterGroup
-		err := gbkt.ForEach(func(k, v []byte) error {
+		var (
+			group ClusterGroup
+			err   error
+		)
+		group.Labels, err = readLabels(gbkt)
+		if err != nil {
+			return cdef, err
+		}
+
+		err = gbkt.ForEach(func(k, v []byte) error {
 			switch string(k) {
 			case string(bucketKeySize):
 				size, err := strconv.Atoi(string(v))
@@ -244,6 +253,9 @@ func readClusterDefinition(bkt *bolt.Bucket) (ClusterDefinition, error) {
 		}
 
 		cdef.Groups = append(cdef.Groups, group)
+
+		i++
+		gbkt = bkt.Bucket([]byte(strconv.Itoa(i)))
 	}
 
 	return cdef, nil
@@ -289,6 +301,11 @@ func writeClusterDefinition(bkt *bolt.Bucket, cdef ClusterDefinition) error {
 
 	for i, group := range cdef.Groups {
 		gbkt, err := dbkt.CreateBucket([]byte(strconv.Itoa(i)))
+		if err != nil {
+			return err
+		}
+
+		err = writeLabels(gbkt, group.Labels)
 		if err != nil {
 			return err
 		}

@@ -15,14 +15,12 @@
 package terraform
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
-	"sort"
 
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
@@ -32,15 +30,6 @@ import (
 type Terraform struct {
 	root    string
 	leaseCh chan struct{}
-}
-
-type Output struct {
-	InstancesByRegion map[string]Instances
-}
-
-type Instances struct {
-	IDs        []string `json:"ids"`
-	PrivateIPs []string `json:"private_ips"`
 }
 
 func NewTerraform(ctx context.Context, root string) (*Terraform, error) {
@@ -60,7 +49,7 @@ func NewTerraform(ctx context.Context, root string) (*Terraform, error) {
 	return t, nil
 }
 
-func (t *Terraform) Apply(ctx context.Context) ([]metadata.Node, error) {
+func (t *Terraform) Apply(ctx context.Context, id string, cdef metadata.ClusterDefinition) ([]metadata.Node, error) {
 	err := t.acquireLease()
 	if err != nil {
 		return nil, err
@@ -74,41 +63,31 @@ func (t *Terraform) Apply(ctx context.Context) ([]metadata.Node, error) {
 		return nil, errors.Wrap(err, "failed to auto-approve apply templates")
 	}
 
-	stdout := new(bytes.Buffer)
-	err = t.terraformWithStdio(ctx, stdout, ioutil.Discard, "output", "-json")
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to execute json output")
-	}
-
-	var output Output
-	err = json.NewDecoder(stdout).Decode(&output)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to decode json output")
-	}
-
-	var regions []string
-	for region := range output.InstancesByRegion {
-		regions = append(regions, region)
-	}
-	sort.Strings(regions)
-
-	var nodes []metadata.Node
-	for _, region := range regions {
-		instances := output.InstancesByRegion[region]
-
-		if len(instances.IDs) != len(instances.PrivateIPs) {
-			return nil, errors.Errorf("number of instance ids (%d) don't match number of private ips (%d)", len(instances.IDs), len(instances.PrivateIPs))
+	var ns []metadata.Node
+	for i, cg := range cdef.Groups {
+		asg := fmt.Sprintf("%s-%d", id, i)
+		instances, err := DiscoverInstances(ctx, asg, cg.Region)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to discover instances for ASG %q in %q", asg, cg.Region)
 		}
 
-		for i := 0; i < len(instances.IDs); i++ {
-			nodes = append(nodes, metadata.Node{
-				ID:      instances.IDs[i],
-				Address: instances.PrivateIPs[i],
+		for _, instance := range instances {
+			ns = append(ns, metadata.Node{
+				ID:      instance.InstanceId,
+				Address: instance.PrivateIp,
+				Labels: append([]string{
+					instance.InstanceId,
+					instance.InstanceType,
+					cg.Region,
+				}, cg.Labels...),
 			})
 		}
 	}
 
-	return nodes, nil
+	content, _ := json.MarshalIndent(&ns, "", "    ")
+	fmt.Printf("Nodes:\n%s\n", string(content))
+
+	return ns, nil
 }
 
 func (t *Terraform) Destroy(ctx context.Context) error {

@@ -151,7 +151,7 @@ func (m *DB) LabelNodes(ctx context.Context, cluster string, ids, addLabels, rem
 			return err
 		}
 
-		err = writeLabels(bkt, ids, addLabels, removeLabels, func(ibkt *bolt.Bucket, id string, labels []string) error {
+		err = batchUpdateLabels(bkt, ids, addLabels, removeLabels, func(ibkt *bolt.Bucket, id string, labels []string) error {
 			var node Node
 			node.ID = id
 			err = readNode(ibkt, &node)
@@ -203,15 +203,9 @@ func readNode(bkt *bolt.Bucket, node *Node) error {
 		return err
 	}
 
-	lbkt := bkt.Bucket(bucketKeyLabels)
-	if lbkt != nil {
-		err = lbkt.ForEach(func(k, v []byte) error {
-			node.Labels = append(node.Labels, string(k))
-			return nil
-		})
-		if err != nil {
-			return err
-		}
+	node.Labels, err = readLabels(bkt)
+	if err != nil {
+		return err
 	}
 
 	return bkt.ForEach(func(k, v []byte) error {
@@ -236,18 +230,9 @@ func writeNode(bkt *bolt.Bucket, node *Node) error {
 		return err
 	}
 
-	if len(node.Labels) > 0 {
-		lbkt, err := bkt.CreateBucketIfNotExists(bucketKeyLabels)
-		if err != nil {
-			return err
-		}
-
-		for _, l := range node.Labels {
-			err = lbkt.Put([]byte(l), nil)
-			if err != nil {
-				return err
-			}
-		}
+	err = writeLabels(bkt, node.Labels)
+	if err != nil {
+		return err
 	}
 
 	for _, f := range []field{

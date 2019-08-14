@@ -42,11 +42,9 @@ type Benchmark struct {
 type BenchmarkStatus string
 
 var (
-	BenchmarkTransforming BenchmarkStatus = "transforming"
+	BenchmarkPlanning BenchmarkStatus = "planning"
 
-	BenchmarkSeeding BenchmarkStatus = "seeding"
-
-	BenchmarkBenchmarking BenchmarkStatus = "benchmarking"
+	BenchmarkRunning BenchmarkStatus = "running"
 
 	BenchmarkDone BenchmarkStatus = "done"
 
@@ -270,17 +268,15 @@ func readPlan(bkt *bolt.Bucket, plan *ScenarioPlan) error {
 	}
 	plan.Objects = objects
 
-	seed, err := readTaskMap(pbkt, bucketKeySeed)
+	plan.Seed, err = readTaskMap(pbkt, bucketKeySeed)
 	if err != nil {
 		return nil
 	}
-	plan.Seed = seed
 
-	benchmark, err := readTaskMap(pbkt, bucketKeyBenchmark)
+	plan.Benchmark, err = readTaskMap(pbkt, bucketKeyBenchmark)
 	if err != nil {
 		return nil
 	}
-	plan.Benchmark = benchmark
 
 	return nil
 }
