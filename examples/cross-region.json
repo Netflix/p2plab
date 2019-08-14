@@ -2,7 +2,7 @@
 	"objects": {
 		"ubuntu": {
 			"type": "container-image",
-			"reference": "docker.io/library/ubuntu:latest"
+			"source": "docker.io/library/ubuntu:latest"
 		}
 	},
 	"seed": {

@@ -32,7 +32,7 @@ func Plan(ctx context.Context, peer p2plab.Peer, nset p2plab.NodeSet, sdef metad
 		Benchmark: make(map[string]metadata.Task),
 	}
 
-	objects, ctx := errgroup.WithContext(ctx)
+	objects, gctx := errgroup.WithContext(ctx)
 
 	var mu sync.Mutex
 	for name, odef := range sdef.Objects {
@@ -42,7 +42,7 @@ func Plan(ctx context.Context, peer p2plab.Peer, nset p2plab.NodeSet, sdef metad
 				return err
 			}
 
-			c, err := t.Transform(ctx, peer, odef.Source, nil)
+			c, err := t.Transform(gctx, peer, odef.Source, nil)
 			if err != nil {
 				return err
 			}

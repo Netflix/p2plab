@@ -25,7 +25,7 @@ import (
 )
 
 func Run(ctx context.Context, nset p2plab.NodeSet, plan metadata.ScenarioPlan, seederID, seederAddr string) error {
-	seed, ctx := errgroup.WithContext(ctx)
+	seed, gctx := errgroup.WithContext(ctx)
 	for id, task := range plan.Seed {
 		seed.Go(func() error {
 			n := nset.Get(id)
@@ -33,7 +33,7 @@ func Run(ctx context.Context, nset p2plab.NodeSet, plan metadata.ScenarioPlan, s
 				return errors.Wrapf(errdefs.ErrNotFound, "could not find node %q in node set", id)
 			}
 
-			err := n.Run(ctx, metadata.Task{
+			err := n.Run(gctx, metadata.Task{
 				Type:    metadata.TaskConnect,
 				Subject: seederAddr,
 			})
@@ -41,12 +41,12 @@ func Run(ctx context.Context, nset p2plab.NodeSet, plan metadata.ScenarioPlan, s
 				return errors.Wrap(err, "failed to connect to seeding peer")
 			}
 
-			err = n.Run(ctx, task)
+			err = n.Run(gctx, task)
 			if err != nil {
 				return errors.Wrap(err, "failed to run seeding task")
 			}
 
-			err = n.Run(ctx, metadata.Task{
+			err = n.Run(gctx, metadata.Task{
 				Type:    metadata.TaskDisconnect,
 				Subject: seederID,
 			})
@@ -63,7 +63,7 @@ func Run(ctx context.Context, nset p2plab.NodeSet, plan metadata.ScenarioPlan, s
 	}
 
 
-	benchmark, ctx := errgroup.WithContext(ctx)
+	benchmark, gctx := errgroup.WithContext(ctx)
 	for id, task := range plan.Benchmark {
 		benchmark.Go(func() error {
 			n := nset.Get(id)
@@ -71,7 +71,7 @@ func Run(ctx context.Context, nset p2plab.NodeSet, plan metadata.ScenarioPlan, s
 				return errors.Wrapf(errdefs.ErrNotFound, "could not find node %q in node set", id)
 			}
 
-			return n.Run(ctx, task)
+			return n.Run(gctx, task)
 		})
 	}
 	err = benchmark.Wait()
