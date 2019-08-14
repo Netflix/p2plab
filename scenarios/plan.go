@@ -39,6 +39,7 @@ func Plan(ctx context.Context, peer p2plab.Peer, nset p2plab.NodeSet, sdef metad
 
 	var mu sync.Mutex
 	for name, odef := range sdef.Objects {
+		name, odef := name, odef
 		objects.Go(func() error {
 			t, err := transformers.GetTransformer(odef.Type)
 			if err != nil {

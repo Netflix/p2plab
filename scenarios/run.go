@@ -29,6 +29,7 @@ func Run(ctx context.Context, nset p2plab.NodeSet, plan metadata.ScenarioPlan, s
 	log.Info().Msg("Seeding cluster")
 	seed, gctx := errgroup.WithContext(ctx)
 	for id, task := range plan.Seed {
+		id, task := id, task
 		seed.Go(func() error {
 			n := nset.Get(id)
 			if n == nil {
@@ -67,6 +68,7 @@ func Run(ctx context.Context, nset p2plab.NodeSet, plan metadata.ScenarioPlan, s
 	log.Info().Msg("Benchmarking cluster")
 	benchmark, gctx := errgroup.WithContext(ctx)
 	for id, task := range plan.Benchmark {
+		id, task := id, task
 		benchmark.Go(func() error {
 			n := nset.Get(id)
 			if n == nil {

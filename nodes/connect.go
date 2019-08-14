@@ -30,6 +30,7 @@ func Connect(ctx context.Context, nset p2plab.NodeSet) error {
 	peerAddrs := make([]string, len(ns))
 	collectPeerAddrs, gctx := errgroup.WithContext(ctx)
 	for i, n := range ns {
+		i, n := i, n
 		collectPeerAddrs.Go(func() error {
 			peerInfo, err := n.PeerInfo(gctx)
 			if err != nil {
@@ -52,6 +53,7 @@ func Connect(ctx context.Context, nset p2plab.NodeSet) error {
 
 	connectPeers, gctx := errgroup.WithContext(ctx)
 	for _, n := range ns {
+		n := n
 		connectPeers.Go(func() error {
 			return n.Run(gctx, metadata.Task{
 				Type:    metadata.TaskConnect,

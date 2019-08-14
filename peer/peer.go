@@ -151,6 +151,7 @@ func (p *Peer) DAGService() ipld.DAGService {
 func (p *Peer) Connect(ctx context.Context, infos []libp2ppeer.AddrInfo) error {
 	g, ctx := errgroup.WithContext(ctx)
 	for _, info := range infos {
+		info := info
 		g.Go(func() error {
 			ipnet, err := cidrFromAddrInfo(info)
 			if err != nil {
@@ -172,6 +173,7 @@ func (p *Peer) Connect(ctx context.Context, infos []libp2ppeer.AddrInfo) error {
 func (p *Peer) Disconnect(ctx context.Context, infos []libp2ppeer.AddrInfo) error {
 	g, ctx := errgroup.WithContext(ctx)
 	for _, info := range infos {
+		info := info
 		g.Go(func() error {
 			ipnet, err := cidrFromAddrInfo(info)
 			if err != nil {
