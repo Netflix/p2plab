@@ -19,6 +19,9 @@ type ControlAPI interface {
 	// Cluster returns an implementaiton of Cluster API.
 	Cluster() ClusterAPI
 
+	// ClusterDefinition returns an implementaiton of Cluster Definition API.
+	ClusterDefinition() ClusterDefinitionAPI
+
 	// Node returns an implementation of Node API.
 	Node() NodeAPI
 

@@ -33,6 +33,27 @@ var clusterCommand = cli.Command{
 			Aliases: []string{"c"},
 			Usage:   "Creates a new cluster.",
 			Action:  createClusterAction,
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:  "definition,d",
+					Usage: "Create cluster from a cluster definition.",
+				},
+				&cli.IntFlag{
+					Name:  "size,s",
+					Usage: "Size of cluster.",
+					Value: 3,
+				},
+				&cli.StringFlag{
+					Name:  "instance-type,t",
+					Usage: "EC2 Instance type of cluster.",
+					Value: "t2.micro",
+				},
+				&cli.StringFlag{
+					Name:  "region,r",
+					Usage: "AWS Region to deploy to.",
+					Value: "us-west-2",
+				},
+			},
 		},
 		{
 			Name:    "remove",
@@ -80,7 +101,7 @@ var clusterCommand = cli.Command{
 
 func createClusterAction(c *cli.Context) error {
 	if c.NArg() != 1 {
-		return errors.New("cluster name must be provided")
+		return errors.New("cluster id must be provided")
 	}
 
 	cln, err := ResolveClient(c)
@@ -88,7 +109,20 @@ func createClusterAction(c *cli.Context) error {
 		return err
 	}
 
-	cluster, err := cln.Cluster().Create(CommandContext(c), c.Args().First())
+	var options []p2plab.CreateClusterOption
+	if c.IsSet("definition") {
+		options = append(options,
+			p2plab.WithClusterDefinition(c.String("definition")),
+		)
+	} else {
+		options = append(options,
+			p2plab.WithClusterSize(c.Int("size")),
+			p2plab.WithClusterInstanceType(c.String("instance-type")),
+			p2plab.WithClusterRegion(c.String("region")),
+		)
+	}
+
+	cluster, err := cln.Cluster().Create(CommandContext(c), c.Args().First(), options...)
 	if err != nil {
 		return err
 	}
@@ -174,7 +208,7 @@ func queryClusterAction(c *cli.Context) error {
 		opts = append(opts, p2plab.WithAddLabels(addLabels...))
 	}
 
-	removeLabels := c.StringSlice("remove") 
+	removeLabels := c.StringSlice("remove")
 	if len(removeLabels) > 0 {
 		opts = append(opts, p2plab.WithRemoveLabels(removeLabels...))
 	}

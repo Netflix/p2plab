@@ -249,12 +249,7 @@ func readBenchmark(bkt *bolt.Bucket, benchmark *Benchmark) error {
 }
 
 func readPlan(bkt *bolt.Bucket, plan *ScenarioPlan) error {
-	pbkt := bkt.Bucket(bucketKeyPlan)
-	if pbkt == nil {
-		return nil
-	}
-
-	m, err := readMap(pbkt, bucketKeyObjects)
+	m, err := readMap(bkt, bucketKeyObjects)
 	if err != nil {
 		return nil
 	}
@@ -268,12 +263,12 @@ func readPlan(bkt *bolt.Bucket, plan *ScenarioPlan) error {
 	}
 	plan.Objects = objects
 
-	plan.Seed, err = readTaskMap(pbkt, bucketKeySeed)
+	plan.Seed, err = readTaskMap(bkt, bucketKeySeed)
 	if err != nil {
 		return nil
 	}
 
-	plan.Benchmark, err = readTaskMap(pbkt, bucketKeyBenchmark)
+	plan.Benchmark, err = readTaskMap(bkt, bucketKeyBenchmark)
 	if err != nil {
 		return nil
 	}

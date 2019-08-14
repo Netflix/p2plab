@@ -77,6 +77,12 @@ func (d *Labd) Serve(ctx context.Context) error {
 		return errors.Wrap(err, "failed to create seeder peer")
 	}
 
+	var addrs []string
+	for _, ma := range d.seeder.Host().Addrs() {
+		addrs = append(addrs, ma.String())
+	}
+	log.Info().Msgf("IPFS listening on %s", addrs)
+
 	log.Info().Msgf("labd listening on %s", d.addr)
 	s := &http.Server{
 		Handler:     d.router,
@@ -501,11 +507,10 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	seederID := string(d.seeder.Host().ID())
-	seederAddr := fmt.Sprintf("%s/p2p/%s", d.seeder.Host().Addrs()[0].String(), seederID)
+	seederAddr := fmt.Sprintf("%s/p2p/%s", d.seeder.Host().Addrs()[1], d.seeder.Host().ID())
 
 	log.Info().Str("cluster", cid).Str("scenario", sid).Str("benchmark", benchmark.ID).Msg("Running scenario plan")
-	err = scenarios.Run(ctx, nset, plan, seederID, seederAddr)
+	err = scenarios.Run(ctx, nset, plan, seederAddr)
 	if err != nil {
 		log.Warn().Str("benchmark", benchmark.ID).Msgf("failed to run scenario plan: %s", err)
 		return errors.Wrap(err, "failed to run scenario plan")

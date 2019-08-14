@@ -10,7 +10,7 @@
 		}
 	},
 	"seed": {
-		"(not ‘new-peers’)": "ubuntu-v2",
+		"(not 'new-peers')": "ubuntu-v2",
 		"new-peers": "ubuntu-v1"
 	},
 	"benchmark": {

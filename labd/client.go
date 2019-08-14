@@ -43,6 +43,10 @@ func (c *client) Cluster() p2plab.ClusterAPI {
 	return &clusterAPI{c}
 }
 
+func (c *client) ClusterDefinition() p2plab.ClusterDefinitionAPI {
+	return &clusterDefinitionAPI{c}
+}
+
 func (c *client) Node() p2plab.NodeAPI {
 	return &nodeAPI{c}
 }

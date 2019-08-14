@@ -32,6 +32,17 @@ type ClusterAPI interface {
 	List(ctx context.Context) ([]Cluster, error)
 }
 
+type ClusterDefinitionAPI interface {
+	// Create saves a cluster definition.
+	Create(ctx context.Context, id string, cdef metadata.ClusterDefinition) error
+
+	// Remove deletes a cluster definition permanently.
+	Remove(ctx context.Context, id string) error
+
+	// List returns known cluster definitions.
+	List(ctx context.Context) ([]metadata.ClusterDefinition, error)
+}
+
 // Cluster is a group of instances connected in a p2p network. They can be
 // provisioned by developers, or CI. Clusters may span multiple regions and
 // have heterogeneous nodes.
@@ -54,13 +65,45 @@ type CreateClusterOption func(*CreateClusterSettings) error
 
 // CreateClusterSettings specify cluster properties for creation.
 type CreateClusterSettings struct {
-	Size int
+	Definition        string
+	Size              int
+	InstanceType      string
+	Region            string
+	ClusterDefinition metadata.ClusterDefinition
+}
+
+func WithClusterDefinition(definition string) CreateClusterOption {
+	return func(s *CreateClusterSettings) error {
+		s.Definition = definition
+		return nil
+	}
+}
+
+func WithClusterSize(size int) CreateClusterOption {
+	return func(s *CreateClusterSettings) error {
+		s.Size = size
+		return nil
+	}
+}
+
+func WithClusterInstanceType(instanceType string) CreateClusterOption {
+	return func(s *CreateClusterSettings) error {
+		s.InstanceType = instanceType
+		return nil
+	}
+}
+
+func WithClusterRegion(region string) CreateClusterOption {
+	return func(s *CreateClusterSettings) error {
+		s.Region = region
+		return nil
+	}
 }
 
 type QueryOption func(*QuerySettings) error
 
 type QuerySettings struct {
-	AddLabels []string
+	AddLabels    []string
 	RemoveLabels []string
 }
 

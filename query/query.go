@@ -273,7 +273,7 @@ func newLabelQuery(label string) (p2plab.Query, error) {
 		return nil, errors.Errorf("label must be at least 2 length: %q", label)
 	}
 	if label[0] != '\'' || label[len(label)-1] != '\'' {
-		return nil, errors.New("label must be in quotations")
+		return nil, errors.Errorf("label must be in quotations: %q", label)
 	}
 
 	pattern := label[1 : len(label)-1]

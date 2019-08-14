@@ -22,9 +22,11 @@ import (
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
+	"github.com/rs/zerolog/log"
 )
 
-func Run(ctx context.Context, nset p2plab.NodeSet, plan metadata.ScenarioPlan, seederID, seederAddr string) error {
+func Run(ctx context.Context, nset p2plab.NodeSet, plan metadata.ScenarioPlan, seederAddr string) error {
+	log.Info().Msg("Seeding cluster")
 	seed, gctx := errgroup.WithContext(ctx)
 	for id, task := range plan.Seed {
 		seed.Go(func() error {
@@ -48,7 +50,7 @@ func Run(ctx context.Context, nset p2plab.NodeSet, plan metadata.ScenarioPlan, s
 
 			err = n.Run(gctx, metadata.Task{
 				Type:    metadata.TaskDisconnect,
-				Subject: seederID,
+				Subject: seederAddr,
 			})
 			if err != nil {
 				return errors.Wrap(err, "failed to disconnect from seeding peer")
@@ -62,7 +64,7 @@ func Run(ctx context.Context, nset p2plab.NodeSet, plan metadata.ScenarioPlan, s
 		return err
 	}
 
-
+	log.Info().Msg("Benchmarking cluster")
 	benchmark, gctx := errgroup.WithContext(ctx)
 	for id, task := range plan.Benchmark {
 		benchmark.Go(func() error {

@@ -6,7 +6,7 @@
 		}
 	},
 	"seed": {
-		"(not ‘new-peers’)": "ubuntu"
+		"(not 'new-peers')": "ubuntu"
 	},
 	"benchmark": {
 		"new-peers": "ubuntu"

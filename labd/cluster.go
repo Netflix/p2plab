@@ -31,9 +31,7 @@ type clusterAPI struct {
 }
 
 func (capi *clusterAPI) Create(ctx context.Context, id string, opts ...p2plab.CreateClusterOption) (p2plab.Cluster, error) {
-	settings := p2plab.CreateClusterSettings{
-		Size: 3,
-	}
+	var settings p2plab.CreateClusterSettings
 	for _, opt := range opts {
 		err := opt(&settings)
 		if err != nil {
@@ -41,14 +39,14 @@ func (capi *clusterAPI) Create(ctx context.Context, id string, opts ...p2plab.Cr
 		}
 	}
 
-	cdef := metadata.ClusterDefinition{
-		Groups: []metadata.ClusterGroup{
-			{
-				Size:         settings.Size,
-				InstanceType: "t2.micro",
-				Region:       "us-west-2",
-			},
-		},
+	var cdef metadata.ClusterDefinition
+	if settings.Definition != "" {
+	} else {
+		cdef.Groups = append(cdef.Groups, metadata.ClusterGroup{
+			Size:         settings.Size,
+			InstanceType: settings.InstanceType,
+			Region:       settings.Region,
+		})
 	}
 
 	content, err := json.MarshalIndent(&cdef, "", "    ")
