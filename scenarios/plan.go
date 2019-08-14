@@ -23,11 +23,14 @@ import (
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/query"
 	"github.com/Netflix/p2plab/transformers"
+	cid "github.com/ipfs/go-cid"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 )
 
 func Plan(ctx context.Context, peer p2plab.Peer, nset p2plab.NodeSet, sdef metadata.ScenarioDefinition) (metadata.ScenarioPlan, error) {
 	plan := metadata.ScenarioPlan{
+		Objects:   make(map[string]cid.Cid),
 		Seed:      make(map[string]metadata.Task),
 		Benchmark: make(map[string]metadata.Task),
 	}
@@ -42,6 +45,7 @@ func Plan(ctx context.Context, peer p2plab.Peer, nset p2plab.NodeSet, sdef metad
 				return err
 			}
 
+			log.Info().Str("type", odef.Type).Str("source", odef.Source).Msg("Transforming object")
 			c, err := t.Transform(gctx, peer, odef.Source, nil)
 			if err != nil {
 				return err
@@ -54,6 +58,7 @@ func Plan(ctx context.Context, peer p2plab.Peer, nset p2plab.NodeSet, sdef metad
 		})
 	}
 
+	log.Info().Msg("Planning scenario seed")
 	for q, a := range sdef.Seed {
 		qry, err := query.Parse(q)
 		if err != nil {
@@ -79,6 +84,7 @@ func Plan(ctx context.Context, peer p2plab.Peer, nset p2plab.NodeSet, sdef metad
 	}
 
 	// TODO: Refactor `Seed` and `Benchmark` into arbitrary `Stages`.
+	log.Info().Msg("Planning scenario benchmark")
 	for q, a := range sdef.Benchmark {
 		qry, err := query.Parse(q)
 		if err != nil {
@@ -101,6 +107,11 @@ func Plan(ctx context.Context, peer p2plab.Peer, nset p2plab.NodeSet, sdef metad
 		}
 
 		plan.Benchmark = taskMap
+	}
+
+	err := objects.Wait()
+	if err != nil {
+		return plan, nil
 	}
 
 	return plan, nil
