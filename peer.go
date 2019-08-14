@@ -19,19 +19,24 @@ import (
 	"io"
 
 	cid "github.com/ipfs/go-cid"
+	files "github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
-	ufsio "github.com/ipfs/go-unixfs/io"
 	"github.com/libp2p/go-libp2p-core/peer"
+	host "github.com/libp2p/go-libp2p-core/host"
 )
 
 type Peer interface {
+	Host() host.Host
+
+	DAGService() ipld.DAGService
+
 	Connect(ctx context.Context, infos []peer.AddrInfo) error
 
-	Disconnect(ctx context.Context, ids []peer.ID) error
+	Disconnect(ctx context.Context, infos []peer.AddrInfo) error
 
 	Add(ctx context.Context, r io.Reader, opts ...AddOption) (ipld.Node, error)
 
-	Get(ctx context.Context, c cid.Cid) (ufsio.ReadSeekCloser, error)
+	Get(ctx context.Context, c cid.Cid) (files.Node, error)
 }
 
 type AddOption func(*AddSettings) error

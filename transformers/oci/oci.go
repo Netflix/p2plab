@@ -25,10 +25,15 @@ import (
 	"github.com/Netflix/p2plab/pkg/digestconv"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
+	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
 	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-ipfs/dagutils"
+	ipld "github.com/ipfs/go-ipld-format"
+	dag "github.com/ipfs/go-merkledag"
 	"github.com/moby/buildkit/util/contentutil"
+	multihash "github.com/multiformats/go-multihash"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -50,7 +55,7 @@ func New() p2plab.Transformer {
 	}
 }
 
-func (t *transformer) Transform(ctx context.Context, peer p2plab.Peer, source string, options []string) (cid.Cid, error) {
+func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source string, options []string) (cid.Cid, error) {
 	name, desc, err := t.resolver.Resolve(ctx, source)
 	if err != nil {
 		return cid.Undef, errors.Wrapf(err, "failed to resolve %q", source)
@@ -62,17 +67,17 @@ func (t *transformer) Transform(ctx context.Context, peer p2plab.Peer, source st
 	}
 
 	buffer := contentutil.NewBuffer()
-	target, err := Convert(ctx, peer, fetcher, buffer, desc)
+	target, err := Convert(ctx, p, fetcher, buffer, desc)
 	if err != nil {
 		return cid.Undef, errors.Wrapf(err, "failed to convert %q", name)
 	}
 
-	c, err := digestconv.DigestToCid(target.Digest)
+	nd, err := ConstructDAGFromManifest(ctx, p, target)
 	if err != nil {
-		return cid.Undef, errors.Wrap(err, "failed to convert digest to cid")
+		return cid.Undef, err
 	}
 
-	return c, nil
+	return nd.Cid(), nil
 }
 
 func Convert(ctx context.Context, peer p2plab.Peer, fetcher remotes.Fetcher, buffer contentutil.Buffer, desc ocispec.Descriptor) (target ocispec.Descriptor, err error) {
@@ -235,4 +240,46 @@ func AddBlob(ctx context.Context, peer p2plab.Peer, r io.Reader) (digest.Digest,
 	}
 
 	return dgst, nil
+}
+
+func ConstructDAGFromManifest(ctx context.Context, p p2plab.Peer, image ocispec.Descriptor) (ipld.Node, error) {
+	provider := NewProvider(p)
+	manifest, err := images.Manifest(ctx, provider, image, platforms.Default())
+	if err != nil {
+		return nil, err
+	}
+
+	root := new(dag.ProtoNode)
+	root.SetCidBuilder(cid.V1Builder{MhType: multihash.SHA2_256})
+	root.SetData([]byte(ocispec.MediaTypeImageManifest))
+
+	dserv := p.DAGService()
+	e := dagutils.NewDagEditor(root, dserv)
+
+	descs := []ocispec.Descriptor{manifest.Config}
+	descs = append(descs, manifest.Layers...)
+
+	for _, desc := range descs {
+		c, err := digestconv.DigestToCid(desc.Digest)
+		if err != nil {
+			return nil, err
+		}
+
+		nd, err := dserv.Get(ctx, c)
+		if err != nil {
+			return nil, err
+		}
+
+		err = root.AddNodeLink(desc.Digest.String(), nd)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = dserv.Add(ctx, root)
+	if err != nil {
+		return nil, err
+	}
+
+	return e.Finalize(ctx, dserv)
 }

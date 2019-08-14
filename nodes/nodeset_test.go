@@ -32,12 +32,16 @@ func (n *testNode) Metadata() metadata.Node {
 	return metadata.Node{ID: n.id}
 }
 
-func (n *testNode) PeerInfo(ctx context.Context) (peerstore.PeerInfo, error) {
-	return peerstore.PeerInfo{}, nil
+func (n *testNode) Update(ctx context.Context, url string) error {
+	return nil
 }
 
 func (n *testNode) SSH(ctx context.Context, opts ...p2plab.SSHOption) error {
 	return nil
+}
+
+func (n *testNode) PeerInfo(ctx context.Context) (peerstore.PeerInfo, error) {
+	return peerstore.PeerInfo{}, nil
 }
 
 func (n *testNode) Run(ctx context.Context, task metadata.Task) error {

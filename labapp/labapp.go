@@ -15,7 +15,6 @@
 package labapp
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -30,6 +29,7 @@ import (
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/gorilla/mux"
 	cid "github.com/ipfs/go-cid"
+	files "github.com/ipfs/go-ipfs-files"
 	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	multiaddr "github.com/multiformats/go-multiaddr"
@@ -63,15 +63,15 @@ func (a *LabApp) Serve(ctx context.Context) error {
 	}
 
 	var addrs []string
-	for _, ma := range a.peer.Host.Addrs() {
+	for _, ma := range a.peer.Host().Addrs() {
 		addrs = append(addrs, ma.String())
 	}
 	log.Info().Msgf("IPFS listening on %s", addrs)
 
 	s := &http.Server{
-		Handler:      a.router,
-		Addr:         a.addr,
-		ReadTimeout:  10 * time.Second,
+		Handler:     a.router,
+		Addr:        a.addr,
+		ReadTimeout: 10 * time.Second,
 	}
 	log.Info().Msgf("labapp listening on %s", a.addr)
 
@@ -87,8 +87,8 @@ func (a *LabApp) registerRoutes(r *mux.Router) {
 func (a *LabApp) peerInfoHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("labapp/peerInfo")
 	peerInfo := peerstore.PeerInfo{
-		ID:    a.peer.Host.ID(),
-		Addrs: a.peer.Host.Addrs(),
+		ID:    a.peer.Host().ID(),
+		Addrs: a.peer.Host().Addrs(),
 	}
 	return httputil.WriteJSON(w, &peerInfo)
 }
@@ -110,22 +110,13 @@ func (a *LabApp) runHandler(w http.ResponseWriter, r *http.Request) error {
 		addrs := strings.Split(task.Subject, ",")
 		err = a.connect(ctx, addrs)
 	case metadata.TaskDisconnect:
-		rawIDs := strings.Split(task.Subject, ",")
-		var ids []libp2ppeer.ID
-		for _, id := range rawIDs {
-			ids = append(ids, libp2ppeer.ID(id))
-		}
-
-		err = a.disconnect(ctx, ids)
+		addrs := strings.Split(task.Subject, ",")
+		err = a.disconnect(ctx, addrs)
 	default:
 		return errors.Wrapf(errdefs.ErrInvalidArgument, "unrecognized task type: %q", task.Type)
 	}
 
-	var resp TaskResponse
-	if err != nil {
-		resp.Err = err.Error()
-	}
-	return httputil.WriteJSON(w, &resp)
+	return nil
 }
 
 func (a *LabApp) getFile(ctx context.Context, target string) error {
@@ -134,16 +125,17 @@ func (a *LabApp) getFile(ctx context.Context, target string) error {
 		return err
 	}
 
-	r, err := a.peer.Get(ctx, targetCid)
+	nd, err := a.peer.Get(ctx, targetCid)
 	if err != nil {
 		return err
 	}
-	defer r.Close()
 
-	buf := new(bytes.Buffer)
-	teeReader := io.TeeReader(r, buf)
+	f, ok := nd.(files.File)
+	if !ok {
+		return errors.Errorf("expected %q to be a file", targetCid)
+	}
 
-	n, err := io.Copy(ioutil.Discard, teeReader)
+	n, err := io.Copy(ioutil.Discard, f)
 	if err != nil {
 		return err
 	}
@@ -153,22 +145,12 @@ func (a *LabApp) getFile(ctx context.Context, target string) error {
 }
 
 func (a *LabApp) connect(ctx context.Context, addrs []string) error {
-	var infos []libp2ppeer.AddrInfo
-	for _, addr := range addrs {
-		ma, err := multiaddr.NewMultiaddr(addr)
-		if err != nil {
-			return err
-		}
-
-		info, err := libp2ppeer.AddrInfoFromP2pAddr(ma)
-		if err != nil {
-			return err
-		}
-
-		infos = append(infos, *info)
+	infos, err := parseAddrs(addrs)
+	if err != nil {
+		return err
 	}
 
-	err := a.peer.Connect(ctx, infos)
+	err = a.peer.Connect(ctx, infos)
 	if err != nil {
 		return err
 	}
@@ -177,11 +159,34 @@ func (a *LabApp) connect(ctx context.Context, addrs []string) error {
 	return nil
 }
 
-func (a *LabApp) disconnect(ctx context.Context, ids []libp2ppeer.ID) error {
-	err := a.peer.Disconnect(ctx, ids)
+func (a *LabApp) disconnect(ctx context.Context, addrs []string) error {
+	infos, err := parseAddrs(addrs)
 	if err != nil {
 		return err
 	}
-	log.Info().Int("peers", len(ids)).Msg("Disconnected from peers")
+
+	err = a.peer.Disconnect(ctx, infos)
+	if err != nil {
+		return err
+	}
+	log.Info().Int("peers", len(addrs)).Msg("Disconnected from peers")
 	return nil
+}
+
+func parseAddrs(addrs []string) ([]libp2ppeer.AddrInfo, error) {
+	var infos []libp2ppeer.AddrInfo
+	for _, addr := range addrs {
+		ma, err := multiaddr.NewMultiaddr(addr)
+		if err != nil {
+			return nil, err
+		}
+
+		info, err := libp2ppeer.AddrInfoFromP2pAddr(ma)
+		if err != nil {
+			return nil, err
+		}
+
+		infos = append(infos, *info)
+	}
+	return infos, nil
 }

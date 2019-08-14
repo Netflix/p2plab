@@ -212,10 +212,10 @@ func (d *Labd) createClusterHandler(w http.ResponseWriter, r *http.Request) erro
 	}
 
 	log.Info().Str("cluster", id).Msg("Connecting cluster")
-	// err = nodes.Connect(ctx, nset)
-	// if err != nil {
-	// 	return err
-	// }
+	err = nodes.Connect(ctx, nset)
+	if err != nil {
+		return err
+	}
 
 	log.Info().Str("cluster", id).Msg("Updating cluster metadata")
 	cluster.Status = metadata.ClusterCreated
@@ -501,24 +501,23 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	go func() {
-		seederID := string(d.seeder.Host.ID())
-		seederAddr := fmt.Sprintf("%s/p2p/%s", d.seeder.Host.Addrs()[0].String(), seederID)
+	seederID := string(d.seeder.Host().ID())
+	seederAddr := fmt.Sprintf("%s/p2p/%s", d.seeder.Host().Addrs()[0].String(), seederID)
 
-		log.Info().Str("cluster", cid).Str("scenario", sid).Str("benchmark", benchmark.ID).Msg("Running scenario plan")
-		err = scenarios.Run(ctx, nset, plan, seederID, seederAddr)
-		if err != nil {
-			log.Warn().Str("benchmark", benchmark.ID).Msgf("failed to run scenario plan: %s", err)
-			return
-		}
+	log.Info().Str("cluster", cid).Str("scenario", sid).Str("benchmark", benchmark.ID).Msg("Running scenario plan")
+	err = scenarios.Run(ctx, nset, plan, seederID, seederAddr)
+	if err != nil {
+		log.Warn().Str("benchmark", benchmark.ID).Msgf("failed to run scenario plan: %s", err)
+		return errors.Wrap(err, "failed to run scenario plan")
+	}
 
-		log.Info().Str("cluster", cid).Str("scenario", sid).Str("benchmark", benchmark.ID).Msg("Benchmark completed")
-		benchmark.Status = metadata.BenchmarkDone
-		_, err = d.db.UpdateBenchmark(ctx, benchmark)
-		if err != nil {
-			log.Warn().Str("benchmark", benchmark.ID).Msgf("failed to update benchmark: %s", err)
-		}
-	}()
+	log.Info().Str("cluster", cid).Str("scenario", sid).Str("benchmark", benchmark.ID).Msg("Benchmark completed")
+	benchmark.Status = metadata.BenchmarkDone
+	benchmark, err = d.db.UpdateBenchmark(ctx, benchmark)
+	if err != nil {
+		log.Warn().Str("benchmark", benchmark.ID).Msgf("failed to update benchmark: %s", err)
+		return errors.Wrap(err, "failed to update benchmark")
+	}
 
 	return httputil.WriteJSON(w, &benchmark)
 }

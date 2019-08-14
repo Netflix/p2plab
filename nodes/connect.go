@@ -40,7 +40,7 @@ func Connect(ctx context.Context, nset p2plab.NodeSet) error {
 				return errors.Errorf("peer %q has zero addresses", n.Metadata().Address)
 			}
 
-			peerAddrs[i] = fmt.Sprintf("%s/p2p/%s", peerInfo.Addrs[0], peerInfo.ID)
+			peerAddrs[i] = fmt.Sprintf("/ip4/%s/tcp/4001/p2p/%s", n.Metadata().Address, peerInfo.ID)
 			return nil
 		})
 	}

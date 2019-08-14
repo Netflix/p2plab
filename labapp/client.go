@@ -61,11 +61,10 @@ func (c *Client) PeerInfo(ctx context.Context) (peerstore.PeerInfo, error) {
 	return peerInfo, nil
 }
 
-func (c *Client) Run(ctx context.Context, task metadata.Task) (TaskResponse, error) {
-	var taskResp TaskResponse
+func (c *Client) Run(ctx context.Context, task metadata.Task) error {
 	content, err := json.MarshalIndent(&task, "", "    ")
 	if err != nil {
-		return taskResp, err
+		return err
 	}
 
 	req := c.NewRequest("POST", "/run").
@@ -73,16 +72,11 @@ func (c *Client) Run(ctx context.Context, task metadata.Task) (TaskResponse, err
 
 	resp, err := req.Send(ctx)
 	if err != nil {
-		return taskResp, err
+		return err
 	}
 	defer resp.Body.Close()
 
-	err = json.NewDecoder(resp.Body).Decode(&taskResp)
-	if err != nil {
-		return taskResp, err
-	}
-
-	return taskResp, nil
+	return nil
 }
 
 func (c *Client) NewRequest(method, path string, a ...interface{}) *httputil.Request {

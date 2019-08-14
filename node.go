@@ -31,14 +31,20 @@ type NodeAPI interface {
 type Node interface {
 	Agent
 
+	Application
+
 	Metadata() metadata.Node
 }
 
 type Agent interface {
-	PeerInfo(ctx context.Context) (peerstore.PeerInfo, error)
+	Update(ctx context.Context, url string) error
 
 	// SSH creates a SSH connection to the node.
 	SSH(ctx context.Context, opts ...SSHOption) error
+}
+
+type Application interface {
+	PeerInfo(ctx context.Context) (peerstore.PeerInfo, error)
 
 	// Run executes an task on the node.
 	Run(ctx context.Context, task metadata.Task) error

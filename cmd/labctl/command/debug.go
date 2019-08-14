@@ -19,7 +19,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Netflix/p2plab/labagent"
+	"github.com/Netflix/p2plab/labapp"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/urfave/cli"
 )
@@ -33,12 +33,12 @@ var debugCommand = cli.Command{
 		{
 			Name:    "peer",
 			Aliases: []string{"s"},
-			Usage:   "Retrieves the peer info from a labagent",
+			Usage:   "Retrieves the peer info from a labapp",
 			Action:  peerInfoAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "address",
-					Usage: "address for labagent's HTTP server",
+					Usage: "address for labapp's HTTP server",
 					Value: "http://localhost:7002",
 				},
 			},
@@ -46,12 +46,12 @@ var debugCommand = cli.Command{
 		{
 			Name:    "run",
 			Aliases: []string{"s"},
-			Usage:   "Runs a task on a labagent.",
+			Usage:   "Runs a task on a labapp.",
 			Action:  runTaskAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "address",
-					Usage: "address for labagent's HTTP server",
+					Usage: "address for labapp's HTTP server",
 					Value: "http://localhost:7002",
 				},
 			},
@@ -60,7 +60,7 @@ var debugCommand = cli.Command{
 }
 
 func peerInfoAction(c *cli.Context) error {
-	cln := labagent.NewClient(c.String("address"))
+	cln := labapp.NewClient(c.String("address"))
 
 	ctx := CommandContext(c)
 	peerInfo, err := cln.PeerInfo(ctx)
@@ -82,7 +82,7 @@ func runTaskAction(c *cli.Context) error {
 		return errors.New("task type and subject must be provided")
 	}
 
-	cln := labagent.NewClient(c.String("address"))
+	cln := labapp.NewClient(c.String("address"))
 
 	ctx := CommandContext(c)
 	err := cln.Run(ctx, metadata.Task{

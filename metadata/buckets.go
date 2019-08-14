@@ -25,6 +25,7 @@ var (
 	bucketKeyBenchmarks = []byte("benchmarks")
 
 	// Cluster buckets.
+	bucketKeyCommit       = []byte("commit")
 	bucketKeySize         = []byte("size")
 	bucketKeyInstanceType = []byte("instanceType")
 	bucketKeyRegion       = []byte("region")

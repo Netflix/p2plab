@@ -17,9 +17,11 @@ package labd
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/labagent"
+	"github.com/Netflix/p2plab/labapp"
 	"github.com/Netflix/p2plab/metadata"
 )
 
@@ -46,6 +48,7 @@ func (napi *nodeAPI) Get(ctx context.Context, cluster, id string) (p2plab.Node, 
 
 type node struct {
 	p2plab.Agent
+	p2plab.Application
 
 	labdCln  *client
 	metadata metadata.Node
@@ -53,9 +56,10 @@ type node struct {
 
 func newNode(cln *client, m metadata.Node) *node {
 	return &node{
-		Agent:    labagent.NewClient(m.Address),
-		labdCln:  cln,
-		metadata: m,
+		Agent:       labagent.NewClient(fmt.Sprintf("http://%s:7002", m.Address)),
+		Application: labapp.NewClient(fmt.Sprintf("http://%s:7003", m.Address)),
+		labdCln:     cln,
+		metadata:    m,
 	}
 }
 

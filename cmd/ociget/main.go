@@ -23,8 +23,10 @@ import (
 
 	"github.com/Netflix/p2plab/peer"
 	cid "github.com/ipfs/go-cid"
+	files "github.com/ipfs/go-ipfs-files"
 	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
 	multiaddr "github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -60,10 +62,10 @@ func run(addr, ref string) error {
 	}
 
 	var addrs []string
-	for _, ma := range p.Host.Addrs() {
+	for _, ma := range p.Host().Addrs() {
 		addrs = append(addrs, ma.String())
 	}
-	log.Info().Str("id", p.Host.ID().String()).Strs("listen", addrs).Msg("Starting libp2p peer")
+	log.Info().Str("id", p.Host().ID().String()).Strs("listen", addrs).Msg("Starting libp2p peer")
 
 	targetAddr, err := multiaddr.NewMultiaddr(addr)
 	if err != nil {
@@ -75,7 +77,7 @@ func run(addr, ref string) error {
 		return err
 	}
 
-	err = p.Host.Connect(ctx, *targetInfo)
+	err = p.Host().Connect(ctx, *targetInfo)
 	if err != nil {
 		return err
 	}
@@ -86,12 +88,17 @@ func run(addr, ref string) error {
 		return err
 	}
 
-	r, err := p.Get(ctx, c)
+	nd, err := p.Get(ctx, c)
 	if err != nil {
 		return err
 	}
 
-	content, err := ioutil.ReadAll(r)
+	f, ok := nd.(files.File)
+	if !ok {
+		return errors.Errorf("expected %q to be a file", c)
+	}
+
+	content, err := ioutil.ReadAll(f)
 	if err != nil {
 		return err
 	}

@@ -57,10 +57,10 @@ func run(ref string) error {
 	}
 
 	var addrs []string
-	for _, ma := range p.Host.Addrs() {
+	for _, ma := range p.Host().Addrs() {
 		addrs = append(addrs, ma.String())
 	}
-	log.Info().Str("id", p.Host.ID().String()).Strs("listen", addrs).Msg("Starting libp2p peer")
+	log.Info().Str("id", p.Host().ID().String()).Strs("listen", addrs).Msg("Starting libp2p peer")
 
 	transformer := oci.New()
 	c, err := transformer.Transform(ctx, p, ref, nil)
@@ -69,9 +69,9 @@ func run(ref string) error {
 	}
 	log.Info().Str("ref", ref).Str("cid", c.String()).Msg("Converted OCI image to IPLD DAG")
 
-	log.Info().Msgf("Retrieve manifest from another p2plab/peer by running:\n\ngo run ./cmd/ociget %s/p2p/%s %s\n", p.Host.Addrs()[0], p.Host.ID(), c)
+	log.Info().Msgf("Retrieve manifest from another p2plab/peer by running:\n\ngo run ./cmd/ociget %s/p2p/%s %s\n", p.Host().Addrs()[0], p.Host().ID(), c)
 
-	log.Info().Msgf("Connect to this peer from IPFS daemon:\n\nipfs swarm connect %s/p2p/%s\nipfs cat %s\n", p.Host.Addrs()[0], p.Host.ID(), c)
+	log.Info().Msgf("Connect to this peer from IPFS daemon:\n\nipfs swarm connect %s/p2p/%s\nipfs cat %s\n", p.Host().Addrs()[0], p.Host().ID(), c)
 
 	fmt.Print("Press 'Enter' to terminate peer...")
 	_, err = bufio.NewReader(os.Stdin).ReadBytes('\n')

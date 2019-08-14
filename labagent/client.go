@@ -15,18 +15,12 @@
 package labagent
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/Netflix/p2plab"
-	"github.com/Netflix/p2plab/labapp"
-	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
-	"github.com/pkg/errors"
 )
 
 type Client struct {
@@ -46,48 +40,15 @@ func NewClient(addr string) *Client {
 	}
 }
 
-func (c *Client) PeerInfo(ctx context.Context) (peerstore.PeerInfo, error) {
-	req := c.NewRequest("GET", "/peerInfo")
-
-	var peerInfo peerstore.PeerInfo
-	resp, err := req.Send(ctx)
-	if err != nil {
-		return peerInfo, err
-	}
-	defer resp.Body.Close()
-
-	err = json.NewDecoder(resp.Body).Decode(&peerInfo)
-	if err != nil {
-		return peerInfo, err
-	}
-
-	return peerInfo, nil
-}
-
-func (c *Client) Run(ctx context.Context, task metadata.Task) error {
-	content, err := json.MarshalIndent(&task, "", "    ")
-	if err != nil {
-		return err
-	}
-
-	req := c.NewRequest("POST", "/run").
-		Body(bytes.NewReader(content))
+func (c *Client) Update(ctx context.Context, url string) error {
+	req := c.NewRequest("PUT", "/update").
+		Option("url", url)
 
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-
-	var taskResp labapp.TaskResponse
-	err = json.NewDecoder(resp.Body).Decode(&taskResp)
-	if err != nil {
-		return err
-	}
-
-	if taskResp.Err != "" {
-		return errors.New(taskResp.Err)
-	}
 
 	return nil
 }

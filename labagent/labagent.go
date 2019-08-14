@@ -17,7 +17,6 @@ package labagent
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -29,9 +28,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Netflix/p2plab/errdefs"
-	"github.com/Netflix/p2plab/labapp"
-	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -52,7 +48,6 @@ type LabAgent struct {
 	router     *mux.Router
 	httpClient *http.Client
 	app        *exec.Cmd
-	appClient  *labapp.Client
 	appCancel  func()
 }
 
@@ -81,7 +76,6 @@ func New(root, addr, appRoot, appAddr string) (*LabAgent, error) {
 				DisableKeepAlives: true,
 			},
 		},
-		appClient: labapp.NewClient(appAddr),
 	}
 	agent.registerRoutes(r)
 
@@ -107,49 +101,19 @@ func (a *LabAgent) Serve(ctx context.Context) error {
 
 func (a *LabAgent) registerRoutes(r *mux.Router) {
 	api := r.PathPrefix("/api/v0").Subrouter()
-	api.Handle("/peerInfo", httputil.ErrorHandler{a.peerInfoHandler}).Methods("GET")
-	api.Handle("/run", httputil.ErrorHandler{a.runHandler}).Methods("POST")
+	api.Handle("/update", httputil.ErrorHandler{a.updateHandler}).Methods("PUT")
 }
 
-func (a *LabAgent) peerInfoHandler(w http.ResponseWriter, r *http.Request) error {
-	log.Info().Msg("labagent/peerInfo")
-	peerInfo, err := a.appClient.PeerInfo(r.Context())
-	if err != nil {
-		return err
-	}
-	return httputil.WriteJSON(w, &peerInfo)
-}
+func (a *LabAgent) updateHandler(w http.ResponseWriter, r *http.Request) error {
+	log.Info().Msg("labagent/update")
 
-func (a *LabAgent) runHandler(w http.ResponseWriter, r *http.Request) error {
-	log.Info().Msg("labagent/run")
-
-	var task metadata.Task
-	err := json.NewDecoder(r.Body).Decode(&task)
+	ctx := r.Context()
+	err := a.updateApp(ctx, r.FormValue("url"))
 	if err != nil {
 		return err
 	}
 
-	switch task.Type {
-	case metadata.TaskUpdate:
-		var resp labapp.TaskResponse
-		err = a.updateApp(r.Context(), task.Subject)
-		if err != nil {
-			resp.Err = err.Error()
-		}
-		return httputil.WriteJSON(w, &resp)
-	case metadata.TaskGet, metadata.TaskConnect, metadata.TaskDisconnect:
-		if a.appCancel == nil {
-			return errors.Wrapf(errdefs.ErrInvalidArgument, "no labapp currently running")
-		}
-
-		resp, err := a.appClient.Run(r.Context(), task)
-		if err != nil {
-			return err
-		}
-		return httputil.WriteJSON(w, &resp)
-	default:
-		return errors.Wrapf(errdefs.ErrInvalidArgument, "unrecognized task type: %q", task.Type)
-	}
+	return nil
 }
 
 func (a *LabAgent) updateApp(ctx context.Context, url string) error {
