@@ -14,20 +14,22 @@
 
 package p2plab
 
-// ControlAPI defines APIs for labd.
-type ControlAPI interface {
-	// Cluster returns an implementaiton of Cluster API.
-	Cluster() ClusterAPI
+import (
+	"context"
 
-	// Node returns an implementation of Node API.
-	Node() NodeAPI
+	"github.com/Netflix/p2plab/metadata"
+)
 
-	// Scenario returns an implementation of Scenario API.
-	Scenario() ScenarioAPI
+type ExperimentAPI interface {
+	Create(ctx context.Context, id string, edef metadata.ExperimentDefinition) (Experiment, error)
 
-	// Benchmark returns an implementation of Benchmark API.
-	Benchmark() BenchmarkAPI
+	Get(ctx context.Context, id string) (Experiment, error)
 
-	// Experiment returns an implementation of Experiment API.
-	Experiment() ExperimentAPI
+	List(ctx context.Context) ([]Experiment, error)
+}
+
+type Experiment interface {
+	Metadata() metadata.Experiment
+
+	Remove(ctx context.Context) error
 }

@@ -32,6 +32,10 @@ func (n *testNode) Metadata() metadata.Node {
 	return metadata.Node{ID: n.id}
 }
 
+func (n *testNode) Healthcheck(ctx context.Context) bool {
+	return true
+}
+
 func (n *testNode) Update(ctx context.Context, url string) error {
 	return nil
 }

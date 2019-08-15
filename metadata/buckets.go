@@ -18,11 +18,12 @@ import bolt "go.etcd.io/bbolt"
 
 var (
 	// API Resources.
-	bucketKeyVersion    = []byte(schemaVersion)
-	bucketKeyClusters   = []byte("clusters")
-	bucketKeyNodes      = []byte("nodes")
-	bucketKeyScenarios  = []byte("scenarios")
-	bucketKeyBenchmarks = []byte("benchmarks")
+	bucketKeyVersion     = []byte(schemaVersion)
+	bucketKeyClusters    = []byte("clusters")
+	bucketKeyNodes       = []byte("nodes")
+	bucketKeyScenarios   = []byte("scenarios")
+	bucketKeyBenchmarks  = []byte("benchmarks")
+	bucketKeyExperiments = []byte("experiments")
 
 	// Cluster buckets.
 	bucketKeyCommit       = []byte("commit")
@@ -130,4 +131,16 @@ func getBenchmarkBucket(tx *bolt.Tx, id string) *bolt.Bucket {
 
 func createBenchmarksBucket(tx *bolt.Tx) (*bolt.Bucket, error) {
 	return createBucketIfNotExists(tx, bucketKeyVersion, bucketKeyBenchmarks)
+}
+
+func getExperimentsBucket(tx *bolt.Tx) *bolt.Bucket {
+	return getBucket(tx, bucketKeyVersion, bucketKeyExperiments)
+}
+
+func getExperimentBucket(tx *bolt.Tx, name string) *bolt.Bucket {
+	return getBucket(tx, bucketKeyVersion, bucketKeyExperiments, []byte(name))
+}
+
+func createExperimentsBucket(tx *bolt.Tx) (*bolt.Bucket, error) {
+	return createBucketIfNotExists(tx, bucketKeyVersion, bucketKeyExperiments)
 }

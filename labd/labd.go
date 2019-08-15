@@ -95,7 +95,7 @@ func (d *Labd) Serve(ctx context.Context) error {
 func (d *Labd) registerRoutes(r *mux.Router) {
 	api := r.PathPrefix("/api/v0").Subrouter()
 
-	api.HandleFunc("/healthcheck", d.healthcheckHandler)
+	api.HandleFunc("/healthcheck", d.healthcheckHandler).Methods("GET")
 
 	clusters := api.PathPrefix("/clusters").Subrouter()
 	clusters.Handle("", httputil.ErrorHandler{d.clustersHandler}).Methods("GET", "POST")

@@ -32,17 +32,6 @@ type ClusterAPI interface {
 	List(ctx context.Context) ([]Cluster, error)
 }
 
-type ClusterDefinitionAPI interface {
-	// Create saves a cluster definition.
-	Create(ctx context.Context, id string, cdef metadata.ClusterDefinition) error
-
-	// Remove deletes a cluster definition permanently.
-	Remove(ctx context.Context, id string) error
-
-	// List returns known cluster definitions.
-	List(ctx context.Context) ([]metadata.ClusterDefinition, error)
-}
-
 // Cluster is a group of instances connected in a p2p network. They can be
 // provisioned by developers, or CI. Clusters may span multiple regions and
 // have heterogeneous nodes.

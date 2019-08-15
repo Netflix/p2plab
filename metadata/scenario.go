@@ -81,13 +81,13 @@ func (m *DB) GetScenario(ctx context.Context, id string) (Scenario, error) {
 			return errors.Wrapf(errdefs.ErrNotFound, "scenario %q", id)
 		}
 
-		cbkt := bkt.Bucket([]byte(id))
-		if cbkt == nil {
+		sbkt := bkt.Bucket([]byte(id))
+		if sbkt == nil {
 			return errors.Wrapf(errdefs.ErrNotFound, "scenario %q", id)
 		}
 
 		scenario.ID = id
-		err := readScenario(cbkt, &scenario)
+		err := readScenario(sbkt, &scenario)
 		if err != nil {
 			return errors.Wrapf(err, "scenario %q", id)
 		}
@@ -114,10 +114,10 @@ func (m *DB) ListScenarios(ctx context.Context) ([]Scenario, error) {
 				scenario = Scenario{
 					ID: string(k),
 				}
-				cbkt = bkt.Bucket(k)
+				sbkt = bkt.Bucket(k)
 			)
 
-			err := readScenario(cbkt, &scenario)
+			err := readScenario(sbkt, &scenario)
 			if err != nil {
 				return err
 			}
@@ -140,7 +140,7 @@ func (m *DB) CreateScenario(ctx context.Context, scenario Scenario) (Scenario, e
 			return err
 		}
 
-		cbkt, err := bkt.CreateBucket([]byte(scenario.ID))
+		sbkt, err := bkt.CreateBucket([]byte(scenario.ID))
 		if err != nil {
 			if err != bolt.ErrBucketExists {
 				return err
@@ -151,7 +151,7 @@ func (m *DB) CreateScenario(ctx context.Context, scenario Scenario) (Scenario, e
 
 		scenario.CreatedAt = time.Now().UTC()
 		scenario.UpdatedAt = scenario.CreatedAt
-		return writeScenario(cbkt, &scenario)
+		return writeScenario(sbkt, &scenario)
 	})
 	if err != nil {
 		return Scenario{}, err
@@ -170,13 +170,13 @@ func (m *DB) UpdateScenario(ctx context.Context, scenario Scenario) (Scenario, e
 			return err
 		}
 
-		cbkt := bkt.Bucket([]byte(scenario.ID))
-		if cbkt == nil {
+		sbkt := bkt.Bucket([]byte(scenario.ID))
+		if sbkt == nil {
 			return errors.Wrapf(errdefs.ErrNotFound, "scenario %q", scenario.ID)
 		}
 
 		scenario.UpdatedAt = time.Now().UTC()
-		return writeScenario(cbkt, &scenario)
+		return writeScenario(sbkt, &scenario)
 	})
 	if err != nil {
 		return Scenario{}, err
@@ -206,11 +206,10 @@ func readScenario(bkt *bolt.Bucket, scenario *Scenario) error {
 		return err
 	}
 
-	sdef, err := readScenarioDefinition(bkt)
+	scenario.Definition, err = readScenarioDefinition(bkt)
 	if err != nil {
 		return err
 	}
-	scenario.Definition = sdef
 
 	return bkt.ForEach(func(k, v []byte) error {
 		if v == nil {

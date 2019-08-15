@@ -21,6 +21,7 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/rs/zerolog/log"
 )
 
 type Client struct {
@@ -38,6 +39,18 @@ func NewClient(addr string) *Client {
 		},
 		base: fmt.Sprintf("%s/api/v0", addr),
 	}
+}
+
+func (c *Client) Healthcheck(ctx context.Context) bool {
+	req := c.NewRequest("GET", "/healthcheck")
+	resp, err := req.Send(ctx)
+	if err != nil {
+		log.Debug().Str("err", err.Error()).Msg("labagent unhealthy")
+		return false
+	}
+	defer resp.Body.Close()
+
+	return true
 }
 
 func (c *Client) Update(ctx context.Context, url string) error {

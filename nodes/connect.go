@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
@@ -27,6 +28,38 @@ import (
 
 func Connect(ctx context.Context, nset p2plab.NodeSet) error {
 	ns := nset.Slice()
+
+	healthchecks, gctx := errgroup.WithContext(ctx)
+
+	var cancel context.CancelFunc
+	gctx, cancel = context.WithTimeout(gctx, 30*time.Second)
+	defer cancel()
+
+	for _, n := range ns {
+		n := n
+		healthchecks.Go(func() error {
+			ticker := time.NewTicker(500 * time.Millisecond)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return errors.Errorf("timed out waiting for node %q to be healthy", n.Metadata().ID)
+				case <-ticker.C:
+					ok := n.Healthcheck(gctx)
+					if ok {
+						return nil
+					}
+				}
+			}
+		})
+	}
+
+	err := healthchecks.Wait()
+	if err != nil {
+		return err
+	}
+
 	peerAddrs := make([]string, len(ns))
 	collectPeerAddrs, gctx := errgroup.WithContext(ctx)
 	for i, n := range ns {
@@ -46,7 +79,7 @@ func Connect(ctx context.Context, nset p2plab.NodeSet) error {
 		})
 	}
 
-	err := collectPeerAddrs.Wait()
+	err = collectPeerAddrs.Wait()
 	if err != nil {
 		return err
 	}

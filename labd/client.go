@@ -43,10 +43,6 @@ func (c *client) Cluster() p2plab.ClusterAPI {
 	return &clusterAPI{c}
 }
 
-func (c *client) ClusterDefinition() p2plab.ClusterDefinitionAPI {
-	return &clusterDefinitionAPI{c}
-}
-
 func (c *client) Node() p2plab.NodeAPI {
 	return &nodeAPI{c}
 }
@@ -57,6 +53,10 @@ func (c *client) Scenario() p2plab.ScenarioAPI {
 
 func (c *client) Benchmark() p2plab.BenchmarkAPI {
 	return &benchmarkAPI{c}
+}
+
+func (c *client) Experiment() p2plab.ExperimentAPI {
+	return &experimentAPI{c}
 }
 
 func (c *client) NewRequest(method, path string, a ...interface{}) *httputil.Request {

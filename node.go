@@ -37,6 +37,8 @@ type Node interface {
 }
 
 type Agent interface {
+	Healthcheck(ctx context.Context) bool
+
 	Update(ctx context.Context, url string) error
 
 	// SSH creates a SSH connection to the node.
