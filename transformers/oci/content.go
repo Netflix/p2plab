@@ -49,21 +49,21 @@ func (p *provider) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (conte
 		return nil, errors.Wrapf(err, "failed to get file %q", c)
 	}
 
-	f, ok := nd.(files.File)
-	if !ok {
-		return nil, errors.Errorf("expected %q to be a file", c)
+	r := files.ToFile(nd)
+	if r == nil {
+		return nil, errors.New("expected node to be a unixfs file")
 	}
 
 	return &sizeReaderAt{
-		size:   desc.Size,
-		reader: f,
+		size: desc.Size,
+		rc:   r,
 	}, nil
 }
 
 type sizeReaderAt struct {
-	size   int64
-	reader io.Reader
-	n      int64
+	size int64
+	rc   io.ReadCloser
+	n    int64
 }
 
 func (ra *sizeReaderAt) ReadAt(p []byte, offset int64) (n int, err error) {
@@ -71,13 +71,13 @@ func (ra *sizeReaderAt) ReadAt(p []byte, offset int64) (n int, err error) {
 		return 0, errors.New("invalid offset")
 	}
 	diff := offset - ra.n
-	written, err := io.CopyN(ioutil.Discard, ra.reader, diff)
+	written, err := io.CopyN(ioutil.Discard, ra.rc, diff)
 	ra.n += written
 	if err != nil {
 		return int(written), err
 	}
 
-	n, err = ra.reader.Read(p)
+	n, err = ra.rc.Read(p)
 	ra.n += int64(n)
 	return
 }
@@ -87,5 +87,5 @@ func (ra *sizeReaderAt) Size() int64 {
 }
 
 func (ra *sizeReaderAt) Close() error {
-	return nil
+	return ra.rc.Close()
 }

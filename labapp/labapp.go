@@ -115,32 +115,49 @@ func (a *LabApp) runHandler(w http.ResponseWriter, r *http.Request) error {
 	default:
 		return errors.Wrapf(errdefs.ErrInvalidArgument, "unrecognized task type: %q", task.Type)
 	}
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
 func (a *LabApp) getFile(ctx context.Context, target string) error {
-	targetCid, err := cid.Parse(target)
+	c, err := cid.Parse(target)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse cid")
+	}
+
+	nd, err := a.peer.Get(ctx, c)
+	if err != nil {
+		return errors.Wrap(err, "failed to get file")
+	}
+	defer nd.Close()
+
+	piper, pipew := io.Pipe()
+	defer piper.Close()
+
+	w, err := files.NewTarWriter(pipew)
+	if err != nil {
+		return errors.Wrap(err, "failed to create tar writer")
+	}
+
+	go func() {
+		err := w.WriteFile(nd, c.String())
+		if err != nil {
+			pipew.CloseWithError(err)
+			return
+		}
+		w.Close()
+		pipew.Close()
+	}()
+
+	n, err := io.Copy(ioutil.Discard, piper)
 	if err != nil {
 		return err
 	}
 
-	nd, err := a.peer.Get(ctx, targetCid)
-	if err != nil {
-		return err
-	}
-
-	f, ok := nd.(files.File)
-	if !ok {
-		return errors.Errorf("expected %q to be a file", targetCid)
-	}
-
-	n, err := io.Copy(ioutil.Discard, f)
-	if err != nil {
-		return err
-	}
-
-	log.Info().Str("cid", targetCid.String()).Int64("bytes", n).Msg("Got file from peers")
+	log.Info().Str("cid", c.String()).Int64("bytes", n).Msg("Got file from peers")
 	return nil
 }
 

@@ -281,7 +281,7 @@ func NewLibp2pPeer(ctx context.Context) (host.Host, routing.ContentRouting, erro
 	security := libp2p.Security(secio.ID, secio.New)
 
 	listenAddrs := libp2p.ListenAddrStrings(
-		"/ip4/0.0.0.0/tcp/4001",
+		"/ip4/0.0.0.0/tcp/0",
 	)
 
 	// var dht *kaddht.IpfsDHT

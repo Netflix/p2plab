@@ -31,7 +31,7 @@ import (
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/dagutils"
 	ipld "github.com/ipfs/go-ipld-format"
-	dag "github.com/ipfs/go-merkledag"
+	unixfs "github.com/ipfs/go-unixfs"
 	"github.com/moby/buildkit/util/contentutil"
 	multihash "github.com/multiformats/go-multihash"
 	digest "github.com/opencontainers/go-digest"
@@ -249,9 +249,8 @@ func ConstructDAGFromManifest(ctx context.Context, p p2plab.Peer, image ocispec.
 		return nil, err
 	}
 
-	root := new(dag.ProtoNode)
+	root := unixfs.EmptyDirNode()
 	root.SetCidBuilder(cid.V1Builder{MhType: multihash.SHA2_256})
-	root.SetData([]byte(ocispec.MediaTypeImageManifest))
 
 	dserv := p.DAGService()
 	e := dagutils.NewDagEditor(root, dserv)
