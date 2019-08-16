@@ -35,7 +35,14 @@ type Experiment struct {
 
 // ExperimentDefinition defines an experiment.
 type ExperimentDefinition struct {
+	IndependentVariable []IndependentVariable
+
+	ClusterDefinition ClusterDefinition
+
+	ScenarioDefinition ScenarioDefinition
 }
+
+type IndependentVariable map[string]interface{}
 
 func (m *DB) GetExperiment(ctx context.Context, id string) (Experiment, error) {
 	var experiment Experiment
@@ -193,10 +200,28 @@ func readExperiment(bkt *bolt.Bucket, experiment *Experiment) error {
 func readExperimentDefinition(bkt *bolt.Bucket) (ExperimentDefinition, error) {
 	var edef ExperimentDefinition
 
-	// dbkt := bkt.Bucket(bucketKeyDefinition)
-	// if dbkt == nil {
-	// 	return edef, nil
-	// }
+	dbkt := bkt.Bucket(bucketKeyDefinition)
+	if dbkt == nil {
+		return edef, nil
+	}
+
+	cbkt := dbkt.Bucket(bucketKeyCluster)
+	if cbkt != nil {
+		var err error
+		edef.ClusterDefinition, err = readClusterDefinition(cbkt)
+		if err != nil {
+			return edef, nil
+		}
+	}
+
+	sbkt := dbkt.Bucket(bucketKeyScenario)
+	if sbkt != nil {
+		var err error
+		edef.ScenarioDefinition, err = readScenarioDefinition(sbkt)
+		if err != nil {
+			return edef, nil
+		}
+	}
 
 	return edef, nil
 }

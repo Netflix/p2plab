@@ -31,9 +31,9 @@ func WaitHealthy(ctx context.Context, nset p2plab.NodeSet) error {
 
 	healthchecks, gctx := errgroup.WithContext(ctx)
 
-	var cancel context.CancelFunc
-	gctx, cancel = context.WithTimeout(gctx, 5*time.Minute)
-	defer cancel()
+	// var cancel context.CancelFunc
+	// gctx, cancel = context.WithTimeout(gctx, 5*time.Minute)
+	// defer cancel()
 
 	for _, n := range ns {
 		n := n
@@ -49,10 +49,11 @@ func WaitHealthy(ctx context.Context, nset p2plab.NodeSet) error {
 					return errors.Errorf("timed out waiting for node %q to be healthy", n.Metadata().ID)
 				case <-ticker.C:
 					ok := n.Healthcheck(gctx)
-					if ok {
-						healthCount++
+					if !ok {
+						continue
 					}
 
+					healthCount++
 					if healthCount == healthyThreshold {
 						return nil
 					}
