@@ -28,7 +28,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func Plan(ctx context.Context, root string, peer p2plab.Peer, nset p2plab.NodeSet, sdef metadata.ScenarioDefinition) (metadata.ScenarioPlan, error) {
+func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformers.Transformers, peer p2plab.Peer, nset p2plab.NodeSet) (metadata.ScenarioPlan, error) {
 	plan := metadata.ScenarioPlan{
 		Objects:   make(map[string]cid.Cid),
 		Seed:      make(map[string]metadata.Task),
@@ -37,11 +37,12 @@ func Plan(ctx context.Context, root string, peer p2plab.Peer, nset p2plab.NodeSe
 
 	objects, gctx := errgroup.WithContext(ctx)
 
+	log.Info().Msg("Transforming objects into IPLD DAGs")
 	var mu sync.Mutex
 	for name, odef := range sdef.Objects {
 		name, odef := name, odef
 		objects.Go(func() error {
-			t, err := transformers.GetTransformer(root, odef.Type)
+			t, err := ts.Get(odef.Type)
 			if err != nil {
 				return err
 			}

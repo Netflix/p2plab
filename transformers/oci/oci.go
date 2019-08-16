@@ -21,6 +21,7 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
+	"time"
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/errdefs"
@@ -64,7 +65,13 @@ func New(root string) (p2plab.Transformer, error) {
 	}
 
 	resolver := docker.NewResolver(docker.ResolverOptions{
-		Client: http.DefaultClient,
+		Client: &http.Client{
+			Transport: &http.Transport{
+				Proxy:                 http.ProxyFromEnvironment,
+				DisableKeepAlives:     true,
+				ResponseHeaderTimeout: 5 * time.Second,
+			},
+		},
 	})
 
 	return &transformer{
@@ -75,11 +82,17 @@ func New(root string) (p2plab.Transformer, error) {
 	}, nil
 }
 
+func (t *transformer) Close() error {
+	return t.db.Close()
+}
+
 func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source string, options []string) (cid.Cid, error) {
+	log.Info().Str("source", source).Msg("Resolving OCI reference")
 	name, desc, err := t.resolver.Resolve(ctx, source)
 	if err != nil {
 		return cid.Undef, errors.Wrapf(err, "failed to resolve %q", source)
 	}
+	log.Info().Str("source", source).Str("digest", desc.Digest.String()).Msg("Resolved reference to digest")
 
 	target, err := t.get(desc.Digest)
 	if err != nil && !errdefs.IsNotFound(err) {
@@ -92,6 +105,7 @@ func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source strin
 			return cid.Undef, errors.Wrapf(err, "failed to create fetcher for %q", name)
 		}
 
+		log.Info().Str("digest", desc.Digest.String()).Msg("Converting manifest recursively to IPLD DAG")
 		target, err = Convert(ctx, p, fetcher, t.store, desc)
 		if err != nil {
 			return cid.Undef, errors.Wrapf(err, "failed to convert %q", name)
@@ -103,6 +117,7 @@ func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source strin
 		}
 	}
 
+	log.Info().Str("target", target.Digest.String()).Msg("Constructing Unixfs directory over manifest blobs")
 	nd, err := ConstructDAGFromManifest(ctx, p, target)
 	if err != nil {
 		return cid.Undef, err

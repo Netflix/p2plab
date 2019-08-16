@@ -1,0 +1,14 @@
+{
+	"objects": {
+		"golang": {
+			"type": "oci",
+			"source": "docker.io/library/golang:latest"
+		}
+	},
+	"seed": {
+		"(not 'new-peers')": "golang"
+	},
+	"benchmark": {
+		"new-peers": "golang"
+	}
+}

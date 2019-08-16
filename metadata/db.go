@@ -46,6 +46,10 @@ func NewDB(root string) (*DB, error) {
 	return &DB{db}, nil
 }
 
+func (m *DB) Close() error {
+	return m.db.Close()
+}
+
 func (m *DB) View(ctx context.Context, fn func(*bolt.Tx) error) error {
 	tx, ok := ctx.Value(transactionKey{}).(*bolt.Tx)
 	if !ok {

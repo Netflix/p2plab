@@ -38,9 +38,11 @@ func WaitHealthy(ctx context.Context, nset p2plab.NodeSet) error {
 	for _, n := range ns {
 		n := n
 		healthchecks.Go(func() error {
-			ticker := time.NewTicker(500 * time.Millisecond)
+			ticker := time.NewTicker(time.Second)
 			defer ticker.Stop()
 
+			healthCount := 0
+			healthyThreshold := 5
 			for {
 				select {
 				case <-gctx.Done():
@@ -48,6 +50,10 @@ func WaitHealthy(ctx context.Context, nset p2plab.NodeSet) error {
 				case <-ticker.C:
 					ok := n.Healthcheck(gctx)
 					if ok {
+						healthCount++
+					}
+
+					if healthCount == healthyThreshold {
 						return nil
 					}
 				}

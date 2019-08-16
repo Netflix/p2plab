@@ -22,4 +22,6 @@ import (
 
 type Transformer interface {
 	Transform(ctx context.Context, peer Peer, source string, options []string) (cid.Cid, error)
+
+	Close() error
 }

@@ -16,7 +16,6 @@ package terraform
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -83,9 +82,6 @@ func (t *Terraform) Apply(ctx context.Context, id string, cdef metadata.ClusterD
 			})
 		}
 	}
-
-	content, _ := json.MarshalIndent(&ns, "", "    ")
-	fmt.Printf("Nodes:\n%s\n", string(content))
 
 	return ns, nil
 }

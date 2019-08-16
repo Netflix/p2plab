@@ -16,14 +16,54 @@ package transformers
 
 import (
 	"path/filepath"
+	"sync"
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/transformers/oci"
 	"github.com/pkg/errors"
 )
 
-func GetTransformer(root, objectType string) (p2plab.Transformer, error) {
-	root = filepath.Join(root, objectType)
+type Transformers struct {
+	root string
+	mu   sync.Mutex
+	ts   map[string]p2plab.Transformer
+}
+
+func New(root string) *Transformers {
+	return &Transformers{
+		root: root,
+		ts:   make(map[string]p2plab.Transformer),
+	}
+}
+
+func (t *Transformers) Close() error {
+	for _, transformer := range t.ts {
+		err := transformer.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *Transformers) Get(objectType string) (p2plab.Transformer, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	transformer, ok := t.ts[objectType]
+	if !ok {
+		var err error
+		transformer, err = t.newTransformer(objectType)
+		if err != nil {
+			return nil, err
+		}
+		t.ts[objectType] = transformer
+	}
+	return transformer, nil
+}
+
+func (t *Transformers) newTransformer(objectType string) (p2plab.Transformer, error) {
+	root := filepath.Join(t.root, objectType)
 	switch objectType {
 	case "oci":
 		return oci.New(root)

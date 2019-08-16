@@ -258,7 +258,7 @@ func readClusterDefinition(bkt *bolt.Bucket) (ClusterDefinition, error) {
 		cdef.Groups = append(cdef.Groups, group)
 
 		i++
-		gbkt = bkt.Bucket([]byte(strconv.Itoa(i)))
+		gbkt = dbkt.Bucket([]byte(strconv.Itoa(i)))
 	}
 
 	return cdef, nil

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"os"
 	"strings"
 
 	"github.com/Netflix/p2plab"
@@ -41,6 +42,16 @@ func (capi *clusterAPI) Create(ctx context.Context, id string, opts ...p2plab.Cr
 
 	var cdef metadata.ClusterDefinition
 	if settings.Definition != "" {
+		f, err := os.Open(settings.Definition)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+
+		err = json.NewDecoder(f).Decode(&cdef)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		cdef.Groups = append(cdef.Groups, metadata.ClusterGroup{
 			Size:         settings.Size,

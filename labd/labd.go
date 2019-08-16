@@ -17,7 +17,7 @@ package labd
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"io"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -32,6 +32,7 @@ import (
 	"github.com/Netflix/p2plab/providers"
 	"github.com/Netflix/p2plab/query"
 	"github.com/Netflix/p2plab/scenarios"
+	"github.com/Netflix/p2plab/transformers"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -39,12 +40,13 @@ import (
 )
 
 type Labd struct {
-	root     string
-	addr     string
-	db       *metadata.DB
-	router   *mux.Router
-	seeder   *peer.Peer
-	provider p2plab.NodeProvider
+	root         string
+	addr         string
+	db           *metadata.DB
+	router       *mux.Router
+	seeder       *peer.Peer
+	provider     p2plab.NodeProvider
+	transformers *transformers.Transformers
 }
 
 func New(root, addr string) (*Labd, error) {
@@ -60,15 +62,29 @@ func New(root, addr string) (*Labd, error) {
 
 	r := mux.NewRouter().UseEncodedPath().StrictSlash(true)
 	d := &Labd{
-		root:     root,
-		addr:     addr,
-		db:       db,
-		router:   r,
-		provider: provider,
+		root:         root,
+		addr:         addr,
+		db:           db,
+		router:       r,
+		provider:     provider,
+		transformers: transformers.New(filepath.Join(root, "transformers")),
 	}
 	d.registerRoutes(r)
 
 	return d, nil
+}
+
+func (d *Labd) Close() error {
+	for _, closer := range []io.Closer{
+		d.db,
+		d.transformers,
+	} {
+		err := closer.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (d *Labd) Serve(ctx context.Context) error {
@@ -188,13 +204,6 @@ func (d *Labd) createClusterHandler(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return err
 	}
-
-	content, err := json.MarshalIndent(&ng, "", "    ")
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("NodeGroup:\n%s\n", string(content))
 
 	log.Info().Str("cluster", id).Msg("Updating metadata with new nodes")
 	var mns []metadata.Node
@@ -516,7 +525,8 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 	}
 
 	log.Info().Str("cluster", cid).Str("scenario", sid).Msg("Creating scenario plan")
-	plan, err := scenarios.Plan(ctx, filepath.Join(d.root, "transformers"), d.seeder, nset, scenario.Definition)
+
+	plan, err := scenarios.Plan(ctx, scenario.Definition, d.transformers, d.seeder, nset)
 	if err != nil {
 		return err
 	}
@@ -540,7 +550,6 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 	log.Info().Str("cluster", cid).Str("scenario", sid).Str("benchmark", benchmark.ID).Msg("Running scenario plan")
 	err = scenarios.Run(ctx, nset, plan, seederAddr)
 	if err != nil {
-		log.Warn().Str("benchmark", benchmark.ID).Msgf("failed to run scenario plan: %s", err)
 		return errors.Wrap(err, "failed to run scenario plan")
 	}
 
@@ -548,7 +557,6 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 	benchmark.Status = metadata.BenchmarkDone
 	benchmark, err = d.db.UpdateBenchmark(ctx, benchmark)
 	if err != nil {
-		log.Warn().Str("benchmark", benchmark.ID).Msgf("failed to update benchmark: %s", err)
 		return errors.Wrap(err, "failed to update benchmark")
 	}
 

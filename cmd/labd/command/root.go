@@ -60,6 +60,7 @@ func daemonAction(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	defer daemon.Close()
 
 	return daemon.Serve(ctx)
 }
