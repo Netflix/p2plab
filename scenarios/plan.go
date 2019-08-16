@@ -28,7 +28,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func Plan(ctx context.Context, peer p2plab.Peer, nset p2plab.NodeSet, sdef metadata.ScenarioDefinition) (metadata.ScenarioPlan, error) {
+func Plan(ctx context.Context, root string, peer p2plab.Peer, nset p2plab.NodeSet, sdef metadata.ScenarioDefinition) (metadata.ScenarioPlan, error) {
 	plan := metadata.ScenarioPlan{
 		Objects:   make(map[string]cid.Cid),
 		Seed:      make(map[string]metadata.Task),
@@ -41,7 +41,7 @@ func Plan(ctx context.Context, peer p2plab.Peer, nset p2plab.NodeSet, sdef metad
 	for name, odef := range sdef.Objects {
 		name, odef := name, odef
 		objects.Go(func() error {
-			t, err := transformers.GetTransformer(odef.Type)
+			t, err := transformers.GetTransformer(root, odef.Type)
 			if err != nil {
 				return err
 			}

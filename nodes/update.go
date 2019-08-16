@@ -12,22 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package transformers
+package nodes
 
 import (
-	"path/filepath"
+	"context"
 
 	"github.com/Netflix/p2plab"
-	"github.com/Netflix/p2plab/transformers/oci"
-	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 )
 
-func GetTransformer(root, objectType string) (p2plab.Transformer, error) {
-	root = filepath.Join(root, objectType)
-	switch objectType {
-	case "oci":
-		return oci.New(root)
-	default:
-		return nil, errors.Errorf("unrecognized object type: %q", objectType)
+func Update(ctx context.Context, nset p2plab.NodeSet, url string) error {
+	err := WaitHealthy(ctx, nset)
+	if err != nil {
+		return err
 	}
+
+	ns := nset.Slice()
+	updatePeers, gctx := errgroup.WithContext(ctx)
+	for _, n := range ns {
+		n := n
+		updatePeers.Go(func() error {
+			return n.Update(gctx, url)
+		})
+
+	}
+
+	err = updatePeers.Wait()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

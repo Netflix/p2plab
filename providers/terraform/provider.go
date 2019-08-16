@@ -53,7 +53,7 @@ type RegionalClusterGroups struct {
 }
 
 func New(root string) (p2plab.NodeProvider, error) {
-	tfvarsPath := filepath.Join(root, "terraform/terraform.tfvars")
+	tfvarsPath := filepath.Join(root, "templates/terraform.tfvars")
 	tfvarsContent, err := ioutil.ReadFile(tfvarsPath)
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func New(root string) (p2plab.NodeProvider, error) {
 		return nil, err
 	}
 
-	maintfPath := filepath.Join(root, "terraform/main.tf")
+	maintfPath := filepath.Join(root, "templates/main.tf")
 	maintfContent, err := ioutil.ReadFile(maintfPath)
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func (p *provider) DestroyNodeGroup(ctx context.Context, ng *p2plab.NodeGroup) e
 	if !ok {
 		log.Debug().Str("id", ng.ID).Msg("Creating terraform handler")
 		var err error
-		clusterDir := filepath.Join(p.root, ng.ID, "terraform")
+		clusterDir := filepath.Join(p.root, ng.ID)
 		t, err = NewTerraform(ctx, clusterDir)
 		if err != nil {
 			return errors.Wrap(err, "failed to create terraform handler")
@@ -146,7 +146,7 @@ func (p *provider) DestroyNodeGroup(ctx context.Context, ng *p2plab.NodeGroup) e
 }
 
 func (p *provider) prepareClusterDir(id string) (clusterDir string, err error) {
-	clusterDir = filepath.Join(p.root, id, "terraform")
+	clusterDir = filepath.Join(p.root, id)
 	_, err = os.Stat(clusterDir)
 	if err == nil {
 		return clusterDir, errors.Errorf("cluster terraform dir already exists: %q", clusterDir)
@@ -163,7 +163,7 @@ func (p *provider) prepareClusterDir(id string) (clusterDir string, err error) {
 		}
 	}()
 
-	terraformDir := filepath.Join(p.root, "terraform")
+	terraformDir := filepath.Join(p.root, "templates")
 	for _, p := range []string{
 		"outputs.tf",
 		"variables.tf",
@@ -187,7 +187,7 @@ func (p *provider) prepareClusterDir(id string) (clusterDir string, err error) {
 		}
 	}
 
-	maintfPath := filepath.Join(p.root, id, "terraform/main.tf")
+	maintfPath := filepath.Join(p.root, id, "main.tf")
 	f, err := os.Create(maintfPath)
 	if err != nil {
 		return clusterDir, err
@@ -209,7 +209,7 @@ func (p *provider) prepareClusterDir(id string) (clusterDir string, err error) {
 }
 
 func (p *provider) destroyClusterDir(id string) error {
-	clusterDir := filepath.Join(p.root, id, "terraform")
+	clusterDir := filepath.Join(p.root, id)
 	return os.RemoveAll(clusterDir)
 }
 
@@ -239,7 +239,7 @@ func (p *provider) executeTfvarsTemplate(id string, cdef metadata.ClusterDefinit
 		return vars.RegionalClusterGroups[i].Region < vars.RegionalClusterGroups[j].Region
 	})
 
-	tfvarsPath := filepath.Join(p.root, id, "terraform/terraform.tfvars")
+	tfvarsPath := filepath.Join(p.root, id, "terraform.tfvars")
 	f, err := os.Create(tfvarsPath)
 	if err != nil {
 		return err

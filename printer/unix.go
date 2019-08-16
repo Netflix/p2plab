@@ -43,6 +43,8 @@ func (p *unixPrinter) Print(v interface{}) error {
 		fmt.Printf("%s\n", t.ID)
 	case metadata.Benchmark:
 		fmt.Printf("%s\n", t.ID)
+	case metadata.Experiment:
+		fmt.Printf("%s\n", t.ID)
 	}
 
 	return nil

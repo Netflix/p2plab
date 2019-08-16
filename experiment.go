@@ -21,7 +21,7 @@ import (
 )
 
 type ExperimentAPI interface {
-	Create(ctx context.Context, id string, edef metadata.ExperimentDefinition) (Experiment, error)
+	Start(ctx context.Context, id string, edef metadata.ExperimentDefinition) (Experiment, error)
 
 	Get(ctx context.Context, id string) (Experiment, error)
 
@@ -31,5 +31,5 @@ type ExperimentAPI interface {
 type Experiment interface {
 	Metadata() metadata.Experiment
 
-	Remove(ctx context.Context) error
+	Cancel(ctx context.Context) error
 }

@@ -28,7 +28,7 @@ type experimentAPI struct {
 	cln *client
 }
 
-func (eapi *experimentAPI) Create(ctx context.Context, id string, edef metadata.ExperimentDefinition) (p2plab.Experiment, error) {
+func (eapi *experimentAPI) Start(ctx context.Context, id string, edef metadata.ExperimentDefinition) (p2plab.Experiment, error) {
 	content, err := json.MarshalIndent(&edef, "", "    ")
 	if err != nil {
 		return nil, err
@@ -101,11 +101,11 @@ func (e *experiment) Metadata() metadata.Experiment {
 	return e.metadata
 }
 
-func (e *experiment) Remove(ctx context.Context) error {
-	req := e.cln.NewRequest("DELETE", "/experiments/%s", e.metadata.ID)
+func (e *experiment) Cancel(ctx context.Context) error {
+	req := e.cln.NewRequest("PUT", "/experiments/%s/cancel", e.metadata.ID)
 	resp, err := req.Send(ctx)
 	if err != nil {
-		return errors.Wrapf(err, "failed to remove experiment %q", e.metadata.ID)
+		return errors.Wrapf(err, "failed to cancel experiment %q", e.metadata.ID)
 	}
 	defer resp.Body.Close()
 

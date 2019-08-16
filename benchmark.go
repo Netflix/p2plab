@@ -24,7 +24,7 @@ import (
 // BenchmarkAPI defines API for benchmark operations.
 type BenchmarkAPI interface {
 	// Create starts benchmarking a scenario on a cluster.
-	Create(ctx context.Context, cluster, scenario string) (Benchmark, error)
+	Start(ctx context.Context, cluster, scenario string, opts ...StartBenchmarkOption) (Benchmark, error)
 
 	// Get returns a benchmark.
 	Get(ctx context.Context, id string) (Benchmark, error)
@@ -46,6 +46,19 @@ type Benchmark interface {
 
 	// Logs returns a streaming log of the benchmark operation.
 	Logs(ctx context.Context, opt ...LogsOption) (io.ReadCloser, error)
+}
+
+type StartBenchmarkOption func(*StartBenchmarkSettings) error
+
+type StartBenchmarkSettings struct {
+	NoReset bool
+}
+
+func WithBenchmarkNoReset() StartBenchmarkOption {
+	return func(s *StartBenchmarkSettings) error {
+		s.NoReset = true
+		return nil
+	}
 }
 
 // Report is a benchmark summary on how the P2P application behaved during the

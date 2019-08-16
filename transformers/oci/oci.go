@@ -20,10 +20,13 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"path/filepath"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/pkg/digestconv"
 	"github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/content/local"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/remotes"
@@ -32,27 +35,44 @@ import (
 	"github.com/ipfs/go-ipfs/dagutils"
 	ipld "github.com/ipfs/go-ipld-format"
 	unixfs "github.com/ipfs/go-unixfs"
-	"github.com/moby/buildkit/util/contentutil"
 	multihash "github.com/multiformats/go-multihash"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	bolt "go.etcd.io/bbolt"
 )
 
 type transformer struct {
+	root     string
+	db       *bolt.DB
+	store    content.Store
 	resolver remotes.Resolver
 }
 
-func New() p2plab.Transformer {
+func New(root string) (p2plab.Transformer, error) {
+	store, err := local.NewStore(filepath.Join(root, "store"))
+	if err != nil {
+		return nil, err
+	}
+
+	path := filepath.Join(root, "meta.db")
+	db, err := bolt.Open(path, 0644, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	resolver := docker.NewResolver(docker.ResolverOptions{
 		Client: http.DefaultClient,
 	})
 
 	return &transformer{
+		root:     root,
+		db:       db,
+		store:    store,
 		resolver: resolver,
-	}
+	}, nil
 }
 
 func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source string, options []string) (cid.Cid, error) {
@@ -61,15 +81,26 @@ func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source strin
 		return cid.Undef, errors.Wrapf(err, "failed to resolve %q", source)
 	}
 
-	fetcher, err := t.resolver.Fetcher(ctx, name)
-	if err != nil {
-		return cid.Undef, errors.Wrapf(err, "failed to create fetcher for %q", name)
+	target, err := t.get(desc.Digest)
+	if err != nil && !errdefs.IsNotFound(err) {
+		return cid.Undef, errors.Wrapf(err, "failed to look for cached transform")
 	}
 
-	buffer := contentutil.NewBuffer()
-	target, err := Convert(ctx, p, fetcher, buffer, desc)
-	if err != nil {
-		return cid.Undef, errors.Wrapf(err, "failed to convert %q", name)
+	if errdefs.IsNotFound(err) {
+		fetcher, err := t.resolver.Fetcher(ctx, name)
+		if err != nil {
+			return cid.Undef, errors.Wrapf(err, "failed to create fetcher for %q", name)
+		}
+
+		target, err = Convert(ctx, p, fetcher, t.store, desc)
+		if err != nil {
+			return cid.Undef, errors.Wrapf(err, "failed to convert %q", name)
+		}
+
+		err = t.put(desc.Digest, target)
+		if err != nil {
+			return cid.Undef, errors.Wrapf(err, "failed to put cached transform")
+		}
 	}
 
 	nd, err := ConstructDAGFromManifest(ctx, p, target)
@@ -80,18 +111,20 @@ func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source strin
 	return nd.Cid(), nil
 }
 
-func Convert(ctx context.Context, peer p2plab.Peer, fetcher remotes.Fetcher, buffer contentutil.Buffer, desc ocispec.Descriptor) (target ocispec.Descriptor, err error) {
+func Convert(ctx context.Context, peer p2plab.Peer, fetcher remotes.Fetcher, store content.Store, desc ocispec.Descriptor) (target ocispec.Descriptor, err error) {
 	// Get all the children for a descriptor from a provider.
-	childrenHandler := images.ChildrenHandler(buffer)
+	childrenHandler := images.ChildrenHandler(store)
+	// Filter manifests by platform.
+	childrenHandler = images.FilterPlatforms(childrenHandler, platforms.Default())
 	// Convert each child into a IPLD merkle tree.
-	childrenHandler = DispatchConvertHandler(childrenHandler, peer, fetcher, buffer)
+	childrenHandler = DispatchConvertHandler(childrenHandler, peer, fetcher, store)
 	// Build manifest from converted children.
-	childrenHandler = BuildManifestHandler(childrenHandler, peer, buffer, func(desc ocispec.Descriptor) {
+	childrenHandler = BuildManifestHandler(childrenHandler, peer, store, func(desc ocispec.Descriptor) {
 		target = desc
 	})
 
 	handler := images.Handlers(
-		remotes.FetchHandler(buffer, fetcher),
+		remotes.FetchHandler(store, fetcher),
 		childrenHandler,
 	)
 
@@ -103,7 +136,7 @@ func Convert(ctx context.Context, peer p2plab.Peer, fetcher remotes.Fetcher, buf
 	return target, nil
 }
 
-func DispatchConvertHandler(f images.HandlerFunc, peer p2plab.Peer, fetcher remotes.Fetcher, buffer contentutil.Buffer) images.HandlerFunc {
+func DispatchConvertHandler(f images.HandlerFunc, peer p2plab.Peer, fetcher remotes.Fetcher, store content.Store) images.HandlerFunc {
 	return func(ctx context.Context, desc ocispec.Descriptor) (subdescs []ocispec.Descriptor, err error) {
 		children, err := f(ctx, desc)
 		if err != nil {
@@ -111,7 +144,7 @@ func DispatchConvertHandler(f images.HandlerFunc, peer p2plab.Peer, fetcher remo
 		}
 
 		conversions := make(map[digest.Digest]ocispec.Descriptor)
-		handler := ConvertHandler(conversions, peer, fetcher, buffer)
+		handler := ConvertHandler(conversions, peer, fetcher, store)
 		err = images.Dispatch(ctx, handler, nil, children...)
 		if err != nil {
 			return children, errors.Wrap(err, "failed to sub-dispatch")
@@ -125,7 +158,7 @@ func DispatchConvertHandler(f images.HandlerFunc, peer p2plab.Peer, fetcher remo
 	}
 }
 
-func ConvertHandler(conversions map[digest.Digest]ocispec.Descriptor, peer p2plab.Peer, fetcher remotes.Fetcher, buffer contentutil.Buffer) images.HandlerFunc {
+func ConvertHandler(conversions map[digest.Digest]ocispec.Descriptor, peer p2plab.Peer, fetcher remotes.Fetcher, store content.Store) images.HandlerFunc {
 	return func(ctx context.Context, desc ocispec.Descriptor) (subdescs []ocispec.Descriptor, err error) {
 		var (
 			target ocispec.Descriptor
@@ -134,7 +167,7 @@ func ConvertHandler(conversions map[digest.Digest]ocispec.Descriptor, peer p2pla
 		case images.MediaTypeDockerSchema2Manifest, ocispec.MediaTypeImageManifest,
 			images.MediaTypeDockerSchema2ManifestList, ocispec.MediaTypeImageIndex:
 
-			target, err = Convert(ctx, peer, fetcher, buffer, desc)
+			target, err = Convert(ctx, peer, fetcher, store, desc)
 
 		case images.MediaTypeDockerSchema2Layer, images.MediaTypeDockerSchema2LayerGzip,
 			images.MediaTypeDockerSchema2LayerForeign, images.MediaTypeDockerSchema2LayerForeignGzip,

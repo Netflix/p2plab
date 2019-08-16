@@ -15,12 +15,15 @@
 package providers
 
 import (
+	"path/filepath"
+
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/providers/terraform"
 	"github.com/pkg/errors"
 )
 
 func GetNodeProvider(root, providerType string) (p2plab.NodeProvider, error) {
+	root = filepath.Join(root, providerType)
 	switch providerType {
 	case "terraform":
 		return terraform.New(root)

@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/Netflix/p2plab/peer"
 	"github.com/Netflix/p2plab/transformers/oci"
@@ -51,7 +52,8 @@ func run(ref string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	p, err := peer.New(ctx, "./tmp/ociadd")
+	root := "./tmp/ociadd"
+	p, err := peer.New(ctx, filepath.Join(root, "peer"))
 	if err != nil {
 		return err
 	}
@@ -62,7 +64,11 @@ func run(ref string) error {
 	}
 	log.Info().Str("id", p.Host().ID().String()).Strs("listen", addrs).Msg("Starting libp2p peer")
 
-	transformer := oci.New()
+	transformer, err := oci.New(filepath.Join(root, "transformers/oci"))
+	if err != nil {
+		return err
+	}
+
 	c, err := transformer.Transform(ctx, p, ref, nil)
 	if err != nil {
 		return err

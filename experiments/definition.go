@@ -12,22 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package transformers
+package experiments
 
 import (
-	"path/filepath"
+	"encoding/json"
+	"io/ioutil"
 
-	"github.com/Netflix/p2plab"
-	"github.com/Netflix/p2plab/transformers/oci"
-	"github.com/pkg/errors"
+	"github.com/Netflix/p2plab/metadata"
 )
 
-func GetTransformer(root, objectType string) (p2plab.Transformer, error) {
-	root = filepath.Join(root, objectType)
-	switch objectType {
-	case "oci":
-		return oci.New(root)
-	default:
-		return nil, errors.Errorf("unrecognized object type: %q", objectType)
+func Parse(filename string) (metadata.ExperimentDefinition, error) {
+	var edef metadata.ExperimentDefinition
+	content, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return edef, err
 	}
+
+	err = json.Unmarshal(content, &edef)
+	if err != nil {
+		return edef, err
+	}
+
+	return edef, nil
 }

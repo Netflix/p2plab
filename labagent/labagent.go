@@ -135,12 +135,32 @@ func (a *LabAgent) updateApp(ctx context.Context, url string) error {
 		return err
 	}
 
-	// err = a.updateBinary(url)
-	// if err != nil {
-	// 	return err
-	// }
+	if url != "" {
+		err = a.updateBinary(url)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = a.clearAppState()
+	if err != nil {
+	}
 
 	err = a.startApp()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *LabAgent) clearAppState() error {
+	err := os.RemoveAll(a.appRoot)
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(a.appRoot, 0711)
 	if err != nil {
 		return err
 	}

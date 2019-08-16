@@ -17,6 +17,8 @@ package command
 import (
 	"errors"
 
+	"github.com/Netflix/p2plab"
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli"
 )
 
@@ -30,11 +32,17 @@ var benchmarkCommand = cli.Command{
 			Aliases: []string{"s"},
 			Usage:   "Start benchmark for a scenario.",
 			Action:  startBenchmarkAction,
+			Flags: []cli.Flag{
+				&cli.BoolFlag{
+					Name:  "no-reset",
+					Usage: "Skips resetting the cluster to maintain a stale state",
+				},
+			},
 		},
 		{
 			Name:    "cancel",
 			Aliases: []string{"c"},
-			Usage:   "Cancel a benchmark.",
+			Usage:   "Cancel a running benchmark.",
 			Action:  cancelBenchmarkAction,
 		},
 		{
@@ -69,7 +77,13 @@ func startBenchmarkAction(c *cli.Context) error {
 
 	ctx := CommandContext(c)
 	cluster, scenario := c.Args().Get(0), c.Args().Get(1)
-	_, err = cln.Benchmark().Create(ctx, cluster, scenario)
+
+	var opts []p2plab.StartBenchmarkOption
+	if c.Bool("no-reset") {
+		opts = append(opts, p2plab.WithBenchmarkNoReset())
+	}
+
+	_, err = cln.Benchmark().Start(ctx, cluster, scenario, opts...)
 	if err != nil {
 		return err
 	}
@@ -98,6 +112,7 @@ func cancelBenchmarkAction(c *cli.Context) error {
 		return err
 	}
 
+	log.Info().Msgf("Cancelled benchmark %q", benchmark.Metadata().ID)
 	return nil
 }
 

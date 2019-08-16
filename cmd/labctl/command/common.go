@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/Netflix/p2plab/printer"
@@ -126,4 +127,8 @@ type nopCloser struct{}
 
 func (*nopCloser) Close() error {
 	return nil
+}
+
+func ExtractNameFromFilename(filename string) string {
+	return strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename))
 }

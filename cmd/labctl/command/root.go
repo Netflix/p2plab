@@ -46,6 +46,7 @@ func App(ctx context.Context) *cli.App {
 		nodeCommand,
 		scenarioCommand,
 		benchmarkCommand,
+		experimentCommand,
 		debugCommand,
 	}
 

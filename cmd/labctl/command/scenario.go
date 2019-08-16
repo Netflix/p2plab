@@ -16,8 +16,6 @@ package command
 
 import (
 	"errors"
-	"path/filepath"
-	"strings"
 
 	"github.com/Netflix/p2plab/scenarios"
 	"github.com/rs/zerolog/log"
@@ -62,10 +60,9 @@ func createScenarioAction(c *cli.Context) error {
 	}
 
 	filename := c.Args().First()
-
 	name := c.String("name")
 	if name == "" {
-		name = strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename))
+		name = ExtractNameFromFilename(filename)
 	}
 
 	sdef, err := scenarios.Parse(filename)
@@ -90,7 +87,7 @@ func createScenarioAction(c *cli.Context) error {
 
 func removeScenarioAction(c *cli.Context) error {
 	if c.NArg() != 1 {
-		return errors.New("scenario name must be provided")
+		return errors.New("scenario id must be provided")
 	}
 
 	cln, err := ResolveClient(c)

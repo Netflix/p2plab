@@ -15,95 +15,115 @@
 package command
 
 import (
+	"errors"
+
+	"github.com/Netflix/p2plab/experiments"
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli"
 )
 
-var clusterDefinitionCommand = cli.Command{
-	Name:    "definition",
-	Aliases: []string{"d"},
-	Usage:   "Manage cluster definitions.",
+var experimentCommand = cli.Command{
+	Name:    "experiment",
+	Aliases: []string{"e"},
+	Usage:   "Manage experiments.",
 	Subcommands: []cli.Command{
 		{
-			Name:    "create",
-			Aliases: []string{"c"},
-			Usage:   "Creates a new cluster.",
-			Action:  createClusterDefinitionAction,
+			Name:    "start",
+			Aliases: []string{"s"},
+			Usage:   "Starts an experiment",
+			Action:  startExperimentAction,
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:  "name",
+					Usage: "Name of the experiment, by default takes the name of the experiment definition.",
+				},
+			},
 		},
 		{
-			Name:    "remove",
-			Aliases: []string{"rm"},
-			Usage:   "Remove clusters.",
-			Action:  removeClusterDefinitionAction,
+			Name:    "cancel",
+			Aliases: []string{"c"},
+			Usage:   "Cancels a running experiments.",
+			Action:  cancelExperimentAction,
 		},
 		{
 			Name:    "list",
 			Aliases: []string{"ls"},
-			Usage:   "List clusters.",
-			Action:  listClusterDefinitionAction,
+			Usage:   "List experiments.",
+			Action:  listExperimentAction,
 		},
 	},
 }
 
-func createClusterDefinitionAction(c *cli.Context) error {
-	// if c.NArg() != 1 {
-	// 	return errors.New("cluster definition id must be provided")
-	// }
+func startExperimentAction(c *cli.Context) error {
+	if c.NArg() != 1 {
+		return errors.New("experiment definition must be provided")
+	}
 
-	// cln, err := ResolveClient(c)
-	// if err != nil {
-	// 	return err
-	// }
+	filename := c.Args().First()
+	name := c.String("name")
+	if name == "" {
+		name = ExtractNameFromFilename(filename)
+	}
 
-	// cdef, err := cln.ClusterDefinition().Create(CommandContext(c), c.Args().First())
-	// if err != nil {
-	// 	return err
-	// }
+	edef, err := experiments.Parse(filename)
+	if err != nil {
+		return err
+	}
 
-	// log.Info().Msgf("Created cluster definition %q", cdef.ID)
+	cln, err := ResolveClient(c)
+	if err != nil {
+		return err
+	}
+
+	experiment, err := cln.Experiment().Start(CommandContext(c), name, edef)
+	if err != nil {
+		return err
+	}
+
+	log.Info().Msgf("Started experiment %q", experiment.Metadata().ID)
 	return nil
 }
 
-func removeClusterDefinitionAction(c *cli.Context) error {
-	// if c.NArg() != 1 {
-	// 	return errors.New("cluster definition id must be provided")
-	// }
+func cancelExperimentAction(c *cli.Context) error {
+	if c.NArg() != 1 {
+		return errors.New("experiment id must be provided")
+	}
 
-	// cln, err := ResolveClient(c)
-	// if err != nil {
-	// 	return err
-	// }
+	cln, err := ResolveClient(c)
+	if err != nil {
+		return err
+	}
 
-	// ctx := CommandContext(c)
-	// cluster, err := cln.Cluster().Get(ctx, c.Args().First())
-	// if err != nil {
-	// 	return err
-	// }
+	ctx := CommandContext(c)
+	experiment, err := cln.Experiment().Get(ctx, c.Args().First())
+	if err != nil {
+		return err
+	}
 
-	// err = cluster.Remove(ctx)
-	// if err != nil {
-	// 	return err
-	// }
+	err = experiment.Cancel(ctx)
+	if err != nil {
+		return err
+	}
 
-	// log.Info().Msgf("Removed cluster %q", cluster.Metadata().ID)
+	log.Info().Msgf("Cancelled experiment %q", experiment.Metadata().ID)
 	return nil
 }
 
-func listClusterDefinitionAction(c *cli.Context) error {
-	// cln, err := ResolveClient(c)
-	// if err != nil {
-	// 	return err
-	// }
+func listExperimentAction(c *cli.Context) error {
+	cln, err := ResolveClient(c)
+	if err != nil {
+		return err
+	}
 
-	// clusters, err := cln.Cluster().List(CommandContext(c))
-	// if err != nil {
-	// 	return err
-	// }
+	experiments, err := cln.Experiment().List(CommandContext(c))
+	if err != nil {
+		return err
+	}
 
-	// l := make([]interface{}, len(clusters))
-	// for i, c := range clusters {
-	// 	l[i] = c.Metadata()
-	// }
+	l := make([]interface{}, len(experiments))
+	for i, e := range experiments {
+		l[i] = e.Metadata()
+	}
 
-	// return CommandPrinter(c).Print(l)
-	return nil
+	return CommandPrinter(c).Print(l)
 }

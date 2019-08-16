@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/Netflix/p2plab/peer"
 	cid "github.com/ipfs/go-cid"
@@ -56,7 +57,8 @@ func run(addr, ref string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	p, err := peer.New(ctx, "./tmp/get")
+	root := "./tmp/ociget"
+	p, err := peer.New(ctx, filepath.Join(root, "peer"))
 	if err != nil {
 		return err
 	}

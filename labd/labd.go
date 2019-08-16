@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -52,7 +53,7 @@ func New(root, addr string) (*Labd, error) {
 		return nil, err
 	}
 
-	provider, err := providers.GetNodeProvider(filepath.Join(root, "clusters"), "terraform")
+	provider, err := providers.GetNodeProvider(filepath.Join(root, "providers"), "terraform")
 	if err != nil {
 		return nil, err
 	}
@@ -115,6 +116,11 @@ func (d *Labd) registerRoutes(r *mux.Router) {
 	benchmarks.Handle("/{benchmark}/cancel", httputil.ErrorHandler{d.cancelBenchmarkHandler}).Methods("PUT")
 	benchmarks.Handle("/{benchmark}/report", httputil.ErrorHandler{d.reportBenchmarkHandler}).Methods("GET")
 	benchmarks.Handle("/{benchmark}/logs", httputil.ErrorHandler{d.logsBenchmarkHandler}).Methods("GET")
+
+	experiments := api.PathPrefix("/experiments").Subrouter()
+	experiments.Handle("", httputil.ErrorHandler{d.experimentsHandler}).Methods("GET", "POST")
+	experiments.Handle("/{experiment}", httputil.ErrorHandler{d.getExperimentHandler}).Methods("GET")
+	experiments.Handle("/{experiment}/cancel", httputil.ErrorHandler{d.cancelExperimentHandler}).Methods("PUT")
 }
 
 func (d *Labd) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
@@ -463,6 +469,15 @@ func (d *Labd) listBenchmarkHandler(w http.ResponseWriter, r *http.Request) erro
 func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) error {
 	log.Info().Msg("benchmark/create")
 
+	noReset := false
+	if r.FormValue("no-reset") != "" {
+		var err error
+		noReset, err = strconv.ParseBool(r.FormValue("no-reset"))
+		if err != nil {
+			return err
+		}
+	}
+
 	ctx := r.Context()
 	sid := r.FormValue("scenario")
 	scenario, err := d.db.GetScenario(ctx, sid)
@@ -486,8 +501,22 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 		nset.Add(newNode(nil, n))
 	}
 
+	if !noReset {
+		log.Info().Str("cluster", cid).Msg("Updating cluster")
+		err = nodes.Update(ctx, nset, "")
+		if err != nil {
+			return err
+		}
+
+		log.Info().Str("cluster", cid).Msg("Connecting cluster")
+		err = nodes.Connect(ctx, nset)
+		if err != nil {
+			return err
+		}
+	}
+
 	log.Info().Str("cluster", cid).Str("scenario", sid).Msg("Creating scenario plan")
-	plan, err := scenarios.Plan(ctx, d.seeder, nset, scenario.Definition)
+	plan, err := scenarios.Plan(ctx, filepath.Join(d.root, "transformers"), d.seeder, nset, scenario.Definition)
 	if err != nil {
 		return err
 	}
@@ -573,6 +602,57 @@ func (d *Labd) logsBenchmarkHandler(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 	log.Info().Msgf("logs %q", benchmark.ID)
+
+	return nil
+}
+
+func (d *Labd) experimentsHandler(w http.ResponseWriter, r *http.Request) error {
+	var err error
+	switch r.Method {
+	case "GET":
+		err = d.listExperimentHandler(w, r)
+	case "POST":
+		err = d.createExperimentHandler(w, r)
+	}
+	return err
+}
+
+func (d *Labd) listExperimentHandler(w http.ResponseWriter, r *http.Request) error {
+	log.Info().Msg("experiment/list")
+
+	experiments, err := d.db.ListExperiments(r.Context())
+	if err != nil {
+		return err
+	}
+
+	return httputil.WriteJSON(w, &experiments)
+}
+
+func (d *Labd) createExperimentHandler(w http.ResponseWriter, r *http.Request) error {
+	log.Info().Msg("experiment/create")
+	return nil
+}
+
+func (d *Labd) getExperimentHandler(w http.ResponseWriter, r *http.Request) error {
+	log.Info().Msg("experiment/get")
+
+	vars := mux.Vars(r)
+	experiment, err := d.db.GetExperiment(r.Context(), vars["experiment"])
+	if err != nil {
+		return err
+	}
+
+	return httputil.WriteJSON(w, &experiment)
+}
+
+func (d *Labd) cancelExperimentHandler(w http.ResponseWriter, r *http.Request) error {
+	log.Info().Msg("experiment/cancel")
+
+	vars := mux.Vars(r)
+	_, err := d.db.GetExperiment(r.Context(), vars["experiment"])
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

@@ -27,10 +27,22 @@ type benchmarkAPI struct {
 	cln *client
 }
 
-func (bapi *benchmarkAPI) Create(ctx context.Context, cluster, scenario string) (p2plab.Benchmark, error) {
+func (bapi *benchmarkAPI) Start(ctx context.Context, cluster, scenario string, opts ...p2plab.StartBenchmarkOption) (p2plab.Benchmark, error) {
+	var settings p2plab.StartBenchmarkSettings
+	for _, opt := range opts {
+		err := opt(&settings)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	req := bapi.cln.NewRequest("POST", "/benchmarks").
 		Option("cluster", cluster).
 		Option("scenario", scenario)
+
+	if settings.NoReset {
+		req.Option("no-reset", "true")
+	}
 
 	resp, err := req.Send(ctx)
 	if err != nil {

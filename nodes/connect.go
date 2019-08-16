@@ -26,13 +26,13 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func Connect(ctx context.Context, nset p2plab.NodeSet) error {
+func WaitHealthy(ctx context.Context, nset p2plab.NodeSet) error {
 	ns := nset.Slice()
 
 	healthchecks, gctx := errgroup.WithContext(ctx)
 
 	var cancel context.CancelFunc
-	gctx, cancel = context.WithTimeout(gctx, 30*time.Second)
+	gctx, cancel = context.WithTimeout(gctx, 5*time.Minute)
 	defer cancel()
 
 	for _, n := range ns {
@@ -43,7 +43,7 @@ func Connect(ctx context.Context, nset p2plab.NodeSet) error {
 
 			for {
 				select {
-				case <-ctx.Done():
+				case <-gctx.Done():
 					return errors.Errorf("timed out waiting for node %q to be healthy", n.Metadata().ID)
 				case <-ticker.C:
 					ok := n.Healthcheck(gctx)
@@ -60,6 +60,17 @@ func Connect(ctx context.Context, nset p2plab.NodeSet) error {
 		return err
 	}
 
+	return nil
+
+}
+
+func Connect(ctx context.Context, nset p2plab.NodeSet) error {
+	err := WaitHealthy(ctx, nset)
+	if err != nil {
+		return err
+	}
+
+	ns := nset.Slice()
 	peerAddrs := make([]string, len(ns))
 	collectPeerAddrs, gctx := errgroup.WithContext(ctx)
 	for i, n := range ns {
