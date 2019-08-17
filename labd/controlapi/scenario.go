@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package labd
+package controlapi
 
 import (
 	"bytes"
@@ -22,21 +22,20 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
-	"github.com/pkg/errors"
 )
 
-type experimentAPI struct {
+type scenarioAPI struct {
 	client *httputil.Client
 	url    urlFunc
 }
 
-func (a *experimentAPI) Start(ctx context.Context, id string, edef metadata.ExperimentDefinition) (p2plab.Experiment, error) {
-	content, err := json.MarshalIndent(&edef, "", "    ")
+func (a *scenarioAPI) Create(ctx context.Context, id string, sdef metadata.ScenarioDefinition) (p2plab.Scenario, error) {
+	content, err := json.MarshalIndent(&sdef, "", "    ")
 	if err != nil {
 		return nil, err
 	}
 
-	req := a.client.NewRequest("POST", a.url("/experiments")).
+	req := a.client.NewRequest("POST", a.url("/scenarios")).
 		Option("id", id).
 		Body(bytes.NewReader(content))
 
@@ -46,73 +45,73 @@ func (a *experimentAPI) Start(ctx context.Context, id string, edef metadata.Expe
 	}
 	defer resp.Body.Close()
 
-	e := experiment{client: a.client}
-	err = json.NewDecoder(resp.Body).Decode(&e.metadata)
+	s := scenario{client: a.client}
+	err = json.NewDecoder(resp.Body).Decode(&s.metadata)
 	if err != nil {
 		return nil, err
 	}
 
-	return &e, nil
+	return &s, nil
 }
 
-func (a *experimentAPI) Get(ctx context.Context, id string) (p2plab.Experiment, error) {
-	req := a.client.NewRequest("GET", a.url("/experiments/%s", id))
+func (a *scenarioAPI) Get(ctx context.Context, name string) (p2plab.Scenario, error) {
+	req := a.client.NewRequest("GET", a.url("/scenarios/%s", name))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	e := experiment{client: a.client}
-	err = json.NewDecoder(resp.Body).Decode(&e.metadata)
+	s := scenario{client: a.client, url: a.url}
+	err = json.NewDecoder(resp.Body).Decode(&s.metadata)
 	if err != nil {
 		return nil, err
 	}
 
-	return &e, nil
+	return &s, nil
 }
 
-func (a *experimentAPI) List(ctx context.Context) ([]p2plab.Experiment, error) {
-	req := a.client.NewRequest("GET", a.url("/experiments"))
+func (a *scenarioAPI) List(ctx context.Context) ([]p2plab.Scenario, error) {
+	req := a.client.NewRequest("GET", a.url("/scenarios"))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var metadatas []metadata.Experiment
+	var metadatas []metadata.Scenario
 	err = json.NewDecoder(resp.Body).Decode(&metadatas)
 	if err != nil {
 		return nil, err
 	}
 
-	var experiments []p2plab.Experiment
+	var scenarios []p2plab.Scenario
 	for _, m := range metadatas {
-		experiments = append(experiments, &experiment{
+		scenarios = append(scenarios, &scenario{
 			client:   a.client,
 			metadata: m,
 			url:      a.url,
 		})
 	}
 
-	return experiments, nil
+	return scenarios, nil
 }
 
-type experiment struct {
+type scenario struct {
 	client   *httputil.Client
-	metadata metadata.Experiment
+	metadata metadata.Scenario
 	url      urlFunc
 }
 
-func (e *experiment) Metadata() metadata.Experiment {
-	return e.metadata
+func (s *scenario) Metadata() metadata.Scenario {
+	return s.metadata
 }
 
-func (e *experiment) Cancel(ctx context.Context) error {
-	req := e.client.NewRequest("PUT", e.url("/experiments/%s/cancel", e.metadata.ID))
+func (s *scenario) Remove(ctx context.Context) error {
+	req := s.client.NewRequest("DELETE", s.url("/scenarios/%s", s.metadata.ID))
 	resp, err := req.Send(ctx)
 	if err != nil {
-		return errors.Wrapf(err, "failed to cancel experiment %q", e.metadata.ID)
+		return err
 	}
 	defer resp.Body.Close()
 

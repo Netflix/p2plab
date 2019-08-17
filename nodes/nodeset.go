@@ -30,11 +30,6 @@ func NewSet() p2plab.NodeSet {
 	}
 }
 
-func (s *nodeSet) Contains(n p2plab.Node) bool {
-	_, ok := s.set[n.Metadata().ID]
-	return ok
-}
-
 func (s *nodeSet) Add(n p2plab.Node) {
 	s.set[n.Metadata().ID] = n
 }
@@ -45,6 +40,10 @@ func (s *nodeSet) Remove(n p2plab.Node) {
 
 func (s *nodeSet) Get(id string) p2plab.Node {
 	return s.set[id]
+}
+
+func (s *nodeSet) Contains(id string) bool {
+	return s.Get(id) != nil
 }
 
 func (s *nodeSet) Slice() []p2plab.Node {

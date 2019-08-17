@@ -31,7 +31,7 @@ import (
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
 var (
@@ -83,7 +83,7 @@ func New(root, addr, appRoot, appAddr string) (*LabAgent, error) {
 }
 
 func (a *LabAgent) Serve(ctx context.Context) error {
-	log.Info().Msgf("labagent listening on %s", a.addr)
+	zerolog.Ctx(ctx).Info().Msgf("labagent listening on %s", a.addr)
 	s := &http.Server{
 		Handler:     a.router,
 		Addr:        a.addr,
@@ -105,9 +105,9 @@ func (a *LabAgent) registerRoutes(r *mux.Router) {
 }
 
 func (a *LabAgent) updateHandler(w http.ResponseWriter, r *http.Request) error {
-	log.Info().Msg("labagent/update")
-
 	ctx := r.Context()
+	zerolog.Ctx(ctx).Info().Msg("labagent/update")
+
 	err := a.updateApp(ctx, r.FormValue("url"))
 	if err != nil {
 		return err
@@ -117,7 +117,7 @@ func (a *LabAgent) updateHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (a *LabAgent) updateApp(ctx context.Context, url string) error {
-	err := a.killApp()
+	err := a.killApp(ctx)
 	if err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func (a *LabAgent) updateApp(ctx context.Context, url string) error {
 	if err != nil {
 	}
 
-	err = a.startApp()
+	err = a.startApp(ctx)
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (a *LabAgent) clearAppState() error {
 	return nil
 }
 
-func (a *LabAgent) killApp() error {
+func (a *LabAgent) killApp(ctx context.Context) error {
 	if a.appCancel != nil {
 		// Kill subprocess.
 		a.appCancel()
@@ -172,7 +172,7 @@ func (a *LabAgent) killApp() error {
 			}
 		}
 
-		log.Info().Msg("Successfully killed labapp")
+		zerolog.Ctx(ctx).Info().Msg("Successfully killed labapp")
 	}
 
 	return nil
@@ -207,7 +207,7 @@ func (a *LabAgent) updateBinary(url string) error {
 	return nil
 }
 
-func (a *LabAgent) startApp() error {
+func (a *LabAgent) startApp(ctx context.Context) error {
 	var appCtx context.Context
 	appCtx, a.appCancel = context.WithCancel(context.Background())
 
@@ -226,7 +226,7 @@ func (a *LabAgent) startApp() error {
 		return err
 	}
 
-	log.Info().Msgf("Started p2p app %q", v)
+	zerolog.Ctx(ctx).Info().Msgf("Started p2p app %q", v)
 	return nil
 }
 

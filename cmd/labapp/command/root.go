@@ -40,7 +40,8 @@ func App() *cli.App {
 		},
 		cli.StringFlag{
 			Name:  "log-level,l",
-			Usage: "set the logging level [debug, info, warn, error, fatal, panic]",
+			Usage: "set the logging level [debug, info, warn, error, fatal, panic, none]",
+			Value: "info",
 		},
 	}
 	app.Action = appAction

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package labd
+package controlapi
 
 import (
 	"context"
@@ -69,7 +69,7 @@ func (a *benchmarkAPI) Get(ctx context.Context, id string) (p2plab.Benchmark, er
 	}
 	defer resp.Body.Close()
 
-	b := benchmark{client: a.client}
+	b := benchmark{client: a.client, url: a.url}
 	err = json.NewDecoder(resp.Body).Decode(&b.metadata)
 	if err != nil {
 		return nil, err

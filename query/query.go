@@ -166,7 +166,7 @@ func (q *notQuery) Match(ctx context.Context, nset p2plab.NodeSet) (p2plab.NodeS
 
 	negativeSet := nodes.NewSet()
 	for _, n := range nset.Slice() {
-		if positiveSet.Contains(n) {
+		if positiveSet.Contains(n.Metadata().ID) {
 			continue
 		}
 		negativeSet.Add(n)
@@ -205,7 +205,7 @@ func (q *andQuery) Match(ctx context.Context, nset p2plab.NodeSet) (p2plab.NodeS
 	for _, n := range nset.Slice() {
 		allContains := true
 		for _, qset := range qsets {
-			if !qset.Contains(n) {
+			if !qset.Contains(n.Metadata().ID) {
 				allContains = false
 				break
 			}
@@ -249,7 +249,7 @@ func (q *orQuery) Match(ctx context.Context, nset p2plab.NodeSet) (p2plab.NodeSe
 	for _, n := range nset.Slice() {
 		oneContains := false
 		for _, qset := range qsets {
-			if qset.Contains(n) {
+			if qset.Contains(n.Metadata().ID) {
 				oneContains = true
 				break
 			}

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package labd
+package controlapi
 
 import (
 	"bytes"
@@ -94,7 +94,7 @@ func (a *clusterAPI) Get(ctx context.Context, id string) (p2plab.Cluster, error)
 	}
 	defer resp.Body.Close()
 
-	c := cluster{client: a.client}
+	c := cluster{client: a.client, url: a.url}
 	err = json.NewDecoder(resp.Body).Decode(&c.metadata)
 	if err != nil {
 		return nil, err
@@ -182,7 +182,7 @@ func (c *cluster) Query(ctx context.Context, q p2plab.Query, opts ...p2plab.Quer
 
 	nset := nodes.NewSet()
 	for _, m := range metadatas {
-		nset.Add(newNode(c.client, m))
+		nset.Add(NewNode(c.client, m))
 	}
 
 	return nset, nil

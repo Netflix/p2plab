@@ -30,7 +30,7 @@ type NodeAPI interface {
 type Node interface {
 	AgentAPI
 
-	ApplicationAPI
+	AppAPI
 
 	Metadata() metadata.Node
 }
@@ -56,9 +56,9 @@ type NodeSet interface {
 	// it is not removed.
 	Remove(node Node)
 
-	Contains(node Node) bool
-
 	Get(id string) Node
+
+	Contains(id string) bool
 
 	// Slice returns a slice of nodes from the set.
 	Slice() []Node

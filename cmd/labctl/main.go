@@ -22,18 +22,7 @@ import (
 
 	"github.com/Netflix/p2plab/cmd/labctl/command"
 	"github.com/Netflix/p2plab/cmd/labctl/interrupt"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
-
-func init() {
-	// UNIX Time is faster and smaller than most timestamps. If you set
-	// zerolog.TimeFieldFormat to an empty string, logs will write with UNIX
-	// time.
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-}
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())

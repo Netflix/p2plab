@@ -12,49 +12,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package labd
+package agentapi
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/pkg/httputil"
 )
 
-type control struct {
+type api struct {
 	addr   string
 	client *httputil.Client
 }
 
-func NewControl(client *httputil.Client, addr string) p2plab.ControlAPI {
-	return &control{
+func New(client *httputil.Client, addr string) p2plab.AgentAPI {
+	return &api{
 		addr:   addr,
 		client: client,
 	}
 }
 
-type urlFunc func(endpoint string, a ...interface{}) string
-
-func (c *control) url(endpoint string, a ...interface{}) string {
-	return fmt.Sprintf("%s/api/v0%s", c.addr, fmt.Sprintf(endpoint, a...))
+func (a *api) url(endpoint string, v ...interface{}) string {
+	return fmt.Sprintf("%s/api/v0%s", a.addr, fmt.Sprintf(endpoint, v...))
 }
 
-func (c *control) Cluster() p2plab.ClusterAPI {
-	return &clusterAPI{c.client, c.url}
+func (a *api) Update(ctx context.Context, url string) error {
+	req := a.client.NewRequest("PUT", a.url("/update")).
+		Option("url", url)
+
+	resp, err := req.Send(ctx)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return nil
 }
 
-func (c *control) Node() p2plab.NodeAPI {
-	return &nodeAPI{c.client, c.url}
-}
-
-func (c *control) Scenario() p2plab.ScenarioAPI {
-	return &scenarioAPI{c.client, c.url}
-}
-
-func (c *control) Benchmark() p2plab.BenchmarkAPI {
-	return &benchmarkAPI{c.client, c.url}
-}
-
-func (c *control) Experiment() p2plab.ExperimentAPI {
-	return &experimentAPI{c.client, c.url}
+func (a *api) SSH(ctx context.Context, opts ...p2plab.SSHOption) error {
+	return nil
 }

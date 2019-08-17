@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/labd/controlapi"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/nodes"
 	"github.com/Netflix/p2plab/peer"
@@ -238,7 +239,7 @@ func (d *Labd) createClusterHandler(w http.ResponseWriter, r *http.Request) erro
 
 	nset := nodes.NewSet()
 	for _, n := range mns {
-		nset.Add(newNode(d.client, n))
+		nset.Add(controlapi.NewNode(d.client, n))
 	}
 
 	log.Info().Str("cluster", id).Msg("Connecting cluster")
@@ -343,7 +344,7 @@ func (d *Labd) queryClusterHandler(w http.ResponseWriter, r *http.Request) error
 
 	nset := nodes.NewSet()
 	for _, n := range ns {
-		nset.Add(&node{metadata: n})
+		nset.Add(controlapi.NewNode(d.client, n))
 	}
 
 	mset, err := q.Match(r.Context(), nset)
@@ -353,7 +354,7 @@ func (d *Labd) queryClusterHandler(w http.ResponseWriter, r *http.Request) error
 
 	var matchedNodes []metadata.Node
 	for _, n := range ns {
-		if mset.Contains(&node{metadata: n}) {
+		if mset.Contains(n.ID) {
 			matchedNodes = append(matchedNodes, n)
 		}
 	}
@@ -516,7 +517,7 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 
 	nset := nodes.NewSet()
 	for _, n := range mns {
-		nset.Add(newNode(d.client, n))
+		nset.Add(controlapi.NewNode(d.client, n))
 	}
 
 	if !noReset {

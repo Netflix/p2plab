@@ -26,7 +26,8 @@ import (
 	"github.com/Netflix/p2plab/printer"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/log"
+	tlog "github.com/opentracing/opentracing-go/log"
+	"github.com/rs/zerolog"
 	jaeger "github.com/uber/jaeger-client-go"
 	"github.com/urfave/cli"
 )
@@ -55,7 +56,15 @@ func AttachAppContext(ctx context.Context, app *cli.App) {
 					}
 
 					span = tracer.StartSpan(name)
-					span.LogFields(log.String("command", strings.Join(os.Args, " ")))
+					span.LogFields(tlog.String("command", strings.Join(os.Args, " ")))
+
+
+					level, err := zerolog.ParseLevel(c.GlobalString("log-level"))
+					if err != nil {
+						return err
+					}
+					logger := zerolog.New(os.Stderr).Level(level).With().Timestamp().Logger()
+					logger.WithContext(ctx)
 
 					ctx = opentracing.ContextWithSpan(ctx, span)
 

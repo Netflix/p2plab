@@ -16,26 +16,26 @@ package command
 
 import (
 	"github.com/Netflix/p2plab"
-	"github.com/Netflix/p2plab/labagent"
-	"github.com/Netflix/p2plab/labapp"
-	"github.com/Netflix/p2plab/labd"
+	"github.com/Netflix/p2plab/labagent/agentapi"
+	"github.com/Netflix/p2plab/labapp/appapi"
+	"github.com/Netflix/p2plab/labd/controlapi"
 	"github.com/urfave/cli"
 )
 
 func ResolveControl(c *cli.Context) (p2plab.ControlAPI, error) {
-	control := labd.NewControl(CommandClient(c), c.GlobalString("address"))
+	api := controlapi.New(CommandClient(c), c.GlobalString("address"))
 	// TODO: healthcheck
-	return control, nil
+	return api, nil
 }
 
 func ResolveAgent(c *cli.Context, addr string) (p2plab.AgentAPI, error) {
-	control := labagent.NewControl(CommandClient(c), addr)
+	api := agentapi.New(CommandClient(c), addr)
 	// TODO: healthcheck
-	return control, nil
+	return api, nil
 }
 
-func ResolveApplication(c *cli.Context, addr string) (p2plab.ApplicationAPI, error) {
-	control := labapp.NewControl(CommandClient(c), addr)
+func ResolveApplication(c *cli.Context, addr string) (p2plab.AppAPI, error) {
+	api := appapi.New(CommandClient(c), addr)
 	// TODO: healthcheck
-	return control, nil
+	return api, nil
 }

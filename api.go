@@ -46,7 +46,7 @@ type AgentAPI interface {
 	SSH(ctx context.Context, opts ...SSHOption) error
 }
 
-type ApplicationAPI interface {
+type AppAPI interface {
 	Healthcheck(ctx context.Context) bool
 
 	PeerInfo(ctx context.Context) (peerstore.PeerInfo, error)

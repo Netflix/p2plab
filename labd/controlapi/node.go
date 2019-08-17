@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package labd
+package controlapi
 
 import (
 	"context"
@@ -20,8 +20,8 @@ import (
 	"fmt"
 
 	"github.com/Netflix/p2plab"
-	"github.com/Netflix/p2plab/labagent"
-	"github.com/Netflix/p2plab/labapp"
+	"github.com/Netflix/p2plab/labagent/agentapi"
+	"github.com/Netflix/p2plab/labapp/appapi"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
 )
@@ -45,20 +45,20 @@ func (a *nodeAPI) Get(ctx context.Context, cluster, id string) (p2plab.Node, err
 		return nil, err
 	}
 
-	return newNode(a.client, m), nil
+	return NewNode(a.client, m), nil
 }
 
 type node struct {
 	p2plab.AgentAPI
-	p2plab.ApplicationAPI
+	p2plab.AppAPI
 	metadata metadata.Node
 }
 
-func newNode(client *httputil.Client, m metadata.Node) *node {
+func NewNode(client *httputil.Client, m metadata.Node) p2plab.Node {
 	return &node{
-		AgentAPI:       labagent.NewControl(client, fmt.Sprintf("http://%s:7002", m.Address)),
-		ApplicationAPI: labapp.NewControl(client, fmt.Sprintf("http://%s:7003", m.Address)),
-		metadata:       m,
+		AgentAPI: agentapi.New(client, fmt.Sprintf("http://%s:7002", m.Address)),
+		AppAPI:   appapi.New(client, fmt.Sprintf("http://%s:7003", m.Address)),
+		metadata: m,
 	}
 }
 
