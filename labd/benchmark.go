@@ -21,13 +21,15 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
+	"github.com/Netflix/p2plab/pkg/httputil"
 )
 
 type benchmarkAPI struct {
-	cln *client
+	client *httputil.Client
+	url    urlFunc
 }
 
-func (bapi *benchmarkAPI) Start(ctx context.Context, cluster, scenario string, opts ...p2plab.StartBenchmarkOption) (p2plab.Benchmark, error) {
+func (a *benchmarkAPI) Start(ctx context.Context, cluster, scenario string, opts ...p2plab.StartBenchmarkOption) (p2plab.Benchmark, error) {
 	var settings p2plab.StartBenchmarkSettings
 	for _, opt := range opts {
 		err := opt(&settings)
@@ -36,7 +38,7 @@ func (bapi *benchmarkAPI) Start(ctx context.Context, cluster, scenario string, o
 		}
 	}
 
-	req := bapi.cln.NewRequest("POST", "/benchmarks").
+	req := a.client.NewRequest("POST", a.url("/benchmarks")).
 		Option("cluster", cluster).
 		Option("scenario", scenario)
 
@@ -50,7 +52,7 @@ func (bapi *benchmarkAPI) Start(ctx context.Context, cluster, scenario string, o
 	}
 	defer resp.Body.Close()
 
-	b := benchmark{cln: bapi.cln}
+	b := benchmark{client: a.client}
 	err = json.NewDecoder(resp.Body).Decode(&b.metadata)
 	if err != nil {
 		return nil, err
@@ -59,15 +61,15 @@ func (bapi *benchmarkAPI) Start(ctx context.Context, cluster, scenario string, o
 	return &b, nil
 }
 
-func (bapi *benchmarkAPI) Get(ctx context.Context, id string) (p2plab.Benchmark, error) {
-	req := bapi.cln.NewRequest("GET", "/benchmarks/%s", id)
+func (a *benchmarkAPI) Get(ctx context.Context, id string) (p2plab.Benchmark, error) {
+	req := a.client.NewRequest("GET", a.url("/benchmarks/%s", id))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	b := benchmark{cln: bapi.cln}
+	b := benchmark{client: a.client}
 	err = json.NewDecoder(resp.Body).Decode(&b.metadata)
 	if err != nil {
 		return nil, err
@@ -76,8 +78,8 @@ func (bapi *benchmarkAPI) Get(ctx context.Context, id string) (p2plab.Benchmark,
 	return &b, nil
 }
 
-func (bapi *benchmarkAPI) List(ctx context.Context) ([]p2plab.Benchmark, error) {
-	req := bapi.cln.NewRequest("GET", "/benchmarks")
+func (a *benchmarkAPI) List(ctx context.Context) ([]p2plab.Benchmark, error) {
+	req := a.client.NewRequest("GET", a.url("/benchmarks"))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
@@ -92,15 +94,20 @@ func (bapi *benchmarkAPI) List(ctx context.Context) ([]p2plab.Benchmark, error) 
 
 	var benchmarks []p2plab.Benchmark
 	for _, m := range metadatas {
-		benchmarks = append(benchmarks, &benchmark{cln: bapi.cln, metadata: m})
+		benchmarks = append(benchmarks, &benchmark{
+			client:   a.client,
+			metadata: m,
+			url:      a.url,
+		})
 	}
 
 	return benchmarks, nil
 }
 
 type benchmark struct {
-	cln      *client
+	client   *httputil.Client
 	metadata metadata.Benchmark
+	url      urlFunc
 }
 
 func (b *benchmark) Metadata() metadata.Benchmark {
@@ -108,7 +115,7 @@ func (b *benchmark) Metadata() metadata.Benchmark {
 }
 
 func (b *benchmark) Cancel(ctx context.Context) error {
-	req := b.cln.NewRequest("GET", "/benchmarks/%s/cancel", b.metadata.ID)
+	req := b.client.NewRequest("GET", b.url("/benchmarks/%s/cancel", b.metadata.ID))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return err
@@ -119,7 +126,7 @@ func (b *benchmark) Cancel(ctx context.Context) error {
 }
 
 func (b *benchmark) Report(ctx context.Context) (p2plab.Report, error) {
-	req := b.cln.NewRequest("GET", "/benchmarks/%s/report", b.metadata.ID)
+	req := b.client.NewRequest("GET", b.url("/benchmarks/%s/report", b.metadata.ID))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
@@ -130,7 +137,7 @@ func (b *benchmark) Report(ctx context.Context) (p2plab.Report, error) {
 }
 
 func (b *benchmark) Logs(ctx context.Context, opt ...p2plab.LogsOption) (io.ReadCloser, error) {
-	req := b.cln.NewRequest("GET", "/benchmarks/%s/logs", b.metadata.ID)
+	req := b.client.NewRequest("GET", b.url("/benchmarks/%s/logs", b.metadata.ID))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err

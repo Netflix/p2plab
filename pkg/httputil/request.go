@@ -24,28 +24,19 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/Netflix/p2plab/errdefs"
+	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
 type Request struct {
-	Client   *http.Client
-	Method   string
-	Base     string
-	Endpoint string
-	Options  map[string]string
+	Method  string
+	Url     string
+	Options map[string]string
+	body    io.Reader
 
-	body io.Reader
-}
-
-func NewRequest(client *http.Client, base, method, path string, a ...interface{}) *Request {
-	return &Request{
-		Client:   client,
-		Method:   method,
-		Base:     base,
-		Endpoint: fmt.Sprintf(path, a...),
-		Options:  make(map[string]string),
-	}
+	client *retryablehttp.Client
 }
 
 func (r *Request) Option(key string, value interface{}) *Request {
@@ -81,31 +72,28 @@ func (r *Request) Body(value interface{}) *Request {
 }
 
 func (r *Request) Send(ctx context.Context) (*http.Response, error) {
-	req, err := http.NewRequest(r.Method, r.url(), r.body)
+	req, err := retryablehttp.NewRequest(r.Method, r.url(), r.body)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create new http request")
+		return nil, errors.Wrap(errdefs.ErrInvalidArgument, "failed to create new http request")
 	}
 
-	// dump, err := httputil.DumpRequest(req, false)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// fmt.Printf("dump:\n%s\n", string(dump))
-
 	req = req.WithContext(ctx)
-	resp, err := r.Client.Do(req)
+	resp, err := r.client.Do(req)
 	if err != nil {
 		return resp, errors.Wrap(err, "failed to do http request")
 	}
 
-	if resp.StatusCode >= http.StatusBadRequest {
-		defer resp.Body.Close()
+	if resp.StatusCode >= 400 && resp.StatusCode <= 499 {
+		return nil, errors.Wrap(errdefs.ErrInvalidArgument, "server rejected request")
+	}
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			log.Error().Msgf("failed to read body: %s", err)
 		}
+		defer resp.Body.Close()
 
-		return nil, errors.Errorf("got bad status [%d]: %s", resp.StatusCode, body)
+		return nil, errors.Errorf("invalid status code [%d]: %s", resp.StatusCode, body)
 	}
 
 	return resp, nil
@@ -116,6 +104,5 @@ func (r *Request) url() string {
 	for k, v := range r.Options {
 		values.Add(k, v)
 	}
-
-	return fmt.Sprintf("%s%s?%s", r.Base, r.Endpoint, values.Encode())
+	return fmt.Sprintf("%s?%s", r.Url, values.Encode())
 }

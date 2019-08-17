@@ -104,7 +104,7 @@ func createClusterAction(c *cli.Context) error {
 		return errors.New("cluster id must be provided")
 	}
 
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func createClusterAction(c *cli.Context) error {
 		)
 	}
 
-	cluster, err := cln.Cluster().Create(CommandContext(c), c.Args().First(), options...)
+	cluster, err := control.Cluster().Create(CommandContext(c), c.Args().First(), options...)
 	if err != nil {
 		return err
 	}
@@ -136,13 +136,13 @@ func removeClusterAction(c *cli.Context) error {
 		return errors.New("cluster id must be provided")
 	}
 
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
 	ctx := CommandContext(c)
-	cluster, err := cln.Cluster().Get(ctx, c.Args().First())
+	cluster, err := control.Cluster().Get(ctx, c.Args().First())
 	if err != nil {
 		return err
 	}
@@ -157,12 +157,12 @@ func removeClusterAction(c *cli.Context) error {
 }
 
 func listClusterAction(c *cli.Context) error {
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
-	clusters, err := cln.Cluster().List(CommandContext(c))
+	clusters, err := control.Cluster().List(CommandContext(c))
 	if err != nil {
 		return err
 	}
@@ -180,13 +180,13 @@ func queryClusterAction(c *cli.Context) error {
 		return errors.New("cluster id must be provided")
 	}
 
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
 	ctx := CommandContext(c)
-	cluster, err := cln.Cluster().Get(ctx, c.Args().First())
+	cluster, err := control.Cluster().Get(ctx, c.Args().First())
 	if err != nil {
 		return err
 	}
@@ -232,13 +232,13 @@ func updateClusterAction(c *cli.Context) error {
 		return errors.New("cluster id must be provided")
 	}
 
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
 	ctx := CommandContext(c)
-	cluster, err := cln.Cluster().Get(ctx, c.Args().First())
+	cluster, err := control.Cluster().Get(ctx, c.Args().First())
 	if err != nil {
 		return err
 	}

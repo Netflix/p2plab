@@ -37,13 +37,13 @@ func sshNodeAction(c *cli.Context) error {
 		return errors.New("cluster id and node id must be provided")
 	}
 
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
 	ctx := CommandContext(c)
-	node, err := cln.Node().Get(ctx, c.Args().Get(0), c.Args().Get(1))
+	node, err := control.Node().Get(ctx, c.Args().Get(0), c.Args().Get(1))
 	if err != nil {
 		return err
 	}

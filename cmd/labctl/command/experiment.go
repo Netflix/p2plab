@@ -70,12 +70,12 @@ func startExperimentAction(c *cli.Context) error {
 		return err
 	}
 
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
-	experiment, err := cln.Experiment().Start(CommandContext(c), name, edef)
+	experiment, err := control.Experiment().Start(CommandContext(c), name, edef)
 	if err != nil {
 		return err
 	}
@@ -89,13 +89,13 @@ func cancelExperimentAction(c *cli.Context) error {
 		return errors.New("experiment id must be provided")
 	}
 
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
 	ctx := CommandContext(c)
-	experiment, err := cln.Experiment().Get(ctx, c.Args().First())
+	experiment, err := control.Experiment().Get(ctx, c.Args().First())
 	if err != nil {
 		return err
 	}
@@ -110,12 +110,12 @@ func cancelExperimentAction(c *cli.Context) error {
 }
 
 func listExperimentAction(c *cli.Context) error {
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
-	experiments, err := cln.Experiment().List(CommandContext(c))
+	experiments, err := control.Experiment().List(CommandContext(c))
 	if err != nil {
 		return err
 	}

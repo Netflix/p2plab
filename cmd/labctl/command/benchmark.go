@@ -70,7 +70,7 @@ func startBenchmarkAction(c *cli.Context) error {
 		return errors.New("cluster id and scenario name must be provided")
 	}
 
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func startBenchmarkAction(c *cli.Context) error {
 		opts = append(opts, p2plab.WithBenchmarkNoReset())
 	}
 
-	_, err = cln.Benchmark().Start(ctx, cluster, scenario, opts...)
+	_, err = control.Benchmark().Start(ctx, cluster, scenario, opts...)
 	if err != nil {
 		return err
 	}
@@ -96,13 +96,13 @@ func cancelBenchmarkAction(c *cli.Context) error {
 		return errors.New("benchmark id must be provided")
 	}
 
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
 	ctx := CommandContext(c)
-	benchmark, err := cln.Benchmark().Get(ctx, c.Args().First())
+	benchmark, err := control.Benchmark().Get(ctx, c.Args().First())
 	if err != nil {
 		return err
 	}
@@ -117,13 +117,13 @@ func cancelBenchmarkAction(c *cli.Context) error {
 }
 
 func listBenchmarkAction(c *cli.Context) error {
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
 	ctx := CommandContext(c)
-	benchmarks, err := cln.Benchmark().List(ctx)
+	benchmarks, err := control.Benchmark().List(ctx)
 	if err != nil {
 		return err
 	}
@@ -141,13 +141,13 @@ func reportBenchmarkAction(c *cli.Context) error {
 		return errors.New("benchmark id must be provided")
 	}
 
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
 	ctx := CommandContext(c)
-	benchmark, err := cln.Benchmark().Get(ctx, c.Args().First())
+	benchmark, err := control.Benchmark().Get(ctx, c.Args().First())
 	if err != nil {
 		return err
 	}
@@ -165,13 +165,13 @@ func logBenchmarkAction(c *cli.Context) error {
 		return errors.New("benchmark id must be provided")
 	}
 
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
 	ctx := CommandContext(c)
-	benchmark, err := cln.Benchmark().Get(ctx, c.Args().First())
+	benchmark, err := control.Benchmark().Get(ctx, c.Args().First())
 	if err != nil {
 		return err
 	}

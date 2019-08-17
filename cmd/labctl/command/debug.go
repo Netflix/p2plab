@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Netflix/p2plab/labapp"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/urfave/cli"
 )
@@ -60,10 +59,13 @@ var debugCommand = cli.Command{
 }
 
 func peerInfoAction(c *cli.Context) error {
-	cln := labapp.NewClient(c.String("address"))
+	app, err := ResolveApplication(c, c.String("address"))
+	if err != nil {
+		return err
+	}
 
 	ctx := CommandContext(c)
-	peerInfo, err := cln.PeerInfo(ctx)
+	peerInfo, err := app.PeerInfo(ctx)
 	if err != nil {
 		return err
 	}
@@ -82,10 +84,13 @@ func runTaskAction(c *cli.Context) error {
 		return errors.New("task type and subject must be provided")
 	}
 
-	cln := labapp.NewClient(c.String("address"))
+	app, err := ResolveApplication(c, c.String("address"))
+	if err != nil {
+		return err
+	}
 
 	ctx := CommandContext(c)
-	err := cln.Run(ctx, metadata.Task{
+	err = app.Run(ctx, metadata.Task{
 		Type:    metadata.TaskType(c.Args().Get(0)),
 		Subject: c.Args().Get(1),
 	})

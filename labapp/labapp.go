@@ -40,6 +40,7 @@ import (
 type LabApp struct {
 	root   string
 	addr   string
+	ready  bool
 	router *mux.Router
 	peer   *peer.Peer
 }
@@ -75,13 +76,25 @@ func (a *LabApp) Serve(ctx context.Context) error {
 	}
 	log.Info().Msgf("labapp listening on %s", a.addr)
 
+	a.ready = true
 	return s.ListenAndServe()
 }
 
 func (a *LabApp) registerRoutes(r *mux.Router) {
 	api := r.PathPrefix("/api/v0").Subrouter()
+	api.HandleFunc("/healthcheck", a.healthcheckHandler).Methods("GET")
 	api.Handle("/peerInfo", httputil.ErrorHandler{a.peerInfoHandler}).Methods("GET")
 	api.Handle("/run", httputil.ErrorHandler{a.runHandler}).Methods("POST")
+}
+
+func (a *LabApp) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
+	if a.ready {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Healthy"))
+	} else {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte("Unhealthy"))
+	}
 }
 
 func (a *LabApp) peerInfoHandler(w http.ResponseWriter, r *http.Request) error {

@@ -23,14 +23,16 @@ import (
 	"github.com/Netflix/p2plab/labagent"
 	"github.com/Netflix/p2plab/labapp"
 	"github.com/Netflix/p2plab/metadata"
+	"github.com/Netflix/p2plab/pkg/httputil"
 )
 
 type nodeAPI struct {
-	cln *client
+	client *httputil.Client
+	url    urlFunc
 }
 
-func (napi *nodeAPI) Get(ctx context.Context, cluster, id string) (p2plab.Node, error) {
-	req := napi.cln.NewRequest("GET", "/clusters/%s/nodes/%s", cluster, id)
+func (a *nodeAPI) Get(ctx context.Context, cluster, id string) (p2plab.Node, error) {
+	req := a.client.NewRequest("GET", a.url("/clusters/%s/nodes/%s", cluster, id))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
@@ -43,23 +45,20 @@ func (napi *nodeAPI) Get(ctx context.Context, cluster, id string) (p2plab.Node, 
 		return nil, err
 	}
 
-	return newNode(napi.cln, m), nil
+	return newNode(a.client, m), nil
 }
 
 type node struct {
-	p2plab.Agent
-	p2plab.Application
-
-	labdCln  *client
+	p2plab.AgentAPI
+	p2plab.ApplicationAPI
 	metadata metadata.Node
 }
 
-func newNode(cln *client, m metadata.Node) *node {
+func newNode(client *httputil.Client, m metadata.Node) *node {
 	return &node{
-		Agent:       labagent.NewClient(fmt.Sprintf("http://%s:7002", m.Address)),
-		Application: labapp.NewClient(fmt.Sprintf("http://%s:7003", m.Address)),
-		labdCln:     cln,
-		metadata:    m,
+		AgentAPI:       labagent.NewControl(client, fmt.Sprintf("http://%s:7002", m.Address)),
+		ApplicationAPI: labapp.NewControl(client, fmt.Sprintf("http://%s:7003", m.Address)),
+		metadata:       m,
 	}
 }
 

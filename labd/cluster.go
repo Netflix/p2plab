@@ -24,14 +24,16 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/nodes"
+	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/pkg/errors"
 )
 
 type clusterAPI struct {
-	cln *client
+	client *httputil.Client
+	url    urlFunc
 }
 
-func (capi *clusterAPI) Create(ctx context.Context, id string, opts ...p2plab.CreateClusterOption) (p2plab.Cluster, error) {
+func (a *clusterAPI) Create(ctx context.Context, id string, opts ...p2plab.CreateClusterOption) (p2plab.Cluster, error) {
 	var settings p2plab.CreateClusterSettings
 	for _, opt := range opts {
 		err := opt(&settings)
@@ -65,7 +67,7 @@ func (capi *clusterAPI) Create(ctx context.Context, id string, opts ...p2plab.Cr
 		return nil, err
 	}
 
-	req := capi.cln.NewRequest("POST", "/clusters").
+	req := a.client.NewRequest("POST", a.url("/clusters")).
 		Option("id", id).
 		Body(bytes.NewReader(content))
 
@@ -75,7 +77,7 @@ func (capi *clusterAPI) Create(ctx context.Context, id string, opts ...p2plab.Cr
 	}
 	defer resp.Body.Close()
 
-	c := cluster{cln: capi.cln}
+	c := cluster{client: a.client}
 	err = json.NewDecoder(resp.Body).Decode(&c.metadata)
 	if err != nil {
 		return nil, err
@@ -84,15 +86,15 @@ func (capi *clusterAPI) Create(ctx context.Context, id string, opts ...p2plab.Cr
 	return &c, nil
 }
 
-func (capi *clusterAPI) Get(ctx context.Context, id string) (p2plab.Cluster, error) {
-	req := capi.cln.NewRequest("GET", "/clusters/%s", id)
+func (a *clusterAPI) Get(ctx context.Context, id string) (p2plab.Cluster, error) {
+	req := a.client.NewRequest("GET", a.url("/clusters/%s", id))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	c := cluster{cln: capi.cln}
+	c := cluster{client: a.client}
 	err = json.NewDecoder(resp.Body).Decode(&c.metadata)
 	if err != nil {
 		return nil, err
@@ -100,8 +102,8 @@ func (capi *clusterAPI) Get(ctx context.Context, id string) (p2plab.Cluster, err
 	return &c, nil
 }
 
-func (capi *clusterAPI) List(ctx context.Context) ([]p2plab.Cluster, error) {
-	req := capi.cln.NewRequest("GET", "/clusters")
+func (a *clusterAPI) List(ctx context.Context) ([]p2plab.Cluster, error) {
+	req := a.client.NewRequest("GET", a.url("/clusters"))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
@@ -116,15 +118,20 @@ func (capi *clusterAPI) List(ctx context.Context) ([]p2plab.Cluster, error) {
 
 	var clusters []p2plab.Cluster
 	for _, m := range metadatas {
-		clusters = append(clusters, &cluster{cln: capi.cln, metadata: m})
+		clusters = append(clusters, &cluster{
+			client:   a.client,
+			metadata: m,
+			url:      a.url,
+		})
 	}
 
 	return clusters, nil
 }
 
 type cluster struct {
-	cln      *client
+	client   *httputil.Client
 	metadata metadata.Cluster
+	url      urlFunc
 }
 
 func (c *cluster) Metadata() metadata.Cluster {
@@ -132,7 +139,7 @@ func (c *cluster) Metadata() metadata.Cluster {
 }
 
 func (c *cluster) Remove(ctx context.Context) error {
-	req := c.cln.NewRequest("DELETE", "/clusters/%s", c.metadata.ID)
+	req := c.client.NewRequest("DELETE", c.url("/clusters/%s", c.metadata.ID))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "failed to remove cluster %q", c.metadata.ID)
@@ -151,7 +158,7 @@ func (c *cluster) Query(ctx context.Context, q p2plab.Query, opts ...p2plab.Quer
 		}
 	}
 
-	req := c.cln.NewRequest("POST", "/clusters/%s/query", c.metadata.ID).
+	req := c.client.NewRequest("POST", c.url("/clusters/%s/query", c.metadata.ID)).
 		Option("query", q.String())
 
 	if len(settings.AddLabels) > 0 {
@@ -175,14 +182,14 @@ func (c *cluster) Query(ctx context.Context, q p2plab.Query, opts ...p2plab.Quer
 
 	nset := nodes.NewSet()
 	for _, m := range metadatas {
-		nset.Add(newNode(c.cln, m))
+		nset.Add(newNode(c.client, m))
 	}
 
 	return nset, nil
 }
 
 func (c *cluster) Update(ctx context.Context, commit string) error {
-	req := c.cln.NewRequest("PUT", "/clusters/%s", c.metadata.ID)
+	req := c.client.NewRequest("PUT", c.url("/clusters/%s", c.metadata.ID))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return err

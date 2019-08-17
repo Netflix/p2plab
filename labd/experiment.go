@@ -21,20 +21,22 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
+	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/pkg/errors"
 )
 
 type experimentAPI struct {
-	cln *client
+	client *httputil.Client
+	url    urlFunc
 }
 
-func (eapi *experimentAPI) Start(ctx context.Context, id string, edef metadata.ExperimentDefinition) (p2plab.Experiment, error) {
+func (a *experimentAPI) Start(ctx context.Context, id string, edef metadata.ExperimentDefinition) (p2plab.Experiment, error) {
 	content, err := json.MarshalIndent(&edef, "", "    ")
 	if err != nil {
 		return nil, err
 	}
 
-	req := eapi.cln.NewRequest("POST", "/experiments").
+	req := a.client.NewRequest("POST", a.url("/experiments")).
 		Option("id", id).
 		Body(bytes.NewReader(content))
 
@@ -44,7 +46,7 @@ func (eapi *experimentAPI) Start(ctx context.Context, id string, edef metadata.E
 	}
 	defer resp.Body.Close()
 
-	e := experiment{cln: eapi.cln}
+	e := experiment{client: a.client}
 	err = json.NewDecoder(resp.Body).Decode(&e.metadata)
 	if err != nil {
 		return nil, err
@@ -53,15 +55,15 @@ func (eapi *experimentAPI) Start(ctx context.Context, id string, edef metadata.E
 	return &e, nil
 }
 
-func (eapi *experimentAPI) Get(ctx context.Context, id string) (p2plab.Experiment, error) {
-	req := eapi.cln.NewRequest("GET", "/experiments/%s", id)
+func (a *experimentAPI) Get(ctx context.Context, id string) (p2plab.Experiment, error) {
+	req := a.client.NewRequest("GET", a.url("/experiments/%s", id))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	e := experiment{cln: eapi.cln}
+	e := experiment{client: a.client}
 	err = json.NewDecoder(resp.Body).Decode(&e.metadata)
 	if err != nil {
 		return nil, err
@@ -70,8 +72,8 @@ func (eapi *experimentAPI) Get(ctx context.Context, id string) (p2plab.Experimen
 	return &e, nil
 }
 
-func (eapi *experimentAPI) List(ctx context.Context) ([]p2plab.Experiment, error) {
-	req := eapi.cln.NewRequest("GET", "/experiments")
+func (a *experimentAPI) List(ctx context.Context) ([]p2plab.Experiment, error) {
+	req := a.client.NewRequest("GET", a.url("/experiments"))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
@@ -86,15 +88,20 @@ func (eapi *experimentAPI) List(ctx context.Context) ([]p2plab.Experiment, error
 
 	var experiments []p2plab.Experiment
 	for _, m := range metadatas {
-		experiments = append(experiments, &experiment{cln: eapi.cln, metadata: m})
+		experiments = append(experiments, &experiment{
+			client:   a.client,
+			metadata: m,
+			url:      a.url,
+		})
 	}
 
 	return experiments, nil
 }
 
 type experiment struct {
-	cln      *client
+	client   *httputil.Client
 	metadata metadata.Experiment
+	url      urlFunc
 }
 
 func (e *experiment) Metadata() metadata.Experiment {
@@ -102,7 +109,7 @@ func (e *experiment) Metadata() metadata.Experiment {
 }
 
 func (e *experiment) Cancel(ctx context.Context) error {
-	req := e.cln.NewRequest("PUT", "/experiments/%s/cancel", e.metadata.ID)
+	req := e.client.NewRequest("PUT", e.url("/experiments/%s/cancel", e.metadata.ID))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "failed to cancel experiment %q", e.metadata.ID)

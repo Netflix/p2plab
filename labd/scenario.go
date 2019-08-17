@@ -21,19 +21,21 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
+	"github.com/Netflix/p2plab/pkg/httputil"
 )
 
 type scenarioAPI struct {
-	cln *client
+	client *httputil.Client
+	url    urlFunc
 }
 
-func (sapi *scenarioAPI) Create(ctx context.Context, id string, sdef metadata.ScenarioDefinition) (p2plab.Scenario, error) {
+func (a *scenarioAPI) Create(ctx context.Context, id string, sdef metadata.ScenarioDefinition) (p2plab.Scenario, error) {
 	content, err := json.MarshalIndent(&sdef, "", "    ")
 	if err != nil {
 		return nil, err
 	}
 
-	req := sapi.cln.NewRequest("POST", "/scenarios").
+	req := a.client.NewRequest("POST", a.url("/scenarios")).
 		Option("id", id).
 		Body(bytes.NewReader(content))
 
@@ -43,7 +45,7 @@ func (sapi *scenarioAPI) Create(ctx context.Context, id string, sdef metadata.Sc
 	}
 	defer resp.Body.Close()
 
-	s := scenario{cln: sapi.cln}
+	s := scenario{client: a.client}
 	err = json.NewDecoder(resp.Body).Decode(&s.metadata)
 	if err != nil {
 		return nil, err
@@ -52,15 +54,15 @@ func (sapi *scenarioAPI) Create(ctx context.Context, id string, sdef metadata.Sc
 	return &s, nil
 }
 
-func (sapi *scenarioAPI) Get(ctx context.Context, name string) (p2plab.Scenario, error) {
-	req := sapi.cln.NewRequest("GET", "/scenarios/%s", name)
+func (a *scenarioAPI) Get(ctx context.Context, name string) (p2plab.Scenario, error) {
+	req := a.client.NewRequest("GET", a.url("/scenarios/%s", name))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	s := scenario{cln: sapi.cln}
+	s := scenario{client: a.client}
 	err = json.NewDecoder(resp.Body).Decode(&s.metadata)
 	if err != nil {
 		return nil, err
@@ -69,8 +71,8 @@ func (sapi *scenarioAPI) Get(ctx context.Context, name string) (p2plab.Scenario,
 	return &s, nil
 }
 
-func (sapi *scenarioAPI) List(ctx context.Context) ([]p2plab.Scenario, error) {
-	req := sapi.cln.NewRequest("GET", "/scenarios")
+func (a *scenarioAPI) List(ctx context.Context) ([]p2plab.Scenario, error) {
+	req := a.client.NewRequest("GET", a.url("/scenarios"))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
@@ -85,15 +87,20 @@ func (sapi *scenarioAPI) List(ctx context.Context) ([]p2plab.Scenario, error) {
 
 	var scenarios []p2plab.Scenario
 	for _, m := range metadatas {
-		scenarios = append(scenarios, &scenario{cln: sapi.cln, metadata: m})
+		scenarios = append(scenarios, &scenario{
+			client:   a.client,
+			metadata: m,
+			url:      a.url,
+		})
 	}
 
 	return scenarios, nil
 }
 
 type scenario struct {
-	cln      *client
+	client   *httputil.Client
 	metadata metadata.Scenario
+	url      urlFunc
 }
 
 func (s *scenario) Metadata() metadata.Scenario {
@@ -101,7 +108,7 @@ func (s *scenario) Metadata() metadata.Scenario {
 }
 
 func (s *scenario) Remove(ctx context.Context) error {
-	req := s.cln.NewRequest("DELETE", "/scenarios/%s", s.metadata.ID)
+	req := s.client.NewRequest("DELETE", s.url("/scenarios/%s", s.metadata.ID))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return err

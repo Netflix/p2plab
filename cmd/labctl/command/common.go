@@ -22,7 +22,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/printer"
+	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 	jaeger "github.com/uber/jaeger-client-go"
@@ -80,7 +82,7 @@ func AttachAppContext(ctx context.Context, app *cli.App) {
 }
 
 func AttachAppPrinter(app *cli.App) {
-	app.Before = func(c *cli.Context) error {
+	app.Before = joinBefore(app.Before, func(c *cli.Context) error {
 		output := OutputType(c.String("output"))
 
 		var p printer.Printer
@@ -95,6 +97,34 @@ func AttachAppPrinter(app *cli.App) {
 
 		c.App.Metadata["printer"] = p
 		return nil
+	})
+}
+
+func AttachAppClient(app *cli.App) {
+	app.Before = joinBefore(app.Before, func(c *cli.Context) error {
+		client, err := httputil.NewClient(cleanhttp.DefaultClient())
+		if err != nil {
+			return err
+		}
+
+		app.Metadata["client"] = client
+		return nil
+	})
+}
+
+func joinBefore(fns ...cli.BeforeFunc) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		for _, fn := range fns {
+			if fn == nil {
+				continue
+			}
+
+			err := fn(c)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 }
 
@@ -104,6 +134,10 @@ func CommandContext(c *cli.Context) context.Context {
 
 func CommandPrinter(c *cli.Context) printer.Printer {
 	return c.App.Metadata["printer"].(printer.Printer)
+}
+
+func CommandClient(c *cli.Context) *httputil.Client {
+	return c.App.Metadata["client"].(*httputil.Client)
 }
 
 func getTracer() (opentracing.Tracer, io.Closer) {

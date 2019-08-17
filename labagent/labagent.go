@@ -49,7 +49,6 @@ type LabAgent struct {
 	httpClient *http.Client
 	app        *exec.Cmd
 	appCancel  func()
-	appReady   bool
 }
 
 func New(root, addr, appRoot, appAddr string) (*LabAgent, error) {
@@ -102,18 +101,7 @@ func (a *LabAgent) Serve(ctx context.Context) error {
 
 func (a *LabAgent) registerRoutes(r *mux.Router) {
 	api := r.PathPrefix("/api/v0").Subrouter()
-	api.HandleFunc("/healthcheck", a.healthcheckHandler).Methods("GET")
 	api.Handle("/update", httputil.ErrorHandler{a.updateHandler}).Methods("PUT")
-}
-
-func (a *LabAgent) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
-	if a.appReady {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Healthy"))
-	} else {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte("Unhealthy"))
-	}
 }
 
 func (a *LabAgent) updateHandler(w http.ResponseWriter, r *http.Request) error {
@@ -129,7 +117,6 @@ func (a *LabAgent) updateHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (a *LabAgent) updateApp(ctx context.Context, url string) error {
-	a.appReady = false
 	err := a.killApp()
 	if err != nil {
 		return err
@@ -239,7 +226,6 @@ func (a *LabAgent) startApp() error {
 		return err
 	}
 
-	a.appReady = true
 	log.Info().Msgf("Started p2p app %q", v)
 	return nil
 }

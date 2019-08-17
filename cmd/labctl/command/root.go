@@ -56,5 +56,8 @@ func App(ctx context.Context) *cli.App {
 	// Setup output printer.
 	AttachAppPrinter(app)
 
+	// Setup http client.
+	AttachAppClient(app)
+
 	return app
 }

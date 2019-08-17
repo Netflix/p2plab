@@ -14,6 +14,13 @@
 
 package p2plab
 
+import (
+	"context"
+
+	"github.com/Netflix/p2plab/metadata"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
+)
+
 // ControlAPI defines APIs for labd.
 type ControlAPI interface {
 	// Cluster returns an implementaiton of Cluster API.
@@ -30,4 +37,20 @@ type ControlAPI interface {
 
 	// Experiment returns an implementation of Experiment API.
 	Experiment() ExperimentAPI
+}
+
+type AgentAPI interface {
+	Update(ctx context.Context, url string) error
+
+	// SSH creates a SSH connection to the node.
+	SSH(ctx context.Context, opts ...SSHOption) error
+}
+
+type ApplicationAPI interface {
+	Healthcheck(ctx context.Context) bool
+
+	PeerInfo(ctx context.Context) (peerstore.PeerInfo, error)
+
+	// Run executes an task on the node.
+	Run(ctx context.Context, task metadata.Task) error
 }

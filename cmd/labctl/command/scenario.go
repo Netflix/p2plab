@@ -70,13 +70,13 @@ func createScenarioAction(c *cli.Context) error {
 		return err
 	}
 
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
 	ctx := CommandContext(c)
-	scenario, err := cln.Scenario().Create(ctx, name, sdef)
+	scenario, err := control.Scenario().Create(ctx, name, sdef)
 	if err != nil {
 		return err
 	}
@@ -90,13 +90,13 @@ func removeScenarioAction(c *cli.Context) error {
 		return errors.New("scenario id must be provided")
 	}
 
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
 	ctx := CommandContext(c)
-	scenario, err := cln.Scenario().Get(ctx, c.Args().First())
+	scenario, err := control.Scenario().Get(ctx, c.Args().First())
 	if err != nil {
 		return err
 	}
@@ -111,13 +111,13 @@ func removeScenarioAction(c *cli.Context) error {
 }
 
 func listScenarioAction(c *cli.Context) error {
-	cln, err := ResolveClient(c)
+	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
 	ctx := CommandContext(c)
-	scenarios, err := cln.Scenario().List(ctx)
+	scenarios, err := control.Scenario().List(ctx)
 	if err != nil {
 		return err
 	}

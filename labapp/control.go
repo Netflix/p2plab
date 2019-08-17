@@ -19,32 +19,47 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
+	"time"
 
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/rs/zerolog/log"
 )
 
-type Client struct {
-	httpClient *http.Client
-	base       string
+type Control struct {
+	addr   string
+	client *httputil.Client
 }
 
-func NewClient(addr string) *Client {
-	return &Client{
-		httpClient: &http.Client{
-			Transport: &http.Transport{
-				Proxy:             http.ProxyFromEnvironment,
-				DisableKeepAlives: true,
-			},
-		},
-		base: fmt.Sprintf("%s/api/v0", addr),
+func NewControl(client *httputil.Client, addr string) *Control {
+	return &Control{
+		addr:   addr,
+		client: client,
 	}
 }
 
-func (c *Client) PeerInfo(ctx context.Context) (peerstore.PeerInfo, error) {
-	req := c.NewRequest("GET", "/peerInfo")
+func (c *Control) url(endpoint string, a ...interface{}) string {
+	return fmt.Sprintf("%s/api/v0%s", c.addr, fmt.Sprintf(endpoint, a...))
+}
+
+func (c *Control) Healthcheck(ctx context.Context) bool {
+	req := c.client.NewRequest("GET", c.url("/healthcheck"),
+		httputil.WithRetryWaitMax(time.Minute),
+		httputil.WithRetryMax(10),
+	)
+	resp, err := req.Send(ctx)
+	if err != nil {
+		log.Debug().Str("err", err.Error()).Str("addr", c.addr).Msg("unhealthy")
+		return false
+	}
+	defer resp.Body.Close()
+
+	return true
+}
+
+func (c *Control) PeerInfo(ctx context.Context) (peerstore.PeerInfo, error) {
+	req := c.client.NewRequest("GET", c.url("/peerInfo"))
 
 	var peerInfo peerstore.PeerInfo
 	resp, err := req.Send(ctx)
@@ -61,13 +76,13 @@ func (c *Client) PeerInfo(ctx context.Context) (peerstore.PeerInfo, error) {
 	return peerInfo, nil
 }
 
-func (c *Client) Run(ctx context.Context, task metadata.Task) error {
+func (c *Control) Run(ctx context.Context, task metadata.Task) error {
 	content, err := json.MarshalIndent(&task, "", "    ")
 	if err != nil {
 		return err
 	}
 
-	req := c.NewRequest("POST", "/run").
+	req := c.client.NewRequest("POST", c.url("/run")).
 		Body(bytes.NewReader(content))
 
 	resp, err := req.Send(ctx)
@@ -77,8 +92,4 @@ func (c *Client) Run(ctx context.Context, task metadata.Task) error {
 	defer resp.Body.Close()
 
 	return nil
-}
-
-func (c *Client) NewRequest(method, path string, a ...interface{}) *httputil.Request {
-	return httputil.NewRequest(c.httpClient, c.base, method, path, a...)
 }

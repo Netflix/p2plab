@@ -35,6 +35,7 @@ import (
 	"github.com/Netflix/p2plab/scenarios"
 	"github.com/Netflix/p2plab/transformers"
 	"github.com/gorilla/mux"
+	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	bolt "go.etcd.io/bbolt"
@@ -44,6 +45,7 @@ type Labd struct {
 	root         string
 	addr         string
 	db           *metadata.DB
+	client       *httputil.Client
 	router       *mux.Router
 	seeder       *peer.Peer
 	provider     p2plab.NodeProvider
@@ -52,6 +54,11 @@ type Labd struct {
 
 func New(root, addr string) (*Labd, error) {
 	db, err := metadata.NewDB(root)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := httputil.NewClient(cleanhttp.DefaultClient())
 	if err != nil {
 		return nil, err
 	}
@@ -66,6 +73,7 @@ func New(root, addr string) (*Labd, error) {
 		root:         root,
 		addr:         addr,
 		db:           db,
+		client:       client,
 		router:       r,
 		provider:     provider,
 		transformers: transformers.New(filepath.Join(root, "transformers")),
@@ -230,7 +238,7 @@ func (d *Labd) createClusterHandler(w http.ResponseWriter, r *http.Request) erro
 
 	nset := nodes.NewSet()
 	for _, n := range mns {
-		nset.Add(newNode(nil, n))
+		nset.Add(newNode(d.client, n))
 	}
 
 	log.Info().Str("cluster", id).Msg("Connecting cluster")
@@ -508,7 +516,7 @@ func (d *Labd) createBenchmarkHandler(w http.ResponseWriter, r *http.Request) er
 
 	nset := nodes.NewSet()
 	for _, n := range mns {
-		nset.Add(newNode(nil, n))
+		nset.Add(newNode(d.client, n))
 	}
 
 	if !noReset {
