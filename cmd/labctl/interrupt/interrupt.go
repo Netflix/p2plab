@@ -22,8 +22,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-
-	"github.com/rs/zerolog/log"
 )
 
 // InterruptHandler helps set up an interrupt handler that can be cleanly shut
@@ -50,7 +48,7 @@ func NewInterruptHandler(cancel context.CancelFunc, sigs ...os.Signal) io.Closer
 			// Prevent un-terminated ^C character in terminal.
 			fmt.Println()
 
-			log.Info().Msg("Gracefully cancelling request...")
+			fmt.Println("Gracefully cancelling request...")
 
 			ih.wg.Add(1)
 			go func() {
@@ -59,7 +57,7 @@ func NewInterruptHandler(cancel context.CancelFunc, sigs ...os.Signal) io.Closer
 			}()
 
 		default:
-			log.Warn().Msg("Received another interrupt before graceful shutdown, terminating...")
+			fmt.Println("Received another interrupt before graceful shutdown, terminating...")
 
 			syscallSig, ok := sig.(syscall.Signal)
 			if !ok {

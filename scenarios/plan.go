@@ -24,7 +24,7 @@ import (
 	"github.com/Netflix/p2plab/query"
 	"github.com/Netflix/p2plab/transformers"
 	cid "github.com/ipfs/go-cid"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -37,7 +37,7 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 
 	objects, gctx := errgroup.WithContext(ctx)
 
-	log.Info().Msg("Transforming objects into IPLD DAGs")
+	zerolog.Ctx(ctx).Info().Msg("Transforming objects into IPLD DAGs")
 	var mu sync.Mutex
 	for name, odef := range sdef.Objects {
 		name, odef := name, odef
@@ -47,7 +47,7 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 				return err
 			}
 
-			log.Info().Str("type", odef.Type).Str("source", odef.Source).Msg("Transforming object")
+			zerolog.Ctx(ctx).Info().Str("type", odef.Type).Str("source", odef.Source).Msg("Transforming object")
 			c, err := t.Transform(gctx, peer, odef.Source, nil)
 			if err != nil {
 				return err
@@ -65,9 +65,9 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 		return plan, nil
 	}
 
-	log.Info().Msg("Planning scenario seed")
+	zerolog.Ctx(ctx).Info().Msg("Planning scenario seed")
 	for q, a := range sdef.Seed {
-		qry, err := query.Parse(q)
+		qry, err := query.Parse(ctx, q)
 		if err != nil {
 			return plan, err
 		}
@@ -96,9 +96,9 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 	}
 
 	// TODO: Refactor `Seed` and `Benchmark` into arbitrary `Stages`.
-	log.Info().Msg("Planning scenario benchmark")
+	zerolog.Ctx(ctx).Info().Msg("Planning scenario benchmark")
 	for q, a := range sdef.Benchmark {
-		qry, err := query.Parse(q)
+		qry, err := query.Parse(ctx, q)
 		if err != nil {
 			return plan, err
 		}

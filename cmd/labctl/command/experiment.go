@@ -20,7 +20,7 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/experiments"
 	"github.com/Netflix/p2plab/query"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
 )
 
@@ -105,12 +105,13 @@ func startExperimentAction(c *cli.Context) error {
 		return err
 	}
 
-	experiment, err := control.Experiment().Start(CommandContext(c), name, edef)
+	ctx := CommandContext(c)
+	experiment, err := control.Experiment().Start(ctx, name, edef)
 	if err != nil {
 		return err
 	}
 
-	log.Info().Msgf("Started experiment %q", experiment.Metadata().ID)
+	zerolog.Ctx(ctx).Info().Msgf("Started experiment %q", experiment.Metadata().ID)
 	return nil
 }
 
@@ -165,17 +166,17 @@ func listExperimentAction(c *cli.Context) error {
 	}
 
 	var opts []p2plab.ListOption
+	ctx := CommandContext(c)
 	if c.IsSet("query") {
-		q, err := query.Parse(c.String("query"))
+		q, err := query.Parse(ctx, c.String("query"))
 		if err != nil {
 			return err
 		}
-		log.Debug().Msgf("Parsed query as %q", q)
 
 		opts = append(opts, p2plab.WithQuery(q.String()))
 	}
 
-	experiments, err := control.Experiment().List(CommandContext(c), opts...)
+	experiments, err := control.Experiment().List(ctx, opts...)
 	if err != nil {
 		return err
 	}

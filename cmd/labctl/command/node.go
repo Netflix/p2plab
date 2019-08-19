@@ -18,7 +18,6 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/query"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli"
 )
 
@@ -130,18 +129,18 @@ func listNodeAction(c *cli.Context) error {
 	}
 
 	var opts []p2plab.ListOption
+	ctx := CommandContext(c)
 	if c.IsSet("query") {
-		q, err := query.Parse(c.String("query"))
+		q, err := query.Parse(ctx, c.String("query"))
 		if err != nil {
 			return err
 		}
-		log.Debug().Msgf("Parsed query as %q", q)
 
 		opts = append(opts, p2plab.WithQuery(q.String()))
 	}
 
 	cluster := c.Args().First()
-	nodes, err := control.Node().List(CommandContext(c), cluster, opts...)
+	nodes, err := control.Node().List(ctx, cluster, opts...)
 	if err != nil {
 		return err
 	}

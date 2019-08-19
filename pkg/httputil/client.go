@@ -19,11 +19,12 @@ import (
 	"time"
 
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
 type Client struct {
 	client *http.Client
+	logger *zerolog.Logger
 }
 
 func NewClient(hclient *http.Client, opts ...ClientOption) (*Client, error) {
@@ -55,12 +56,15 @@ func (c *Client) NewRequest(method, url string, opts ...RequestOption) *Request 
 
 	client := &retryablehttp.Client{
 		HTTPClient:   c.client,
-		Logger:       &log.Logger,
 		RetryWaitMin: settings.RetryWaitMin,
 		RetryWaitMax: settings.RetryWaitMax,
 		RetryMax:     settings.RetryMax,
 		CheckRetry:   settings.CheckRetry,
 		Backoff:      settings.Backoff,
+	}
+
+	if c.logger != nil {
+		client.Logger = c.logger
 	}
 
 	return &Request{
@@ -72,6 +76,13 @@ func (c *Client) NewRequest(method, url string, opts ...RequestOption) *Request 
 }
 
 type ClientOption func(*Client) error
+
+func WithLogger(logger *zerolog.Logger) ClientOption {
+	return func(c *Client) error {
+		c.logger = logger
+		return nil
+	}
+}
 
 type RequestOption func(*RequestSettings)
 

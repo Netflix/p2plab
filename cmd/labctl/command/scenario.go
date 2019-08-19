@@ -20,7 +20,7 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/query"
 	"github.com/Netflix/p2plab/scenarios"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
 )
 
@@ -111,7 +111,7 @@ func createScenarioAction(c *cli.Context) error {
 		return err
 	}
 
-	log.Info().Msgf("Created scenario %q", scenario.Metadata().ID)
+	zerolog.Ctx(ctx).Info().Msgf("Created scenario %q", scenario.Metadata().ID)
 	return nil
 }
 
@@ -166,17 +166,16 @@ func listScenarioAction(c *cli.Context) error {
 	}
 
 	var opts []p2plab.ListOption
+	ctx := CommandContext(c)
 	if c.IsSet("query") {
-		q, err := query.Parse(c.String("query"))
+		q, err := query.Parse(ctx, c.String("query"))
 		if err != nil {
 			return err
 		}
-		log.Debug().Msgf("Parsed query as %q", q)
 
 		opts = append(opts, p2plab.WithQuery(q.String()))
 	}
 
-	ctx := CommandContext(c)
 	scenarios, err := control.Scenario().List(ctx, opts...)
 	if err != nil {
 		return err

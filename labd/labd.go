@@ -33,7 +33,7 @@ import (
 	"github.com/Netflix/p2plab/transformers"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
 type Labd struct {
@@ -43,7 +43,7 @@ type Labd struct {
 	closers []io.Closer
 }
 
-func New(root, addr string) (*Labd, error) {
+func New(root, addr string, logger *zerolog.Logger) (*Labd, error) {
 	var closers []io.Closer
 	db, err := metadata.NewDB(root)
 	if err != nil {
@@ -51,7 +51,7 @@ func New(root, addr string) (*Labd, error) {
 	}
 	closers = append(closers, db)
 
-	client, err := httputil.NewClient(cleanhttp.DefaultClient())
+	client, err := httputil.NewClient(cleanhttp.DefaultClient(), httputil.WithLogger(logger))
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func New(root, addr string) (*Labd, error) {
 	}
 	closers = append(closers, &cancelCloser{cancel})
 
-	daemon := daemon.New(addr,
+	daemon := daemon.New(addr, logger,
 		healthcheckrouter.New(),
 		clusterrouter.New(db, provider, client),
 		noderouter.New(db, client),
@@ -105,7 +105,7 @@ func (d *Labd) Serve(ctx context.Context) error {
 	for _, ma := range d.seeder.Host().Addrs() {
 		addrs = append(addrs, ma.String())
 	}
-	log.Info().Msgf("IPFS listening on %s", addrs)
+	zerolog.Ctx(ctx).Info().Strs("addrs", addrs).Msg("IPFS listening")
 
 	return d.daemon.Serve(ctx)
 }

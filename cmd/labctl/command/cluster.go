@@ -19,7 +19,7 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/query"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
 )
 
@@ -120,6 +120,7 @@ func createClusterAction(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	ctx := CommandContext(c)
 
 	var options []p2plab.CreateClusterOption
 	if c.IsSet("definition") {
@@ -135,12 +136,12 @@ func createClusterAction(c *cli.Context) error {
 	}
 
 	name := c.Args().First()
-	cluster, err := control.Cluster().Create(CommandContext(c), name, options...)
+	cluster, err := control.Cluster().Create(ctx, name, options...)
 	if err != nil {
 		return err
 	}
 
-	log.Info().Msgf("Created cluster %q", cluster.Metadata().ID)
+	zerolog.Ctx(ctx).Info().Msgf("Created cluster %q", cluster.Metadata().ID)
 	return nil
 }
 
@@ -195,17 +196,17 @@ func listClusterAction(c *cli.Context) error {
 	}
 
 	var opts []p2plab.ListOption
+	ctx := CommandContext(c)
 	if c.IsSet("query") {
-		q, err := query.Parse(c.String("query"))
+		q, err := query.Parse(ctx, c.String("query"))
 		if err != nil {
 			return err
 		}
-		log.Debug().Msgf("Parsed query as %q", q)
 
 		opts = append(opts, p2plab.WithQuery(q.String()))
 	}
 
-	cs, err := control.Cluster().List(CommandContext(c), opts...)
+	cs, err := control.Cluster().List(ctx, opts...)
 	if err != nil {
 		return err
 	}
@@ -264,6 +265,6 @@ func updateClusterAction(c *cli.Context) error {
 		return err
 	}
 
-	log.Info().Msgf("Updated cluster %q", cluster.Metadata().ID)
+	zerolog.Ctx(ctx).Info().Msgf("Updated cluster %q", cluster.Metadata().ID)
 	return nil
 }

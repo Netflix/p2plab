@@ -16,9 +16,8 @@ package httputil
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
-
-	"github.com/rs/zerolog/log"
 )
 
 type ErrorHandler struct {
@@ -50,7 +49,7 @@ func (h ErrorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		switch e := err.(type) {
 		case HTTPError:
 			// We can retrieve the status here and write out a specific HTTP status code.
-			log.Info().Msgf("HTTP %d - %s", e.Status(), e)
+			fmt.Printf("HTTP %d - %s\n", e.Status(), e)
 			http.Error(w, e.Error(), e.Status())
 		default:
 			// Any error types we don't specifically look out for default to serving a

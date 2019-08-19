@@ -58,16 +58,11 @@ func AttachAppContext(ctx context.Context, app *cli.App) {
 					span = tracer.StartSpan(name)
 					span.LogFields(tlog.String("command", strings.Join(os.Args, " ")))
 
-					level, err := zerolog.ParseLevel(c.GlobalString("log-level"))
+					logger, err := newLogger(c)
 					if err != nil {
 						return err
 					}
-
-					logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).
-						Level(level).
-						With().Timestamp().Logger()
 					ctx = logger.WithContext(ctx)
-
 					ctx = opentracing.ContextWithSpan(ctx, span)
 
 					c.App.Metadata["context"] = ctx
@@ -113,7 +108,17 @@ func AttachAppPrinter(app *cli.App) {
 
 func AttachAppClient(app *cli.App) {
 	app.Before = joinBefore(app.Before, func(c *cli.Context) error {
-		client, err := httputil.NewClient(cleanhttp.DefaultClient())
+		var opts []httputil.ClientOption
+		if c.GlobalString("log-level") == "debug" {
+			logger, err := newLogger(c)
+			if err != nil {
+				return err
+			}
+
+			opts = append(opts, httputil.WithLogger(logger))
+		}
+
+		client, err := httputil.NewClient(cleanhttp.DefaultClient(), opts...)
 		if err != nil {
 			return err
 		}
@@ -172,6 +177,19 @@ type nopCloser struct{}
 
 func (*nopCloser) Close() error {
 	return nil
+}
+
+func newLogger(c *cli.Context) (*zerolog.Logger, error) {
+	level, err := zerolog.ParseLevel(c.GlobalString("log-level"))
+	if err != nil {
+		return nil, err
+	}
+
+	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).
+		Level(level).
+		With().Timestamp().Logger()
+
+	return &logger, nil
 }
 
 func ExtractNameFromFilename(filename string) string {

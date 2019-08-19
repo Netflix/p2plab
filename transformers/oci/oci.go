@@ -87,12 +87,12 @@ func (t *transformer) Close() error {
 }
 
 func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source string, options []string) (cid.Cid, error) {
-	log.Info().Str("source", source).Msg("Resolving OCI reference")
+	zerolog.Ctx(ctx).Info().Str("source", source).Msg("Resolving OCI reference")
 	name, desc, err := t.resolver.Resolve(ctx, source)
 	if err != nil {
 		return cid.Undef, errors.Wrapf(err, "failed to resolve %q", source)
 	}
-	log.Info().Str("source", source).Str("digest", desc.Digest.String()).Msg("Resolved reference to digest")
+	zerolog.Ctx(ctx).Info().Str("source", source).Str("digest", desc.Digest.String()).Msg("Resolved reference to digest")
 
 	target, err := t.get(desc.Digest)
 	if err != nil && !errdefs.IsNotFound(err) {
@@ -105,7 +105,7 @@ func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source strin
 			return cid.Undef, errors.Wrapf(err, "failed to create fetcher for %q", name)
 		}
 
-		log.Info().Str("digest", desc.Digest.String()).Msg("Converting manifest recursively to IPLD DAG")
+		zerolog.Ctx(ctx).Info().Str("digest", desc.Digest.String()).Msg("Converting manifest recursively to IPLD DAG")
 		target, err = Convert(ctx, p, fetcher, t.store, desc)
 		if err != nil {
 			return cid.Undef, errors.Wrapf(err, "failed to convert %q", name)
@@ -117,7 +117,7 @@ func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source strin
 		}
 	}
 
-	log.Info().Str("target", target.Digest.String()).Msg("Constructing Unixfs directory over manifest blobs")
+	zerolog.Ctx(ctx).Info().Str("target", target.Digest.String()).Msg("Constructing Unixfs directory over manifest blobs")
 	nd, err := ConstructDAGFromManifest(ctx, p, target)
 	if err != nil {
 		return cid.Undef, err
@@ -210,7 +210,7 @@ func ConvertHandler(conversions map[digest.Digest]ocispec.Descriptor, peer p2pla
 			if err != nil {
 				return nil, err
 			}
-			log.Debug().Str("mediaType", desc.MediaType).Str("source", desc.Digest.String()).Str("cid", c.String()).Int64("size", desc.Size).Msg("Added blob to peer")
+			zerolog.Ctx(ctx).Debug().Str("mediaType", desc.MediaType).Str("source", desc.Digest.String()).Str("cid", c.String()).Int64("size", desc.Size).Msg("Added blob to peer")
 		}
 
 		conversions[desc.Digest] = target

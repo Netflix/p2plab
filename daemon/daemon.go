@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/Netflix/p2plab/errdefs"
@@ -29,25 +28,26 @@ import (
 type Daemon struct {
 	addr   string
 	router *mux.Router
-	logger zerolog.Logger
+	logger *zerolog.Logger
 }
 
-func New(addr string, routers ...Router) *Daemon {
+func New(addr string, logger *zerolog.Logger, routers ...Router) *Daemon {
 	d := &Daemon{
 		addr:   addr,
-		logger: zerolog.New(os.Stderr).With().Timestamp().Logger(),
+		logger: logger,
 	}
 	d.router = d.createMux(routers...)
 	return d
 }
 
 func (d *Daemon) Serve(ctx context.Context) error {
-	d.logger.Info().Msgf("daemon listening on %s", d.addr)
 	s := &http.Server{
 		Handler:     d.router,
 		Addr:        d.addr,
 		ReadTimeout: 10 * time.Second,
 	}
+
+	zerolog.Ctx(ctx).Info().Str("addr", d.addr).Msg("daemon listening")
 	return s.ListenAndServe()
 }
 

@@ -21,7 +21,7 @@ import (
 )
 
 func Execute(ctx context.Context, ls []p2plab.Labeled, q string) (p2plab.LabeledSet, error) {
-	qry, err := Parse(q)
+	qry, err := Parse(ctx, q)
 	if err != nil {
 		return nil, err
 	}

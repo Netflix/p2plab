@@ -21,12 +21,12 @@ import (
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 )
 
 func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan, seederAddr string) error {
-	log.Info().Msg("Seeding cluster")
+	zerolog.Ctx(ctx).Info().Msg("Seeding cluster")
 	seed, gctx := errgroup.WithContext(ctx)
 	for id, task := range plan.Seed {
 		id, task := id, task
@@ -70,7 +70,7 @@ func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan
 		return err
 	}
 
-	log.Info().Msg("Benchmarking cluster")
+	zerolog.Ctx(ctx).Info().Msg("Benchmarking cluster")
 	benchmark, gctx := errgroup.WithContext(ctx)
 	for id, task := range plan.Benchmark {
 		id, task := id, task

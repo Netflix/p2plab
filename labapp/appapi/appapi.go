@@ -25,7 +25,7 @@ import (
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
 type api struct {
@@ -51,7 +51,7 @@ func (a *api) Healthcheck(ctx context.Context) bool {
 	)
 	resp, err := req.Send(ctx)
 	if err != nil {
-		log.Debug().Str("err", err.Error()).Str("addr", a.addr).Msg("unhealthy")
+		zerolog.Ctx(ctx).Debug().Str("err", err.Error()).Str("addr", a.addr).Msg("unhealthy")
 		return false
 	}
 	defer resp.Body.Close()

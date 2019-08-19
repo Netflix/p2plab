@@ -34,6 +34,7 @@ import (
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	multiaddr "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -67,14 +68,14 @@ func (a *LabApp) Serve(ctx context.Context) error {
 	for _, ma := range a.peer.Host().Addrs() {
 		addrs = append(addrs, ma.String())
 	}
-	log.Info().Msgf("IPFS listening on %s", addrs)
+	zerolog.Ctx(ctx).Info().Msgf("IPFS listening on %s", addrs)
 
 	s := &http.Server{
 		Handler:     a.router,
 		Addr:        a.addr,
 		ReadTimeout: 10 * time.Second,
 	}
-	log.Info().Msgf("labapp listening on %s", a.addr)
+	zerolog.Ctx(ctx).Info().Msgf("labapp listening on %s", a.addr)
 
 	a.ready = true
 	return s.ListenAndServe()
@@ -170,7 +171,7 @@ func (a *LabApp) getFile(ctx context.Context, target string) error {
 		return err
 	}
 
-	log.Info().Str("cid", c.String()).Int64("bytes", n).Msg("Got file from peers")
+	zerolog.Ctx(ctx).Info().Str("cid", c.String()).Int64("bytes", n).Msg("Got file from peers")
 	return nil
 }
 
@@ -185,7 +186,7 @@ func (a *LabApp) connect(ctx context.Context, addrs []string) error {
 		return err
 	}
 
-	log.Info().Int("peers", len(addrs)).Msg("Connected to peers")
+	zerolog.Ctx(ctx).Info().Int("peers", len(addrs)).Msg("Connected to peers")
 	return nil
 }
 
@@ -199,7 +200,8 @@ func (a *LabApp) disconnect(ctx context.Context, addrs []string) error {
 	if err != nil {
 		return err
 	}
-	log.Info().Int("peers", len(addrs)).Msg("Disconnected from peers")
+
+	zerolog.Ctx(ctx).Info().Int("peers", len(addrs)).Msg("Disconnected from peers")
 	return nil
 }
 

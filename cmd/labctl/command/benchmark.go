@@ -19,7 +19,6 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/query"
-	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli"
 )
 
@@ -160,17 +159,16 @@ func listBenchmarkAction(c *cli.Context) error {
 	}
 
 	var opts []p2plab.ListOption
+	ctx := CommandContext(c)
 	if c.IsSet("query") {
-		q, err := query.Parse(c.String("query"))
+		q, err := query.Parse(ctx, c.String("query"))
 		if err != nil {
 			return err
 		}
-		log.Debug().Msgf("Parsed query as %q", q)
 
 		opts = append(opts, p2plab.WithQuery(q.String()))
 	}
 
-	ctx := CommandContext(c)
 	benchmarks, err := control.Benchmark().List(ctx, opts...)
 	if err != nil {
 		return err

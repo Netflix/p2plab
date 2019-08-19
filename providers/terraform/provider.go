@@ -26,7 +26,7 @@ import (
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
 type provider struct {
@@ -84,26 +84,26 @@ func New(root string) (p2plab.NodeProvider, error) {
 }
 
 func (p *provider) CreateNodeGroup(ctx context.Context, id string, cdef metadata.ClusterDefinition) (*p2plab.NodeGroup, error) {
-	log.Debug().Str("id", id).Msg("Preparing cluster directory")
+	zerolog.Ctx(ctx).Debug().Str("id", id).Msg("Preparing cluster directory")
 	clusterDir, err := p.prepareClusterDir(id)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to prepare cluster directory")
 	}
 
-	log.Debug().Str("id", id).Str("dir", clusterDir).Msg("Executing tfvars template")
+	zerolog.Ctx(ctx).Debug().Str("id", id).Str("dir", clusterDir).Msg("Executing tfvars template")
 	err = p.executeTfvarsTemplate(id, cdef)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute tfvars template")
 	}
 
-	log.Debug().Str("id", id).Str("dir", clusterDir).Msg("Creating terraform handler")
+	zerolog.Ctx(ctx).Debug().Str("id", id).Str("dir", clusterDir).Msg("Creating terraform handler")
 	t, err := NewTerraform(ctx, clusterDir)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create terraform handler")
 	}
 	p.terraformById[id] = t
 
-	log.Debug().Str("id", id).Str("dir", clusterDir).Msg("Terraform applying")
+	zerolog.Ctx(ctx).Debug().Str("id", id).Str("dir", clusterDir).Msg("Terraform applying")
 	ns, err := t.Apply(ctx, id, cdef)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to terraform destroy")
@@ -118,7 +118,7 @@ func (p *provider) CreateNodeGroup(ctx context.Context, id string, cdef metadata
 func (p *provider) DestroyNodeGroup(ctx context.Context, ng *p2plab.NodeGroup) error {
 	t, ok := p.terraformById[ng.ID]
 	if !ok {
-		log.Debug().Str("id", ng.ID).Msg("Creating terraform handler")
+		zerolog.Ctx(ctx).Debug().Str("id", ng.ID).Msg("Creating terraform handler")
 		var err error
 		clusterDir := filepath.Join(p.root, ng.ID)
 		t, err = NewTerraform(ctx, clusterDir)
@@ -128,7 +128,7 @@ func (p *provider) DestroyNodeGroup(ctx context.Context, ng *p2plab.NodeGroup) e
 		p.terraformById[ng.ID] = t
 	}
 
-	log.Debug().Str("id", ng.ID).Msg("Terraform destroying")
+	zerolog.Ctx(ctx).Debug().Str("id", ng.ID).Msg("Terraform destroying")
 	err := t.Destroy(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to terraform destroy")
@@ -136,7 +136,7 @@ func (p *provider) DestroyNodeGroup(ctx context.Context, ng *p2plab.NodeGroup) e
 	defer t.Close()
 
 	delete(p.terraformById, ng.ID)
-	log.Debug().Str("id", ng.ID).Msg("Removing cluster directory")
+	zerolog.Ctx(ctx).Debug().Str("id", ng.ID).Msg("Removing cluster directory")
 	err = p.destroyClusterDir(ng.ID)
 	if err != nil {
 		return errors.Wrap(err, "failed to remove cluster directory")

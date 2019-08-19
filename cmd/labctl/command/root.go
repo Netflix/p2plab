@@ -34,6 +34,7 @@ func App(ctx context.Context) *cli.App {
 		cli.StringFlag{
 			Name:  "log-level,l",
 			Usage: "set the logging level [debug, info, warn, error, fatal, panic]",
+			Value: "info",
 		},
 		cli.StringFlag{
 			Name:  "output,o",

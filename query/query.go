@@ -23,6 +23,7 @@ import (
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/gobwas/glob"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 // query := label
@@ -33,7 +34,7 @@ import (
 //       | ‘and’
 //       | ‘or’
 // label := quoted_string
-func Parse(q string) (p2plab.Query, error) {
+func Parse(ctx context.Context, q string) (p2plab.Query, error) {
 	tokens := tokenize(q)
 	if len(tokens) == 0 {
 		tokens = []string{"*"}
@@ -53,6 +54,7 @@ func Parse(q string) (p2plab.Query, error) {
 		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "%s", err)
 	}
 
+	zerolog.Ctx(ctx).Debug().Msgf("Parsed query as %q", qry)
 	return qry, nil
 }
 
@@ -301,7 +303,7 @@ func (q *labelQuery) Match(ctx context.Context, lset p2plab.LabeledSet) (p2plab.
 			}
 		}
 
-		if found || (q.pattern == "*" && len(l.Labels()) == 0){
+		if found || (q.pattern == "*" && len(l.Labels()) == 0) {
 			labelSet.Add(l)
 		}
 	}
