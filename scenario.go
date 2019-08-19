@@ -23,20 +23,23 @@ import (
 // ScenarioAPI defines API for scenario operations.
 type ScenarioAPI interface {
 	// Create saves a scenario for the given scenario definition.
-	Create(ctx context.Context, id string, sdef metadata.ScenarioDefinition) (Scenario, error)
+	Create(ctx context.Context, name string, sdef metadata.ScenarioDefinition) (Scenario, error)
 
 	// Get returns a scenario.
-	Get(ctx context.Context, id string) (Scenario, error)
+	Get(ctx context.Context, name string) (Scenario, error)
+
+	Label(ctx context.Context, names, adds, removes []string) ([]Scenario, error)
 
 	// List returns available scenarios.
-	List(ctx context.Context) ([]Scenario, error)
+	List(ctx context.Context, opts ...ListOption) ([]Scenario, error)
+
+	Remove(ctx context.Context, names ...string) error
 }
 
 // Scenario is a schema for benchmarks that describes objects to benchmark, how
 // the cluster is initially seeded, and what to benchmark.
 type Scenario interface {
-	Metadata() metadata.Scenario
+	Labeled
 
-	// Remove deletes a scenario.
-	Remove(ctx context.Context) error
+	Metadata() metadata.Scenario
 }

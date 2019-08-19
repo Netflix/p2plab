@@ -25,11 +25,15 @@ type ExperimentAPI interface {
 
 	Get(ctx context.Context, id string) (Experiment, error)
 
-	List(ctx context.Context) ([]Experiment, error)
+	Label(ctx context.Context, ids, adds, removes []string) ([]Experiment, error)
+
+	List(ctx context.Context, opts ...ListOption) ([]Experiment, error)
+
+	Remove(ctx context.Context, ids ...string) error
 }
 
 type Experiment interface {
-	Metadata() metadata.Experiment
+	Labeled
 
-	Cancel(ctx context.Context) error
+	Metadata() metadata.Experiment
 }

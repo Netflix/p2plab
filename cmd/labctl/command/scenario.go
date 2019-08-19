@@ -17,6 +17,8 @@ package command
 import (
 	"errors"
 
+	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/query"
 	"github.com/Netflix/p2plab/scenarios"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli"
@@ -40,16 +42,44 @@ var scenarioCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "remove",
-			Aliases: []string{"rm"},
-			Usage:   "Remove scenarios.",
-			Action:  removeScenarioAction,
+			Name:    "inspect",
+			Aliases: []string{"i"},
+			Usage:   "Displays detailed information on a scenario.",
+			Action:  inspectScenarioAction,
+		},
+		{
+			Name:    "label",
+			Aliases: []string{"l"},
+			Usage:   "Add or remove labels from scenarios.",
+			Action:  labelScenariosAction,
+			Flags: []cli.Flag{
+				&cli.StringSliceFlag{
+					Name:  "add",
+					Usage: "Adds a label.",
+				},
+				&cli.StringSliceFlag{
+					Name:  "remove,rm",
+					Usage: "Removes a label.",
+				},
+			},
 		},
 		{
 			Name:    "list",
 			Aliases: []string{"ls"},
 			Usage:   "List scenarios.",
 			Action:  listScenarioAction,
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:  "query,q",
+					Usage: "Runs a query to filter the listed scenarios.",
+				},
+			},
+		},
+		{
+			Name:    "remove",
+			Aliases: []string{"rm"},
+			Usage:   "Remove scenarios.",
+			Action:  removeScenariosAction,
 		},
 	},
 }
@@ -85,7 +115,7 @@ func createScenarioAction(c *cli.Context) error {
 	return nil
 }
 
-func removeScenarioAction(c *cli.Context) error {
+func inspectScenarioAction(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return errors.New("scenario id must be provided")
 	}
@@ -95,29 +125,28 @@ func removeScenarioAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
-	scenario, err := control.Scenario().Get(ctx, c.Args().First())
+	name := c.Args().Get(0)
+	scenario, err := control.Scenario().Get(CommandContext(c), name)
 	if err != nil {
 		return err
 	}
 
-	err = scenario.Remove(ctx)
-	if err != nil {
-		return err
-	}
-
-	log.Info().Msgf("Removed scenario %q", scenario.Metadata().ID)
-	return nil
+	return CommandPrinter(c).Print(scenario.Metadata())
 }
 
-func listScenarioAction(c *cli.Context) error {
+func labelScenariosAction(c *cli.Context) error {
+	var names []string
+	for i := 0; i < c.NArg(); i++ {
+		names = append(names, c.Args().Get(i))
+	}
+
 	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
 	ctx := CommandContext(c)
-	scenarios, err := control.Scenario().List(ctx)
+	scenarios, err := control.Scenario().Label(ctx, names, c.StringSlice("add"), c.StringSlice("remove"))
 	if err != nil {
 		return err
 	}
@@ -128,4 +157,55 @@ func listScenarioAction(c *cli.Context) error {
 	}
 
 	return CommandPrinter(c).Print(l)
+}
+
+func listScenarioAction(c *cli.Context) error {
+	control, err := ResolveControl(c)
+	if err != nil {
+		return err
+	}
+
+	var opts []p2plab.ListOption
+	if c.IsSet("query") {
+		q, err := query.Parse(c.String("query"))
+		if err != nil {
+			return err
+		}
+		log.Debug().Msgf("Parsed query as %q", q)
+
+		opts = append(opts, p2plab.WithQuery(q.String()))
+	}
+
+	ctx := CommandContext(c)
+	scenarios, err := control.Scenario().List(ctx, opts...)
+	if err != nil {
+		return err
+	}
+
+	l := make([]interface{}, len(scenarios))
+	for i, s := range scenarios {
+		l[i] = s.Metadata()
+	}
+
+	return CommandPrinter(c).Print(l)
+}
+
+func removeScenariosAction(c *cli.Context) error {
+	var names []string
+	for i := 0; i < c.NArg(); i++ {
+		names = append(names, c.Args().Get(i))
+	}
+
+	control, err := ResolveControl(c)
+	if err != nil {
+		return err
+	}
+
+	ctx := CommandContext(c)
+	err = control.Scenario().Remove(ctx, names...)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

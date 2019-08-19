@@ -35,9 +35,9 @@ func (a *dummyAction) String() string {
 	return fmt.Sprintf("get %q", a.subject)
 }
 
-func (a *dummyAction) Tasks(ctx context.Context, nset p2plab.NodeSet) (map[string]metadata.Task, error) {
+func (a *dummyAction) Tasks(ctx context.Context, ns []p2plab.Node) (map[string]metadata.Task, error) {
 	taskMap := make(map[string]metadata.Task)
-	for _, n := range nset.Slice() {
+	for _, n := range ns {
 		taskMap[n.Metadata().ID] = metadata.Task{
 			Type:    metadata.TaskGet,
 			Subject: a.subject,

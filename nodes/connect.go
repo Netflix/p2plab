@@ -26,9 +26,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func WaitHealthy(ctx context.Context, nset p2plab.NodeSet) error {
-	ns := nset.Slice()
-
+func WaitHealthy(ctx context.Context, ns []p2plab.Node) error {
 	healthchecks, gctx := errgroup.WithContext(ctx)
 
 	for _, n := range ns {
@@ -60,13 +58,12 @@ func WaitHealthy(ctx context.Context, nset p2plab.NodeSet) error {
 
 }
 
-func Connect(ctx context.Context, nset p2plab.NodeSet) error {
-	err := WaitHealthy(ctx, nset)
+func Connect(ctx context.Context, ns []p2plab.Node) error {
+	err := WaitHealthy(ctx, ns)
 	if err != nil {
 		return err
 	}
 
-	ns := nset.Slice()
 	peerAddrs := make([]string, len(ns))
 	collectPeerAddrs, gctx := errgroup.WithContext(ctx)
 	for i, n := range ns {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package nodes
+package query
 
 import (
 	"sort"
@@ -20,39 +20,39 @@ import (
 	"github.com/Netflix/p2plab"
 )
 
-type nodeSet struct {
-	set map[string]p2plab.Node
+type labeledSet struct {
+	set map[string]p2plab.Labeled
 }
 
-func NewSet() p2plab.NodeSet {
-	return &nodeSet{
-		set: make(map[string]p2plab.Node),
+func NewLabeledSet() p2plab.LabeledSet {
+	return &labeledSet{
+		set: make(map[string]p2plab.Labeled),
 	}
 }
 
-func (s *nodeSet) Add(n p2plab.Node) {
-	s.set[n.Metadata().ID] = n
+func (s *labeledSet) Add(l p2plab.Labeled) {
+	s.set[l.ID()] = l
 }
 
-func (s *nodeSet) Remove(n p2plab.Node) {
-	delete(s.set, n.Metadata().ID)
+func (s *labeledSet) Remove(id string) {
+	delete(s.set, id)
 }
 
-func (s *nodeSet) Get(id string) p2plab.Node {
+func (s *labeledSet) Get(id string) p2plab.Labeled {
 	return s.set[id]
 }
 
-func (s *nodeSet) Contains(id string) bool {
+func (s *labeledSet) Contains(id string) bool {
 	return s.Get(id) != nil
 }
 
-func (s *nodeSet) Slice() []p2plab.Node {
-	var slice []p2plab.Node
-	for _, n := range s.set {
-		slice = append(slice, n)
+func (s *labeledSet) Slice() []p2plab.Labeled {
+	var slice []p2plab.Labeled
+	for _, l := range s.set {
+		slice = append(slice, l)
 	}
 	sort.SliceStable(slice, func(i, j int) bool {
-		return slice[i].Metadata().ID < slice[j].Metadata().ID
+		return slice[i].ID() < slice[j].ID()
 	})
 	return slice
 }

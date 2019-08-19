@@ -16,7 +16,6 @@ package p2plab
 
 import (
 	"context"
-	"io"
 
 	"github.com/Netflix/p2plab/metadata"
 )
@@ -25,27 +24,22 @@ import (
 type BenchmarkAPI interface {
 	// Create starts benchmarking a scenario on a cluster.
 	Start(ctx context.Context, cluster, scenario string, opts ...StartBenchmarkOption) (Benchmark, error)
-
 	// Get returns a benchmark.
 	Get(ctx context.Context, id string) (Benchmark, error)
 
+	Label(ctx context.Context, ids, adds, removes []string) ([]Benchmark, error)
+
 	// List returns available benchmarks.
-	List(ctx context.Context) ([]Benchmark, error)
+	List(ctx context.Context, opts ...ListOption) ([]Benchmark, error)
+
+	Remove(ctx context.Context, ids ...string) error
 }
 
 // Benchmark is an execution of a scenario on a cluster.
 type Benchmark interface {
+	Labeled
+
 	Metadata() metadata.Benchmark
-
-	// Cancel cancels a running benchmark.
-	Cancel(ctx context.Context) error
-
-	// Report returns statistics on how the P2P application behaved during the
-	// benchmark.
-	Report(ctx context.Context) (Report, error)
-
-	// Logs returns a streaming log of the benchmark operation.
-	Logs(ctx context.Context, opt ...LogsOption) (io.ReadCloser, error)
 }
 
 type StartBenchmarkOption func(*StartBenchmarkSettings) error
@@ -59,18 +53,4 @@ func WithBenchmarkNoReset() StartBenchmarkOption {
 		s.NoReset = true
 		return nil
 	}
-}
-
-// Report is a benchmark summary on how the P2P application behaved during the
-// benchmark.
-type Report interface {
-}
-
-// LogsOption is an option to modify logging settings.
-type LogsOption func(LogsSettings) error
-
-// LogsSettings specify logging settings.
-type LogsSettings struct {
-	// Follow specify that the log should be followed.
-	Follow bool
 }

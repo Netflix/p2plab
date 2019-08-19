@@ -28,7 +28,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformers.Transformers, peer p2plab.Peer, nset p2plab.NodeSet) (metadata.ScenarioPlan, error) {
+func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformers.Transformers, peer p2plab.Peer, lset p2plab.LabeledSet) (metadata.ScenarioPlan, error) {
 	plan := metadata.ScenarioPlan{
 		Objects:   make(map[string]cid.Cid),
 		Seed:      make(map[string]metadata.Task),
@@ -72,7 +72,7 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 			return plan, err
 		}
 
-		mset, err := qry.Match(ctx, nset)
+		mset, err := qry.Match(ctx, lset)
 		if err != nil {
 			return plan, err
 		}
@@ -82,7 +82,12 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 			return plan, err
 		}
 
-		taskMap, err := action.Tasks(ctx, mset)
+		var ns []p2plab.Node
+		for _, l := range mset.Slice() {
+			ns = append(ns, l.(p2plab.Node))
+		}
+
+		taskMap, err := action.Tasks(ctx, ns)
 		if err != nil {
 			return plan, err
 		}
@@ -98,7 +103,7 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 			return plan, err
 		}
 
-		mset, err := qry.Match(ctx, nset)
+		mset, err := qry.Match(ctx, lset)
 		if err != nil {
 			return plan, err
 		}
@@ -108,7 +113,12 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 			return plan, err
 		}
 
-		taskMap, err := action.Tasks(ctx, mset)
+		var ns []p2plab.Node
+		for _, l := range mset.Slice() {
+			ns = append(ns, l.(p2plab.Node))
+		}
+
+		taskMap, err := action.Tasks(ctx, ns)
 		if err != nil {
 			return plan, err
 		}

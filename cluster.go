@@ -22,27 +22,29 @@ import (
 
 // ClusterAPI defines API for cluster operations.
 type ClusterAPI interface {
-	// Create deploys a cluster of a p2p application.
-	Create(ctx context.Context, id string, opts ...CreateClusterOption) (Cluster, error)
+	// Create deploys a cluster.
+	Create(ctx context.Context, name string, opts ...CreateClusterOption) (Cluster, error)
 
 	// Get returns a cluster.
-	Get(ctx context.Context, id string) (Cluster, error)
+	Get(ctx context.Context, name string) (Cluster, error)
+
+	// Label adds/removes labels to/from clusters.
+	Label(ctx context.Context, names, adds, removes []string) ([]Cluster, error)
 
 	// List returns available clusters.
-	List(ctx context.Context) ([]Cluster, error)
+	List(ctx context.Context, opts ...ListOption) ([]Cluster, error)
+
+	// Remove destroys clusters permanently.
+	Remove(ctx context.Context, names ...string) error
 }
 
 // Cluster is a group of instances connected in a p2p network. They can be
 // provisioned by developers, or CI. Clusters may span multiple regions and
 // have heterogeneous nodes.
 type Cluster interface {
+	Labeled
+
 	Metadata() metadata.Cluster
-
-	// Remove destroys a cluster permanently.
-	Remove(ctx context.Context) error
-
-	// Query executes a query and returns a set of matching nodes.
-	Query(ctx context.Context, q Query, opts ...QueryOption) (NodeSet, error)
 
 	// Update compiles a commit and updates the cluster to the new p2p
 	// application.
@@ -85,6 +87,19 @@ func WithClusterInstanceType(instanceType string) CreateClusterOption {
 func WithClusterRegion(region string) CreateClusterOption {
 	return func(s *CreateClusterSettings) error {
 		s.Region = region
+		return nil
+	}
+}
+
+type ListOption func(*ListSettings) error
+
+type ListSettings struct {
+	Query string
+}
+
+func WithQuery(q string) ListOption {
+	return func(s *ListSettings) error {
+		s.Query = q
 		return nil
 	}
 }

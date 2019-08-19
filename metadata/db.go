@@ -32,36 +32,118 @@ func WithTransactionContext(ctx context.Context, tx *bolt.Tx) context.Context {
 	return context.WithValue(ctx, transactionKey{}, tx)
 }
 
-type DB struct {
-	db *bolt.DB
+type DB interface {
+	ClusterStore
+	NodeStore
+	ScenarioStore
+	BenchmarkStore
+	ExperimentStore
+
+	View(ctx context.Context, fn func(*bolt.Tx) error) error
+
+	Update(ctx context.Context, fn func(*bolt.Tx) error) error
+
+	Close() error
 }
 
-func NewDB(root string) (*DB, error) {
+type ClusterStore interface {
+	GetCluster(ctx context.Context, id string) (Cluster, error)
+
+	ListClusters(ctx context.Context) ([]Cluster, error)
+
+	CreateCluster(ctx context.Context, cluster Cluster) (Cluster, error)
+
+	UpdateCluster(ctx context.Context, cluster Cluster) (Cluster, error)
+
+	LabelClusters(ctx context.Context, ids, adds, removes []string) ([]Cluster, error)
+
+	DeleteCluster(ctx context.Context, id string) error
+}
+
+type NodeStore interface {
+	GetNode(ctx context.Context, cluster, id string) (Node, error)
+
+	ListNodes(ctx context.Context, cluster string) ([]Node, error)
+
+	CreateNode(ctx context.Context, cluster string, node Node) (Node, error)
+
+	CreateNodes(ctx context.Context, cluster string, node []Node) ([]Node, error)
+
+	LabelNodes(ctx context.Context, cluster string, ids, adds, removes []string) ([]Node, error)
+}
+
+type ScenarioStore interface {
+	GetScenario(ctx context.Context, id string) (Scenario, error)
+
+	ListScenarios(ctx context.Context) ([]Scenario, error)
+
+	CreateScenario(ctx context.Context, scenario Scenario) (Scenario, error)
+
+	UpdateScenario(ctx context.Context, scenario Scenario) (Scenario, error)
+
+	LabelScenarios(ctx context.Context, ids, adds, removes []string) ([]Scenario, error)
+
+	DeleteScenarios(ctx context.Context, ids ...string) error
+}
+
+type BenchmarkStore interface {
+	GetBenchmark(ctx context.Context, id string) (Benchmark, error)
+
+	ListBenchmarks(ctx context.Context) ([]Benchmark, error)
+
+	CreateBenchmark(ctx context.Context, benchmark Benchmark) (Benchmark, error)
+
+	UpdateBenchmark(ctx context.Context, benchmark Benchmark) (Benchmark, error)
+
+	LabelBenchmarks(ctx context.Context, ids, adds, removes []string) ([]Benchmark, error)
+
+	DeleteBenchmarks(ctx context.Context, ids ...string) error
+}
+
+type ExperimentStore interface {
+	GetExperiment(ctx context.Context, id string) (Experiment, error)
+
+	ListExperiments(ctx context.Context) ([]Experiment, error)
+
+	CreateExperiment(ctx context.Context, experiment Experiment) (Experiment, error)
+
+	UpdateExperiment(ctx context.Context, experiment Experiment) (Experiment, error)
+
+	LabelExperiments(ctx context.Context, ids, adds, removes []string) ([]Experiment, error)
+
+	DeleteExperiment(ctx context.Context, id string) error
+}
+
+type db struct {
+	boltdb *bolt.DB
+}
+
+func NewDB(root string) (DB, error) {
 	path := filepath.Join(root, "meta.db")
-	db, err := bolt.Open(path, 0644, nil)
+	boltdb, err := bolt.Open(path, 0644, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return &DB{db}, nil
+	return &db{boltdb}, nil
 }
 
-func (m *DB) Close() error {
-	return m.db.Close()
+func (m *db) Close() error {
+	return m.boltdb.Close()
 }
 
-func (m *DB) View(ctx context.Context, fn func(*bolt.Tx) error) error {
+func (m *db) View(ctx context.Context, fn func(*bolt.Tx) error) error {
 	tx, ok := ctx.Value(transactionKey{}).(*bolt.Tx)
 	if !ok {
-		return m.db.View(fn)
+		return m.boltdb.View(fn)
 	}
 	return fn(tx)
 }
 
-func (m *DB) Update(ctx context.Context, fn func(*bolt.Tx) error) error {
+func (m *db) Update(ctx context.Context, fn func(*bolt.Tx) error) error {
 	tx, ok := ctx.Value(transactionKey{}).(*bolt.Tx)
 	if !ok {
-		return m.db.Update(fn)
+		return m.boltdb.Update(fn)
 	} else if !tx.Writable() {
 		return errors.Wrap(bolt.ErrTxNotWritable, "unable to use transaction from context")
 	}

@@ -33,7 +33,7 @@ type Node struct {
 	CreatedAt, UpdatedAt time.Time
 }
 
-func (m *DB) GetNode(ctx context.Context, cluster, id string) (Node, error) {
+func (m *db) GetNode(ctx context.Context, cluster, id string) (Node, error) {
 	var node Node
 
 	err := m.View(ctx, func(tx *bolt.Tx) error {
@@ -62,7 +62,7 @@ func (m *DB) GetNode(ctx context.Context, cluster, id string) (Node, error) {
 	return node, nil
 }
 
-func (m *DB) ListNodes(ctx context.Context, cluster string) ([]Node, error) {
+func (m *db) ListNodes(ctx context.Context, cluster string) ([]Node, error) {
 	var nodes []Node
 	err := m.View(ctx, func(tx *bolt.Tx) error {
 		bkt := getNodesBucket(tx, cluster)
@@ -94,7 +94,7 @@ func (m *DB) ListNodes(ctx context.Context, cluster string) ([]Node, error) {
 	return nodes, nil
 }
 
-func (m *DB) CreateNode(ctx context.Context, cluster string, node Node) (Node, error) {
+func (m *db) CreateNode(ctx context.Context, cluster string, node Node) (Node, error) {
 	nodes, err := m.CreateNodes(ctx, cluster, []Node{node})
 	if err != nil {
 		return Node{}, err
@@ -107,7 +107,7 @@ func (m *DB) CreateNode(ctx context.Context, cluster string, node Node) (Node, e
 	return nodes[0], nil
 }
 
-func (m *DB) CreateNodes(ctx context.Context, cluster string, nodes []Node) ([]Node, error) {
+func (m *db) CreateNodes(ctx context.Context, cluster string, nodes []Node) ([]Node, error) {
 	err := m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt, err := createNodesBucket(tx, cluster)
 		if err != nil {
@@ -143,7 +143,7 @@ func (m *DB) CreateNodes(ctx context.Context, cluster string, nodes []Node) ([]N
 	return nodes, err
 }
 
-func (m *DB) LabelNodes(ctx context.Context, cluster string, ids, addLabels, removeLabels []string) ([]Node, error) {
+func (m *db) LabelNodes(ctx context.Context, cluster string, ids, adds, removes []string) ([]Node, error) {
 	var nodes []Node
 	err := m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt, err := createNodesBucket(tx, cluster)
@@ -151,7 +151,7 @@ func (m *DB) LabelNodes(ctx context.Context, cluster string, ids, addLabels, rem
 			return err
 		}
 
-		err = batchUpdateLabels(bkt, ids, addLabels, removeLabels, func(ibkt *bolt.Bucket, id string, labels []string) error {
+		err = batchUpdateLabels(bkt, ids, adds, removes, func(ibkt *bolt.Bucket, id string, labels []string) error {
 			var node Node
 			node.ID = id
 			err = readNode(ibkt, &node)
@@ -182,18 +182,25 @@ func (m *DB) LabelNodes(ctx context.Context, cluster string, ids, addLabels, rem
 	return nodes, nil
 }
 
-func (m *DB) DeleteNode(ctx context.Context, cluster, id string) error {
+func (m *db) DeleteNodes(ctx context.Context, cluster string, ids ...string) error {
 	return m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt := getNodesBucket(tx, cluster)
 		if bkt == nil {
-			return errors.Wrapf(errdefs.ErrNotFound, "node %q", id)
+			return nil
 		}
 
-		err := bkt.DeleteBucket([]byte(id))
-		if err == bolt.ErrBucketNotFound {
-			return errors.Wrapf(errdefs.ErrNotFound, "node %q", id)
+		for _, id := range ids {
+			err := bkt.DeleteBucket([]byte(id))
+			if err != nil {
+				if err == bolt.ErrBucketNotFound {
+					return errors.Wrapf(errdefs.ErrNotFound, "node %q", id)
+				}
+				return err
+			}
+
 		}
-		return err
+
+		return nil
 	})
 }
 

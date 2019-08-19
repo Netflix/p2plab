@@ -12,34 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package nodes
+package healthcheckrouter
 
 import (
 	"context"
+	"net/http"
 
-	"github.com/Netflix/p2plab"
-	"golang.org/x/sync/errgroup"
+	"github.com/Netflix/p2plab/daemon"
 )
 
-func Update(ctx context.Context, ns []p2plab.Node, url string) error {
-	err := WaitHealthy(ctx, ns)
-	if err != nil {
-		return err
+type router struct{}
+
+func New() daemon.Router {
+	return &router{}
+}
+
+func (s *router) Routes() []daemon.Route {
+	return []daemon.Route{
+		// GET
+		daemon.NewGetRoute("/healthcheck", s.healthcheck),
 	}
+}
 
-	updatePeers, gctx := errgroup.WithContext(ctx)
-	for _, n := range ns {
-		n := n
-		updatePeers.Go(func() error {
-			return n.Update(gctx, url)
-		})
-
-	}
-
-	err = updatePeers.Wait()
-	if err != nil {
-		return err
-	}
-
+func (s *router) healthcheck(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 	return nil
 }

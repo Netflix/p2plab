@@ -74,7 +74,7 @@ var (
 	TaskDisconnect TaskType = "disconnect"
 )
 
-func (m *DB) GetBenchmark(ctx context.Context, id string) (Benchmark, error) {
+func (m *db) GetBenchmark(ctx context.Context, id string) (Benchmark, error) {
 	var benchmark Benchmark
 
 	err := m.View(ctx, func(tx *bolt.Tx) error {
@@ -103,7 +103,7 @@ func (m *DB) GetBenchmark(ctx context.Context, id string) (Benchmark, error) {
 	return benchmark, nil
 }
 
-func (m *DB) ListBenchmarks(ctx context.Context) ([]Benchmark, error) {
+func (m *db) ListBenchmarks(ctx context.Context) ([]Benchmark, error) {
 	var benchmarks []Benchmark
 	err := m.View(ctx, func(tx *bolt.Tx) error {
 		bkt := getBenchmarksBucket(tx)
@@ -135,7 +135,7 @@ func (m *DB) ListBenchmarks(ctx context.Context) ([]Benchmark, error) {
 	return benchmarks, nil
 }
 
-func (m *DB) CreateBenchmark(ctx context.Context, benchmark Benchmark) (Benchmark, error) {
+func (m *db) CreateBenchmark(ctx context.Context, benchmark Benchmark) (Benchmark, error) {
 	err := m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt, err := createBenchmarksBucket(tx)
 		if err != nil {
@@ -161,7 +161,7 @@ func (m *DB) CreateBenchmark(ctx context.Context, benchmark Benchmark) (Benchmar
 	return benchmark, err
 }
 
-func (m *DB) UpdateBenchmark(ctx context.Context, benchmark Benchmark) (Benchmark, error) {
+func (m *db) UpdateBenchmark(ctx context.Context, benchmark Benchmark) (Benchmark, error) {
 	if benchmark.ID == "" {
 		return Benchmark{}, errors.Wrapf(errdefs.ErrInvalidArgument, "benchmark id required for update")
 	}
@@ -187,18 +187,63 @@ func (m *DB) UpdateBenchmark(ctx context.Context, benchmark Benchmark) (Benchmar
 	return benchmark, nil
 }
 
-func (m *DB) DeleteBenchmark(ctx context.Context, id string) error {
+func (m *db) LabelBenchmarks(ctx context.Context, ids, adds, removes []string) ([]Benchmark, error) {
+	var benchmarks []Benchmark
+	err := m.Update(ctx, func(tx *bolt.Tx) error {
+		bkt, err := createBenchmarksBucket(tx)
+		if err != nil {
+			return err
+		}
+
+		err = batchUpdateLabels(bkt, ids, adds, removes, func(ibkt *bolt.Bucket, id string, labels []string) error {
+			var benchmark Benchmark
+			benchmark.ID = id
+			err = readBenchmark(ibkt, &benchmark)
+			if err != nil {
+				return err
+			}
+
+			benchmark.Labels = labels
+			benchmark.UpdatedAt = time.Now().UTC()
+
+			err = writeBenchmark(ibkt, &benchmark)
+			if err != nil {
+				return err
+			}
+			benchmarks = append(benchmarks, benchmark)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return benchmarks, nil
+}
+
+func (m *db) DeleteBenchmarks(ctx context.Context, ids ...string) error {
 	return m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt := getBenchmarksBucket(tx)
 		if bkt == nil {
-			return errors.Wrapf(errdefs.ErrNotFound, "benchmark %q", id)
+			return nil
 		}
 
-		err := bkt.DeleteBucket([]byte(id))
-		if err == bolt.ErrBucketNotFound {
-			return errors.Wrapf(errdefs.ErrNotFound, "benchmark %q", id)
+		for _, id := range ids {
+			err := bkt.DeleteBucket([]byte(id))
+			if err != nil {
+				if err == bolt.ErrBucketNotFound {
+					return errors.Wrapf(errdefs.ErrNotFound, "benchmark %q", id)
+				}
+				return err
+			}
 		}
-		return err
+
+		return nil
 	})
 }
 
@@ -230,6 +275,11 @@ func readBenchmark(bkt *bolt.Bucket, benchmark *Benchmark) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	benchmark.Labels, err = readLabels(bkt)
+	if err != nil {
+		return err
 	}
 
 	return bkt.ForEach(func(k, v []byte) error {
@@ -371,6 +421,11 @@ func writeBenchmark(bkt *bolt.Bucket, benchmark *Benchmark) error {
 	}
 
 	err = writePlan(pbkt, &benchmark.Plan)
+	if err != nil {
+		return err
+	}
+
+	err = writeLabels(bkt, benchmark.Labels)
 	if err != nil {
 		return err
 	}

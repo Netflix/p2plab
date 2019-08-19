@@ -58,13 +58,15 @@ func AttachAppContext(ctx context.Context, app *cli.App) {
 					span = tracer.StartSpan(name)
 					span.LogFields(tlog.String("command", strings.Join(os.Args, " ")))
 
-
 					level, err := zerolog.ParseLevel(c.GlobalString("log-level"))
 					if err != nil {
 						return err
 					}
-					logger := zerolog.New(os.Stderr).Level(level).With().Timestamp().Logger()
-					logger.WithContext(ctx)
+
+					logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).
+						Level(level).
+						With().Timestamp().Logger()
+					ctx = logger.WithContext(ctx)
 
 					ctx = opentracing.ContextWithSpan(ctx, span)
 

@@ -16,11 +16,29 @@ package p2plab
 
 import "context"
 
+type Labeled interface {
+	ID() string
+
+	Labels() []string
+}
+
+type LabeledSet interface {
+	Add(labeled Labeled)
+
+	Remove(id string)
+
+	Get(id string) Labeled
+
+	Contains(id string) bool
+
+	Slice() []Labeled
+}
+
 // Query is an executable function against a cluster to match a set of nodes.
 // Queries are used to group nodes to perform actions in either the seeding or
 // benchmarking stage of a scenario.
 type Query interface {
 	String() string
 
-	Match(ctx context.Context, nset NodeSet) (NodeSet, error)
+	Match(ctx context.Context, lset LabeledSet) (LabeledSet, error)
 }

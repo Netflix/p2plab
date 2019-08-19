@@ -112,18 +112,18 @@ func writeMap(bkt *bolt.Bucket, name []byte, m map[string]string) error {
 
 type labelCallback func(bkt *bolt.Bucket, id string, labels []string) error
 
-func batchUpdateLabels(bkt *bolt.Bucket, ids, addLabels, removeLabels []string, cb labelCallback) error {
+func batchUpdateLabels(bkt *bolt.Bucket, ids, adds, removes []string, cb labelCallback) error {
 	if len(ids) == 0 {
 		return nil
 	}
 
 	addSet := make(map[string]struct{})
-	for _, l := range addLabels {
+	for _, l := range adds {
 		addSet[l] = struct{}{}
 	}
 
 	removeSet := make(map[string]struct{})
-	for _, l := range removeLabels {
+	for _, l := range removes {
 		removeSet[l] = struct{}{}
 	}
 

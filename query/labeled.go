@@ -12,34 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package nodes
+package query
 
-import (
-	"context"
+import "github.com/Netflix/p2plab"
 
-	"github.com/Netflix/p2plab"
-	"golang.org/x/sync/errgroup"
-)
+type labeled struct {
+	id     string
+	labels []string
+}
 
-func Update(ctx context.Context, ns []p2plab.Node, url string) error {
-	err := WaitHealthy(ctx, ns)
-	if err != nil {
-		return err
-	}
+func NewLabeled(id string, labels []string) p2plab.Labeled {
+	return &labeled{id, labels}
+}
 
-	updatePeers, gctx := errgroup.WithContext(ctx)
-	for _, n := range ns {
-		n := n
-		updatePeers.Go(func() error {
-			return n.Update(gctx, url)
-		})
+func (l *labeled) ID() string {
+	return l.id
+}
 
-	}
-
-	err = updatePeers.Wait()
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (l *labeled) Labels() []string {
+	return l.labels
 }

@@ -36,7 +36,7 @@ func New(client *httputil.Client, addr string) p2plab.ControlAPI {
 type urlFunc func(endpoint string, v ...interface{}) string
 
 func (a *api) url(endpoint string, v ...interface{}) string {
-	return fmt.Sprintf("%s/api/v0%s", a.addr, fmt.Sprintf(endpoint, v...))
+	return fmt.Sprintf("%s%s", a.addr, fmt.Sprintf(endpoint, v...))
 }
 
 func (a *api) Cluster() p2plab.ClusterAPI {

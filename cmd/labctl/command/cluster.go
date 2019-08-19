@@ -56,37 +56,49 @@ var clusterCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "remove",
-			Aliases: []string{"rm"},
-			Usage:   "Remove clusters.",
-			Action:  removeClusterAction,
+			Name:    "inspect",
+			Aliases: []string{"inspect"},
+			Usage:   "Displays detailed information on a cluster.",
+			Action:  inspectClusterAction,
+		},
+		{
+			Name:    "label",
+			Aliases: []string{"l"},
+			Usage:   "Add or remove labels from clusters.",
+			Action:  labelClustersAction,
+			Flags: []cli.Flag{
+				&cli.StringSliceFlag{
+					Name:  "add",
+					Usage: "Adds a label.",
+				},
+				&cli.StringSliceFlag{
+					Name:  "remove,rm",
+					Usage: "Removes a label.",
+				},
+			},
 		},
 		{
 			Name:    "list",
 			Aliases: []string{"ls"},
 			Usage:   "List clusters.",
 			Action:  listClusterAction,
-		},
-		{
-			Name:    "query",
-			Aliases: []string{"q"},
-			Usage:   "Runs a query against a cluster and returns a set of matching nodes.",
-			Action:  queryClusterAction,
 			Flags: []cli.Flag{
-				&cli.StringSliceFlag{
-					Name:  "add",
-					Usage: "Adds a label to the matched nodes",
-				},
-				&cli.StringSliceFlag{
-					Name:  "remove,rm",
-					Usage: "Removes a label to the matched nodes",
+				&cli.StringFlag{
+					Name:  "query,q",
+					Usage: "Runs a query to filter the listed clusters.",
 				},
 			},
 		},
 		{
+			Name:    "remove",
+			Aliases: []string{"rm"},
+			Usage:   "Remove clusters.",
+			Action:  removeClustersAction,
+		},
+		{
 			Name:    "update",
 			Aliases: []string{"u"},
-			Usage:   "Compiles a commit and updates a cluster to the new p2p app.",
+			Usage:   "Compiles a commit and updates a cluster to the new p2p application.",
 			Action:  updateClusterAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
@@ -101,7 +113,7 @@ var clusterCommand = cli.Command{
 
 func createClusterAction(c *cli.Context) error {
 	if c.NArg() != 1 {
-		return errors.New("cluster id must be provided")
+		return errors.New("cluster name must be provnameed")
 	}
 
 	control, err := ResolveControl(c)
@@ -122,7 +134,8 @@ func createClusterAction(c *cli.Context) error {
 		)
 	}
 
-	cluster, err := control.Cluster().Create(CommandContext(c), c.Args().First(), options...)
+	name := c.Args().First()
+	cluster, err := control.Cluster().Create(CommandContext(c), name, options...)
 	if err != nil {
 		return err
 	}
@@ -131,9 +144,29 @@ func createClusterAction(c *cli.Context) error {
 	return nil
 }
 
-func removeClusterAction(c *cli.Context) error {
+func inspectClusterAction(c *cli.Context) error {
 	if c.NArg() != 1 {
-		return errors.New("cluster id must be provided")
+		return errors.New("cluster name must be provided")
+	}
+
+	control, err := ResolveControl(c)
+	if err != nil {
+		return err
+	}
+
+	name := c.Args().First()
+	cluster, err := control.Cluster().Get(CommandContext(c), name)
+	if err != nil {
+		return err
+	}
+
+	return CommandPrinter(c).Print(cluster.Metadata())
+}
+
+func labelClustersAction(c *cli.Context) error {
+	var names []string
+	for i := 0; i < c.NArg(); i++ {
+		names = append(names, c.Args().Get(i))
 	}
 
 	control, err := ResolveControl(c)
@@ -142,18 +175,17 @@ func removeClusterAction(c *cli.Context) error {
 	}
 
 	ctx := CommandContext(c)
-	cluster, err := control.Cluster().Get(ctx, c.Args().First())
+	cs, err := control.Cluster().Label(ctx, names, c.StringSlice("add"), c.StringSlice("remove"))
 	if err != nil {
 		return err
 	}
 
-	err = cluster.Remove(ctx)
-	if err != nil {
-		return err
+	l := make([]interface{}, len(cs))
+	for i, c := range cs {
+		l[i] = c.Metadata()
 	}
 
-	log.Info().Msgf("Removed cluster %q", cluster.Metadata().ID)
-	return nil
+	return CommandPrinter(c).Print(l)
 }
 
 func listClusterAction(c *cli.Context) error {
@@ -162,22 +194,34 @@ func listClusterAction(c *cli.Context) error {
 		return err
 	}
 
-	clusters, err := control.Cluster().List(CommandContext(c))
+	var opts []p2plab.ListOption
+	if c.IsSet("query") {
+		q, err := query.Parse(c.String("query"))
+		if err != nil {
+			return err
+		}
+		log.Debug().Msgf("Parsed query as %q", q)
+
+		opts = append(opts, p2plab.WithQuery(q.String()))
+	}
+
+	cs, err := control.Cluster().List(CommandContext(c), opts...)
 	if err != nil {
 		return err
 	}
 
-	l := make([]interface{}, len(clusters))
-	for i, c := range clusters {
+	l := make([]interface{}, len(cs))
+	for i, c := range cs {
 		l[i] = c.Metadata()
 	}
 
 	return CommandPrinter(c).Print(l)
 }
 
-func queryClusterAction(c *cli.Context) error {
-	if c.NArg() < 1 {
-		return errors.New("cluster id must be provided")
+func removeClustersAction(c *cli.Context) error {
+	var names []string
+	for i := 0; i < c.NArg(); i++ {
+		names = append(names, c.Args().Get(i))
 	}
 
 	control, err := ResolveControl(c)
@@ -186,50 +230,17 @@ func queryClusterAction(c *cli.Context) error {
 	}
 
 	ctx := CommandContext(c)
-	cluster, err := control.Cluster().Get(ctx, c.Args().First())
+	err = control.Cluster().Remove(ctx, names...)
 	if err != nil {
 		return err
 	}
 
-	rawQuery := "*"
-	if c.NArg() == 2 {
-		rawQuery = c.Args().Get(1)
-	}
-
-	q, err := query.Parse(rawQuery)
-	if err != nil {
-		return err
-	}
-	log.Info().Msgf("Parsed query as %q", q)
-
-	var opts []p2plab.QueryOption
-	addLabels := c.StringSlice("add")
-	if len(addLabels) > 0 {
-		opts = append(opts, p2plab.WithAddLabels(addLabels...))
-	}
-
-	removeLabels := c.StringSlice("remove")
-	if len(removeLabels) > 0 {
-		opts = append(opts, p2plab.WithRemoveLabels(removeLabels...))
-	}
-
-	nset, err := cluster.Query(ctx, q, opts...)
-	if err != nil {
-		return err
-	}
-
-	nodes := nset.Slice()
-	l := make([]interface{}, len(nodes))
-	for i, n := range nodes {
-		l[i] = n.Metadata()
-	}
-
-	return CommandPrinter(c).Print(l)
+	return nil
 }
 
 func updateClusterAction(c *cli.Context) error {
 	if c.NArg() != 1 {
-		return errors.New("cluster id must be provided")
+		return errors.New("cluster name must be provided")
 	}
 
 	control, err := ResolveControl(c)

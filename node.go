@@ -24,10 +24,16 @@ import (
 type NodeAPI interface {
 	// Get returns a node.
 	Get(ctx context.Context, cluster, id string) (Node, error)
+
+	Label(ctx context.Context, cluster string, ids, adds, removes []string) ([]Node, error)
+
+	List(ctx context.Context, cluster string, opts ...ListOption) ([]Node, error)
 }
 
 // Node is an instance running the P2P application to be benchmarked.
 type Node interface {
+	Labeled
+
 	AgentAPI
 
 	AppAPI
@@ -44,24 +50,6 @@ type NodeProvider interface {
 type NodeGroup struct {
 	ID    string
 	Nodes []metadata.Node
-}
-
-// NodeSet is a group of unique nodes.
-type NodeSet interface {
-	// Add adds a node to the set. If the node already exists in the set, it is
-	// not added again.
-	Add(node Node)
-
-	// Remove removes a node from a set. If the node doesn't exist in the set,
-	// it is not removed.
-	Remove(node Node)
-
-	Get(id string) Node
-
-	Contains(id string) bool
-
-	// Slice returns a slice of nodes from the set.
-	Slice() []Node
 }
 
 // SSHOption is an option to modify SSH settings.

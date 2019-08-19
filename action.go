@@ -23,5 +23,5 @@ import (
 type Action interface {
 	String() string
 
-	Tasks(ctx context.Context, nset NodeSet) (map[string]metadata.Task, error)
+	Tasks(ctx context.Context, ns []Node) (map[string]metadata.Task, error)
 }

@@ -18,10 +18,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/pkg/errors"
 )
 
 type scenarioAPI struct {
@@ -29,14 +31,14 @@ type scenarioAPI struct {
 	url    urlFunc
 }
 
-func (a *scenarioAPI) Create(ctx context.Context, id string, sdef metadata.ScenarioDefinition) (p2plab.Scenario, error) {
+func (a *scenarioAPI) Create(ctx context.Context, name string, sdef metadata.ScenarioDefinition) (p2plab.Scenario, error) {
 	content, err := json.MarshalIndent(&sdef, "", "    ")
 	if err != nil {
 		return nil, err
 	}
 
-	req := a.client.NewRequest("POST", a.url("/scenarios")).
-		Option("id", id).
+	req := a.client.NewRequest("POST", a.url("/scenarios/create")).
+		Option("name", name).
 		Body(bytes.NewReader(content))
 
 	resp, err := req.Send(ctx)
@@ -55,14 +57,14 @@ func (a *scenarioAPI) Create(ctx context.Context, id string, sdef metadata.Scena
 }
 
 func (a *scenarioAPI) Get(ctx context.Context, name string) (p2plab.Scenario, error) {
-	req := a.client.NewRequest("GET", a.url("/scenarios/%s", name))
+	req := a.client.NewRequest("GET", a.url("/scenarios/%s/json", name))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	s := scenario{client: a.client, url: a.url}
+	s := scenario{client: a.client}
 	err = json.NewDecoder(resp.Body).Decode(&s.metadata)
 	if err != nil {
 		return nil, err
@@ -71,8 +73,17 @@ func (a *scenarioAPI) Get(ctx context.Context, name string) (p2plab.Scenario, er
 	return &s, nil
 }
 
-func (a *scenarioAPI) List(ctx context.Context) ([]p2plab.Scenario, error) {
-	req := a.client.NewRequest("GET", a.url("/scenarios"))
+func (a *scenarioAPI) Label(ctx context.Context, names, adds, removes []string) ([]p2plab.Scenario, error) {
+	req := a.client.NewRequest("PUT", a.url("/scenarios/label")).
+		Option("names", strings.Join(names, ","))
+
+	if len(adds) > 0 {
+		req.Option("adds", strings.Join(adds, ","))
+	}
+	if len(removes) > 0 {
+		req.Option("removes", strings.Join(removes, ","))
+	}
+
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
@@ -90,30 +101,75 @@ func (a *scenarioAPI) List(ctx context.Context) ([]p2plab.Scenario, error) {
 		scenarios = append(scenarios, &scenario{
 			client:   a.client,
 			metadata: m,
-			url:      a.url,
 		})
 	}
 
 	return scenarios, nil
 }
 
-type scenario struct {
-	client   *httputil.Client
-	metadata metadata.Scenario
-	url      urlFunc
-}
+func (a *scenarioAPI) List(ctx context.Context, opts ...p2plab.ListOption) ([]p2plab.Scenario, error) {
+	var settings p2plab.ListSettings
+	for _, opt := range opts {
+		err := opt(&settings)
+		if err != nil {
+			return nil, err
+		}
+	}
 
-func (s *scenario) Metadata() metadata.Scenario {
-	return s.metadata
-}
+	req := a.client.NewRequest("GET", a.url("/scenarios/json"))
+	if settings.Query != "" {
+		req.Option("query", settings.Query)
+	}
 
-func (s *scenario) Remove(ctx context.Context) error {
-	req := s.client.NewRequest("DELETE", s.url("/scenarios/%s", s.metadata.ID))
 	resp, err := req.Send(ctx)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var metadatas []metadata.Scenario
+	err = json.NewDecoder(resp.Body).Decode(&metadatas)
+	if err != nil {
+		return nil, err
+	}
+
+	var scenarios []p2plab.Scenario
+	for _, m := range metadatas {
+		scenarios = append(scenarios, &scenario{
+			client:   a.client,
+			metadata: m,
+		})
+	}
+
+	return scenarios, nil
+}
+
+func (a *scenarioAPI) Remove(ctx context.Context, names ...string) error {
+	req := a.client.NewRequest("DELETE", a.url("/scenarios/delete")).
+		Option("names", strings.Join(names, ","))
+
+	resp, err := req.Send(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove scenarios")
 	}
 	defer resp.Body.Close()
 
 	return nil
+}
+
+type scenario struct {
+	client   *httputil.Client
+	metadata metadata.Scenario
+}
+
+func (s *scenario) ID() string {
+	return s.metadata.ID
+}
+
+func (s *scenario) Labels() []string {
+	return s.metadata.Labels
+}
+
+func (s *scenario) Metadata() metadata.Scenario {
+	return s.metadata
 }

@@ -21,15 +21,22 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/errdefs"
-	"github.com/Netflix/p2plab/nodes"
 	"github.com/gobwas/glob"
 	"github.com/pkg/errors"
 )
 
+// query := label
+//        | '(' func expr ')'
+// expr := query
+//       | query expr
+// func := ‘not’
+//       | ‘and’
+//       | ‘or’
+// label := quoted_string
 func Parse(q string) (p2plab.Query, error) {
 	tokens := tokenize(q)
 	if len(tokens) == 0 {
-		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "query is empty")
+		tokens = []string{"*"}
 	}
 
 	var (
@@ -64,15 +71,6 @@ func tokenize(q string) []string {
 	}
 	return tokens
 }
-
-// query := label
-//        | '(' func expr ')'
-// expr := query
-//       | query expr
-// func := ‘not’
-//       | ‘and’
-//       | ‘or’
-// label := quoted_string
 
 func buildQuery(tokens []string) (p2plab.Query, error) {
 	// First token is either a start of a function or a label query.
@@ -158,18 +156,18 @@ func (q *notQuery) String() string {
 	return fmt.Sprintf("(not %s)", q.query)
 }
 
-func (q *notQuery) Match(ctx context.Context, nset p2plab.NodeSet) (p2plab.NodeSet, error) {
-	positiveSet, err := q.query.Match(ctx, nset)
+func (q *notQuery) Match(ctx context.Context, lset p2plab.LabeledSet) (p2plab.LabeledSet, error) {
+	positiveSet, err := q.query.Match(ctx, lset)
 	if err != nil {
 		return nil, err
 	}
 
-	negativeSet := nodes.NewSet()
-	for _, n := range nset.Slice() {
-		if positiveSet.Contains(n.Metadata().ID) {
+	negativeSet := NewLabeledSet()
+	for _, l := range lset.Slice() {
+		if positiveSet.Contains(l.ID()) {
 			continue
 		}
-		negativeSet.Add(n)
+		negativeSet.Add(l)
 	}
 
 	return negativeSet, nil
@@ -191,28 +189,28 @@ func (q *andQuery) String() string {
 	return fmt.Sprintf("(and %s)", strings.Join(r, " "))
 }
 
-func (q *andQuery) Match(ctx context.Context, nset p2plab.NodeSet) (p2plab.NodeSet, error) {
-	var qsets []p2plab.NodeSet
+func (q *andQuery) Match(ctx context.Context, lset p2plab.LabeledSet) (p2plab.LabeledSet, error) {
+	var qsets []p2plab.LabeledSet
 	for _, q := range q.queries {
-		qset, err := q.Match(ctx, nset)
+		qset, err := q.Match(ctx, lset)
 		if err != nil {
 			return nil, err
 		}
 		qsets = append(qsets, qset)
 	}
 
-	andSet := nodes.NewSet()
-	for _, n := range nset.Slice() {
+	andSet := NewLabeledSet()
+	for _, l := range lset.Slice() {
 		allContains := true
 		for _, qset := range qsets {
-			if !qset.Contains(n.Metadata().ID) {
+			if !qset.Contains(l.ID()) {
 				allContains = false
 				break
 			}
 		}
 
 		if allContains {
-			andSet.Add(n)
+			andSet.Add(l)
 		}
 	}
 
@@ -235,28 +233,28 @@ func (q *orQuery) String() string {
 	return fmt.Sprintf("(or %s)", strings.Join(r, " "))
 }
 
-func (q *orQuery) Match(ctx context.Context, nset p2plab.NodeSet) (p2plab.NodeSet, error) {
-	var qsets []p2plab.NodeSet
+func (q *orQuery) Match(ctx context.Context, lset p2plab.LabeledSet) (p2plab.LabeledSet, error) {
+	var qsets []p2plab.LabeledSet
 	for _, q := range q.queries {
-		qset, err := q.Match(ctx, nset)
+		qset, err := q.Match(ctx, lset)
 		if err != nil {
 			return nil, err
 		}
 		qsets = append(qsets, qset)
 	}
 
-	orSet := nodes.NewSet()
-	for _, n := range nset.Slice() {
+	orSet := NewLabeledSet()
+	for _, l := range lset.Slice() {
 		oneContains := false
 		for _, qset := range qsets {
-			if qset.Contains(n.Metadata().ID) {
+			if qset.Contains(l.ID()) {
 				oneContains = true
 				break
 			}
 		}
 
 		if oneContains {
-			orSet.Add(n)
+			orSet.Add(l)
 		}
 	}
 
@@ -292,19 +290,19 @@ func (q *labelQuery) String() string {
 	return fmt.Sprintf("'%s'", q.pattern)
 }
 
-func (q *labelQuery) Match(ctx context.Context, nset p2plab.NodeSet) (p2plab.NodeSet, error) {
-	labelSet := nodes.NewSet()
-	for _, n := range nset.Slice() {
+func (q *labelQuery) Match(ctx context.Context, lset p2plab.LabeledSet) (p2plab.LabeledSet, error) {
+	labelSet := NewLabeledSet()
+	for _, l := range lset.Slice() {
 		found := false
-		for _, l := range n.Metadata().Labels {
-			if q.glob.Match(l) {
+		for _, label := range l.Labels() {
+			if q.glob.Match(label) {
 				found = true
 				break
 			}
 		}
 
-		if found || len(n.Metadata().Labels) == 0 {
-			labelSet.Add(n)
+		if found || (q.pattern == "*" && len(l.Labels()) == 0){
+			labelSet.Add(l)
 		}
 	}
 

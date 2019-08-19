@@ -12,34 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package nodes
+package query
 
 import (
 	"context"
 
 	"github.com/Netflix/p2plab"
-	"golang.org/x/sync/errgroup"
 )
 
-func Update(ctx context.Context, ns []p2plab.Node, url string) error {
-	err := WaitHealthy(ctx, ns)
+func Execute(ctx context.Context, ls []p2plab.Labeled, q string) (p2plab.LabeledSet, error) {
+	qry, err := Parse(q)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	updatePeers, gctx := errgroup.WithContext(ctx)
-	for _, n := range ns {
-		n := n
-		updatePeers.Go(func() error {
-			return n.Update(gctx, url)
-		})
-
+	lset := NewLabeledSet()
+	for _, l := range ls {
+		lset.Add(l)
 	}
 
-	err = updatePeers.Wait()
+	mset, err := qry.Match(ctx, lset)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return mset, nil
 }

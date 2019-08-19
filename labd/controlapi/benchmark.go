@@ -17,11 +17,12 @@ package controlapi
 import (
 	"context"
 	"encoding/json"
-	"io"
+	"strings"
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/pkg/errors"
 )
 
 type benchmarkAPI struct {
@@ -38,7 +39,7 @@ func (a *benchmarkAPI) Start(ctx context.Context, cluster, scenario string, opts
 		}
 	}
 
-	req := a.client.NewRequest("POST", a.url("/benchmarks")).
+	req := a.client.NewRequest("POST", a.url("/benchmarks/create"), httputil.WithRetryMax(0)).
 		Option("cluster", cluster).
 		Option("scenario", scenario)
 
@@ -62,14 +63,14 @@ func (a *benchmarkAPI) Start(ctx context.Context, cluster, scenario string, opts
 }
 
 func (a *benchmarkAPI) Get(ctx context.Context, id string) (p2plab.Benchmark, error) {
-	req := a.client.NewRequest("GET", a.url("/benchmarks/%s", id))
+	req := a.client.NewRequest("GET", a.url("/benchmarks/%s/json", id))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	b := benchmark{client: a.client, url: a.url}
+	b := benchmark{client: a.client}
 	err = json.NewDecoder(resp.Body).Decode(&b.metadata)
 	if err != nil {
 		return nil, err
@@ -78,8 +79,17 @@ func (a *benchmarkAPI) Get(ctx context.Context, id string) (p2plab.Benchmark, er
 	return &b, nil
 }
 
-func (a *benchmarkAPI) List(ctx context.Context) ([]p2plab.Benchmark, error) {
-	req := a.client.NewRequest("GET", a.url("/benchmarks"))
+func (a *benchmarkAPI) Label(ctx context.Context, ids, adds, removes []string) ([]p2plab.Benchmark, error) {
+	req := a.client.NewRequest("PUT", a.url("/benchmarks/label")).
+		Option("ids", strings.Join(ids, ","))
+
+	if len(adds) > 0 {
+		req.Option("adds", strings.Join(adds, ","))
+	}
+	if len(removes) > 0 {
+		req.Option("removes", strings.Join(removes, ","))
+	}
+
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
@@ -97,52 +107,75 @@ func (a *benchmarkAPI) List(ctx context.Context) ([]p2plab.Benchmark, error) {
 		benchmarks = append(benchmarks, &benchmark{
 			client:   a.client,
 			metadata: m,
-			url:      a.url,
 		})
 	}
 
 	return benchmarks, nil
 }
 
-type benchmark struct {
-	client   *httputil.Client
-	metadata metadata.Benchmark
-	url      urlFunc
-}
+func (a *benchmarkAPI) List(ctx context.Context, opts ...p2plab.ListOption) ([]p2plab.Benchmark, error) {
+	var settings p2plab.ListSettings
+	for _, opt := range opts {
+		err := opt(&settings)
+		if err != nil {
+			return nil, err
+		}
+	}
 
-func (b *benchmark) Metadata() metadata.Benchmark {
-	return b.metadata
-}
+	req := a.client.NewRequest("GET", a.url("/benchmarks/json"))
+	if settings.Query != "" {
+		req.Option("query", settings.Query)
+	}
 
-func (b *benchmark) Cancel(ctx context.Context) error {
-	req := b.client.NewRequest("GET", b.url("/benchmarks/%s/cancel", b.metadata.ID))
 	resp, err := req.Send(ctx)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var metadatas []metadata.Benchmark
+	err = json.NewDecoder(resp.Body).Decode(&metadatas)
+	if err != nil {
+		return nil, err
+	}
+
+	var benchmarks []p2plab.Benchmark
+	for _, m := range metadatas {
+		benchmarks = append(benchmarks, &benchmark{
+			client:   a.client,
+			metadata: m,
+		})
+	}
+
+	return benchmarks, nil
+}
+
+func (a *benchmarkAPI) Remove(ctx context.Context, ids ...string) error {
+	req := a.client.NewRequest("DELETE", a.url("/benchmarks/delete")).
+		Option("ids", strings.Join(ids, ","))
+
+	resp, err := req.Send(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove benchmarks")
 	}
 	defer resp.Body.Close()
 
 	return nil
 }
 
-func (b *benchmark) Report(ctx context.Context) (p2plab.Report, error) {
-	req := b.client.NewRequest("GET", b.url("/benchmarks/%s/report", b.metadata.ID))
-	resp, err := req.Send(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	return nil, nil
+type benchmark struct {
+	client   *httputil.Client
+	metadata metadata.Benchmark
 }
 
-func (b *benchmark) Logs(ctx context.Context, opt ...p2plab.LogsOption) (io.ReadCloser, error) {
-	req := b.client.NewRequest("GET", b.url("/benchmarks/%s/logs", b.metadata.ID))
-	resp, err := req.Send(ctx)
-	if err != nil {
-		return nil, err
-	}
-	// defer resp.Body.Close()
+func (b *benchmark) ID() string {
+	return b.metadata.ID
+}
 
-	return resp.Body, nil
+func (b *benchmark) Labels() []string {
+	return b.metadata.Labels
+}
+
+func (b *benchmark) Metadata() metadata.Benchmark {
+	return b.metadata
 }

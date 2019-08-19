@@ -21,19 +21,24 @@ import (
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/pkg/errors"
-	"golang.org/x/sync/errgroup"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 )
 
-func Run(ctx context.Context, nset p2plab.NodeSet, plan metadata.ScenarioPlan, seederAddr string) error {
+func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan, seederAddr string) error {
 	log.Info().Msg("Seeding cluster")
 	seed, gctx := errgroup.WithContext(ctx)
 	for id, task := range plan.Seed {
 		id, task := id, task
 		seed.Go(func() error {
-			n := nset.Get(id)
-			if n == nil {
-				return errors.Wrapf(errdefs.ErrNotFound, "could not find node %q in node set", id)
+			labeled := lset.Get(id)
+			if labeled == nil {
+				return errors.Wrapf(errdefs.ErrNotFound, "could not find %q in labeled set", id)
+			}
+
+			n, ok := labeled.(p2plab.Node)
+			if !ok {
+				return errors.Wrap(errdefs.ErrInvalidArgument, "could not cast labeled to node")
 			}
 
 			err := n.Run(gctx, metadata.Task{
@@ -70,9 +75,14 @@ func Run(ctx context.Context, nset p2plab.NodeSet, plan metadata.ScenarioPlan, s
 	for id, task := range plan.Benchmark {
 		id, task := id, task
 		benchmark.Go(func() error {
-			n := nset.Get(id)
-			if n == nil {
-				return errors.Wrapf(errdefs.ErrNotFound, "could not find node %q in node set", id)
+			labeled := lset.Get(id)
+			if labeled == nil {
+				return errors.Wrapf(errdefs.ErrNotFound, "could not find %q in labeled set", id)
+			}
+
+			n, ok := labeled.(p2plab.Node)
+			if !ok {
+				return errors.Wrap(errdefs.ErrInvalidArgument, "could not cast labeled to node")
 			}
 
 			return n.Run(gctx, task)

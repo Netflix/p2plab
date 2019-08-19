@@ -23,7 +23,6 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
-	"github.com/Netflix/p2plab/nodes"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/pkg/errors"
 )
@@ -33,7 +32,7 @@ type clusterAPI struct {
 	url    urlFunc
 }
 
-func (a *clusterAPI) Create(ctx context.Context, id string, opts ...p2plab.CreateClusterOption) (p2plab.Cluster, error) {
+func (a *clusterAPI) Create(ctx context.Context, name string, opts ...p2plab.CreateClusterOption) (p2plab.Cluster, error) {
 	var settings p2plab.CreateClusterSettings
 	for _, opt := range opts {
 		err := opt(&settings)
@@ -67,8 +66,8 @@ func (a *clusterAPI) Create(ctx context.Context, id string, opts ...p2plab.Creat
 		return nil, err
 	}
 
-	req := a.client.NewRequest("POST", a.url("/clusters")).
-		Option("id", id).
+	req := a.client.NewRequest("POST", a.url("/clusters/create"), httputil.WithRetryMax(0)).
+		Option("name", name).
 		Body(bytes.NewReader(content))
 
 	resp, err := req.Send(ctx)
@@ -86,8 +85,8 @@ func (a *clusterAPI) Create(ctx context.Context, id string, opts ...p2plab.Creat
 	return &c, nil
 }
 
-func (a *clusterAPI) Get(ctx context.Context, id string) (p2plab.Cluster, error) {
-	req := a.client.NewRequest("GET", a.url("/clusters/%s", id))
+func (a *clusterAPI) Get(ctx context.Context, name string) (p2plab.Cluster, error) {
+	req := a.client.NewRequest("GET", a.url("/clusters/%s/json", name))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
@@ -102,8 +101,17 @@ func (a *clusterAPI) Get(ctx context.Context, id string) (p2plab.Cluster, error)
 	return &c, nil
 }
 
-func (a *clusterAPI) List(ctx context.Context) ([]p2plab.Cluster, error) {
-	req := a.client.NewRequest("GET", a.url("/clusters"))
+func (a *clusterAPI) Label(ctx context.Context, names, adds, removes []string) ([]p2plab.Cluster, error) {
+	req := a.client.NewRequest("PUT", a.url("/clusters/label")).
+		Option("names", strings.Join(names, ","))
+
+	if len(adds) > 0 {
+		req.Option("adds", strings.Join(adds, ","))
+	}
+	if len(removes) > 0 {
+		req.Option("removes", strings.Join(removes, ","))
+	}
+
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
@@ -128,29 +136,8 @@ func (a *clusterAPI) List(ctx context.Context) ([]p2plab.Cluster, error) {
 	return clusters, nil
 }
 
-type cluster struct {
-	client   *httputil.Client
-	metadata metadata.Cluster
-	url      urlFunc
-}
-
-func (c *cluster) Metadata() metadata.Cluster {
-	return c.metadata
-}
-
-func (c *cluster) Remove(ctx context.Context) error {
-	req := c.client.NewRequest("DELETE", c.url("/clusters/%s", c.metadata.ID))
-	resp, err := req.Send(ctx)
-	if err != nil {
-		return errors.Wrapf(err, "failed to remove cluster %q", c.metadata.ID)
-	}
-	defer resp.Body.Close()
-
-	return nil
-}
-
-func (c *cluster) Query(ctx context.Context, q p2plab.Query, opts ...p2plab.QueryOption) (p2plab.NodeSet, error) {
-	var settings p2plab.QuerySettings
+func (a *clusterAPI) List(ctx context.Context, opts ...p2plab.ListOption) ([]p2plab.Cluster, error) {
+	var settings p2plab.ListSettings
 	for _, opt := range opts {
 		err := opt(&settings)
 		if err != nil {
@@ -158,14 +145,9 @@ func (c *cluster) Query(ctx context.Context, q p2plab.Query, opts ...p2plab.Quer
 		}
 	}
 
-	req := c.client.NewRequest("POST", c.url("/clusters/%s/query", c.metadata.ID)).
-		Option("query", q.String())
-
-	if len(settings.AddLabels) > 0 {
-		req.Option("add", strings.Join(settings.AddLabels, ","))
-	}
-	if len(settings.RemoveLabels) > 0 {
-		req.Option("remove", strings.Join(settings.RemoveLabels, ","))
+	req := a.client.NewRequest("GET", a.url("/clusters/json"))
+	if settings.Query != "" {
+		req.Option("query", settings.Query)
 	}
 
 	resp, err := req.Send(ctx)
@@ -174,22 +156,59 @@ func (c *cluster) Query(ctx context.Context, q p2plab.Query, opts ...p2plab.Quer
 	}
 	defer resp.Body.Close()
 
-	var metadatas []metadata.Node
+	var metadatas []metadata.Cluster
 	err = json.NewDecoder(resp.Body).Decode(&metadatas)
 	if err != nil {
 		return nil, err
 	}
 
-	nset := nodes.NewSet()
+	var clusters []p2plab.Cluster
 	for _, m := range metadatas {
-		nset.Add(NewNode(c.client, m))
+		clusters = append(clusters, &cluster{
+			client:   a.client,
+			metadata: m,
+			url:      a.url,
+		})
 	}
 
-	return nset, nil
+	return clusters, nil
+}
+
+func (a *clusterAPI) Remove(ctx context.Context, names ...string) error {
+	req := a.client.NewRequest("DELETE", a.url("/clusters/delete")).
+		Option("names", strings.Join(names, ","))
+
+	resp, err := req.Send(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove clusters")
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
+type cluster struct {
+	client   *httputil.Client
+	metadata metadata.Cluster
+	url      urlFunc
+}
+
+func (c *cluster) ID() string {
+	return c.metadata.ID
+}
+
+func (c *cluster) Labels() []string {
+	return c.metadata.Labels
+}
+
+func (c *cluster) Metadata() metadata.Cluster {
+	return c.metadata
 }
 
 func (c *cluster) Update(ctx context.Context, commit string) error {
-	req := c.client.NewRequest("PUT", c.url("/clusters/%s", c.metadata.ID))
+	req := c.client.NewRequest("PUT", c.url("/clusters/%s/update", c.metadata.ID)).
+		Option("commit", commit)
+
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return err

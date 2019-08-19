@@ -17,7 +17,9 @@ package command
 import (
 	"errors"
 
+	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/experiments"
+	"github.com/Netflix/p2plab/query"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli"
 )
@@ -40,16 +42,44 @@ var experimentCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "cancel",
-			Aliases: []string{"c"},
-			Usage:   "Cancels a running experiments.",
-			Action:  cancelExperimentAction,
+			Name:    "inspect",
+			Aliases: []string{"i"},
+			Usage:   "Displays detailed information on a experiment.",
+			Action:  inspectExperimentAction,
+		},
+		{
+			Name:    "label",
+			Aliases: []string{"l"},
+			Usage:   "Add or remove labels from experiments.",
+			Action:  labelExperimentsAction,
+			Flags: []cli.Flag{
+				&cli.StringSliceFlag{
+					Name:  "add",
+					Usage: "Adds a label.",
+				},
+				&cli.StringSliceFlag{
+					Name:  "remove,rm",
+					Usage: "Removes a label.",
+				},
+			},
 		},
 		{
 			Name:    "list",
 			Aliases: []string{"ls"},
 			Usage:   "List experiments.",
 			Action:  listExperimentAction,
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:  "query,q",
+					Usage: "Runs a query to filter the listed experiments.",
+				},
+			},
+		},
+		{
+			Name:    "remove",
+			Aliases: []string{"rm"},
+			Usage:   "Remove experiments.",
+			Action:  removeExperimentsAction,
 		},
 	},
 }
@@ -84,7 +114,7 @@ func startExperimentAction(c *cli.Context) error {
 	return nil
 }
 
-func cancelExperimentAction(c *cli.Context) error {
+func inspectExperimentAction(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return errors.New("experiment id must be provided")
 	}
@@ -94,28 +124,28 @@ func cancelExperimentAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
-	experiment, err := control.Experiment().Get(ctx, c.Args().First())
+	id := c.Args().First()
+	experiment, err := control.Experiment().Get(CommandContext(c), id)
 	if err != nil {
 		return err
 	}
 
-	err = experiment.Cancel(ctx)
-	if err != nil {
-		return err
-	}
-
-	log.Info().Msgf("Cancelled experiment %q", experiment.Metadata().ID)
-	return nil
+	return CommandPrinter(c).Print(experiment.Metadata())
 }
 
-func listExperimentAction(c *cli.Context) error {
+func labelExperimentsAction(c *cli.Context) error {
+	var ids []string
+	for i := 0; i < c.NArg(); i++ {
+		ids = append(ids, c.Args().Get(i))
+	}
+
 	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
-	experiments, err := control.Experiment().List(CommandContext(c))
+	ctx := CommandContext(c)
+	experiments, err := control.Experiment().Label(ctx, ids, c.StringSlice("add"), c.StringSlice("remove"))
 	if err != nil {
 		return err
 	}
@@ -126,4 +156,54 @@ func listExperimentAction(c *cli.Context) error {
 	}
 
 	return CommandPrinter(c).Print(l)
+}
+
+func listExperimentAction(c *cli.Context) error {
+	control, err := ResolveControl(c)
+	if err != nil {
+		return err
+	}
+
+	var opts []p2plab.ListOption
+	if c.IsSet("query") {
+		q, err := query.Parse(c.String("query"))
+		if err != nil {
+			return err
+		}
+		log.Debug().Msgf("Parsed query as %q", q)
+
+		opts = append(opts, p2plab.WithQuery(q.String()))
+	}
+
+	experiments, err := control.Experiment().List(CommandContext(c), opts...)
+	if err != nil {
+		return err
+	}
+
+	l := make([]interface{}, len(experiments))
+	for i, e := range experiments {
+		l[i] = e.Metadata()
+	}
+
+	return CommandPrinter(c).Print(l)
+}
+
+func removeExperimentsAction(c *cli.Context) error {
+	var ids []string
+	for i := 0; i < c.NArg(); i++ {
+		ids = append(ids, c.Args().Get(i))
+	}
+
+	control, err := ResolveControl(c)
+	if err != nil {
+		return err
+	}
+
+	ctx := CommandContext(c)
+	err = control.Experiment().Remove(ctx, ids...)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

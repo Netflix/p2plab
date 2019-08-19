@@ -26,12 +26,22 @@ import (
 type Experiment struct {
 	ID string
 
+	Status ExperimentStatus
+
 	Definition ExperimentDefinition
 
 	Labels []string
 
 	CreatedAt, UpdatedAt time.Time
 }
+
+type ExperimentStatus string
+
+var (
+	ExperimentRunning ExperimentStatus = "running"
+	ExperimentDone    ExperimentStatus = "done"
+	ExperimentError   ExperimentStatus = "error"
+)
 
 // ExperimentDefinition defines an experiment.
 type ExperimentDefinition struct {
@@ -44,7 +54,7 @@ type ExperimentDefinition struct {
 
 type IndependentVariable map[string]interface{}
 
-func (m *DB) GetExperiment(ctx context.Context, id string) (Experiment, error) {
+func (m *db) GetExperiment(ctx context.Context, id string) (Experiment, error) {
 	var experiment Experiment
 
 	err := m.View(ctx, func(tx *bolt.Tx) error {
@@ -73,7 +83,7 @@ func (m *DB) GetExperiment(ctx context.Context, id string) (Experiment, error) {
 	return experiment, nil
 }
 
-func (m *DB) ListExperiments(ctx context.Context) ([]Experiment, error) {
+func (m *db) ListExperiments(ctx context.Context) ([]Experiment, error) {
 	var experiments []Experiment
 	err := m.View(ctx, func(tx *bolt.Tx) error {
 		bkt := getExperimentsBucket(tx)
@@ -105,7 +115,7 @@ func (m *DB) ListExperiments(ctx context.Context) ([]Experiment, error) {
 	return experiments, nil
 }
 
-func (m *DB) CreateExperiment(ctx context.Context, experiment Experiment) (Experiment, error) {
+func (m *db) CreateExperiment(ctx context.Context, experiment Experiment) (Experiment, error) {
 	err := m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt, err := createExperimentsBucket(tx)
 		if err != nil {
@@ -131,7 +141,7 @@ func (m *DB) CreateExperiment(ctx context.Context, experiment Experiment) (Exper
 	return experiment, err
 }
 
-func (m *DB) UpdateExperiment(ctx context.Context, experiment Experiment) (Experiment, error) {
+func (m *db) UpdateExperiment(ctx context.Context, experiment Experiment) (Experiment, error) {
 	if experiment.ID == "" {
 		return Experiment{}, errors.Wrapf(errdefs.ErrInvalidArgument, "experiment id required for update")
 	}
@@ -157,18 +167,61 @@ func (m *DB) UpdateExperiment(ctx context.Context, experiment Experiment) (Exper
 	return experiment, nil
 }
 
-func (m *DB) DeleteExperiment(ctx context.Context, id string) error {
+func (m *db) LabelExperiments(ctx context.Context, ids, adds, removes []string) ([]Experiment, error) {
+	var experiments []Experiment
+	err := m.Update(ctx, func(tx *bolt.Tx) error {
+		bkt, err := createExperimentsBucket(tx)
+		if err != nil {
+			return err
+		}
+
+		err = batchUpdateLabels(bkt, ids, adds, removes, func(ibkt *bolt.Bucket, id string, labels []string) error {
+			var experiment Experiment
+			experiment.ID = id
+			err = readExperiment(ibkt, &experiment)
+			if err != nil {
+				return err
+			}
+
+			experiment.Labels = labels
+			experiment.UpdatedAt = time.Now().UTC()
+
+			err = writeExperiment(ibkt, &experiment)
+			if err != nil {
+				return err
+			}
+			experiments = append(experiments, experiment)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return experiments, nil
+}
+
+func (m *db) DeleteExperiment(ctx context.Context, id string) error {
 	return m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt := getExperimentsBucket(tx)
 		if bkt == nil {
-			return errors.Wrapf(errdefs.ErrNotFound, "experiment %q", id)
+			return nil
 		}
 
 		err := bkt.DeleteBucket([]byte(id))
-		if err == bolt.ErrBucketNotFound {
-			return errors.Wrapf(errdefs.ErrNotFound, "experiment %q", id)
+		if err != nil {
+			if err == bolt.ErrBucketNotFound {
+				return errors.Wrapf(errdefs.ErrNotFound, "experiment %q", id)
+			}
+			return err
 		}
-		return err
+
+		return nil
 	})
 }
 
@@ -183,6 +236,11 @@ func readExperiment(bkt *bolt.Bucket, experiment *Experiment) error {
 		return err
 	}
 
+	experiment.Labels, err = readLabels(bkt)
+	if err != nil {
+		return err
+	}
+
 	return bkt.ForEach(func(k, v []byte) error {
 		if v == nil {
 			return nil
@@ -191,6 +249,8 @@ func readExperiment(bkt *bolt.Bucket, experiment *Experiment) error {
 		switch string(k) {
 		case string(bucketKeyID):
 			experiment.ID = string(v)
+		case string(bucketKeyStatus):
+			experiment.Status = ExperimentStatus(v)
 		}
 
 		return nil
@@ -237,8 +297,14 @@ func writeExperiment(bkt *bolt.Bucket, experiment *Experiment) error {
 		return err
 	}
 
+	err = writeLabels(bkt, experiment.Labels)
+	if err != nil {
+		return err
+	}
+
 	for _, f := range []field{
 		{bucketKeyID, []byte(experiment.ID)},
+		{bucketKeyStatus, []byte(experiment.Status)},
 	} {
 		err = bkt.Put(f.key, f.value)
 		if err != nil {

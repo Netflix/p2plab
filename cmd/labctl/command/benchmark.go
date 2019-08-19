@@ -18,6 +18,7 @@ import (
 	"errors"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/query"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli"
 )
@@ -30,7 +31,7 @@ var benchmarkCommand = cli.Command{
 		{
 			Name:    "start",
 			Aliases: []string{"s"},
-			Usage:   "Start benchmark for a scenario.",
+			Usage:   "Start benchmark for a benchmark.",
 			Action:  startBenchmarkAction,
 			Flags: []cli.Flag{
 				&cli.BoolFlag{
@@ -40,34 +41,51 @@ var benchmarkCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "cancel",
-			Aliases: []string{"c"},
-			Usage:   "Cancel a running benchmark.",
-			Action:  cancelBenchmarkAction,
+			Name:    "inspect",
+			Aliases: []string{"i"},
+			Usage:   "Displays detailed information on a benchmark.",
+			Action:  inspectBenchmarkAction,
+		},
+		{
+			Name:    "label",
+			Aliases: []string{"l"},
+			Usage:   "Add or remove labels from benchmarks.",
+			Action:  labelBenchmarksAction,
+			Flags: []cli.Flag{
+				&cli.StringSliceFlag{
+					Name:  "add",
+					Usage: "Adds a label.",
+				},
+				&cli.StringSliceFlag{
+					Name:  "remove,rm",
+					Usage: "Removes a label.",
+				},
+			},
 		},
 		{
 			Name:    "list",
 			Aliases: []string{"ls"},
 			Usage:   "List benchmarks",
 			Action:  listBenchmarkAction,
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:  "query,q",
+					Usage: "Runs a query to filter the listed benchmarks.",
+				},
+			},
 		},
 		{
-			Name:    "report",
-			Aliases: []string{"r"},
-			Usage:   "Shows a benchmark report.",
-			Action:  reportBenchmarkAction,
-		},
-		{
-			Name:   "logs",
-			Usage:  "Shows logs of a benchmark.",
-			Action: logBenchmarkAction,
+			Name:    "remove",
+			Aliases: []string{"rm"},
+			Usage:   "Remove benchmarks.",
+			Action:  removeBenchmarksAction,
 		},
 	},
 }
 
 func startBenchmarkAction(c *cli.Context) error {
 	if c.NArg() != 2 {
-		return errors.New("cluster id and scenario name must be provided")
+		return errors.New("cluster id and benchmark name must be provided")
 	}
 
 	control, err := ResolveControl(c)
@@ -76,14 +94,14 @@ func startBenchmarkAction(c *cli.Context) error {
 	}
 
 	ctx := CommandContext(c)
-	cluster, scenario := c.Args().Get(0), c.Args().Get(1)
+	cluster, benchmark := c.Args().Get(0), c.Args().Get(1)
 
 	var opts []p2plab.StartBenchmarkOption
 	if c.Bool("no-reset") {
 		opts = append(opts, p2plab.WithBenchmarkNoReset())
 	}
 
-	_, err = control.Benchmark().Start(ctx, cluster, scenario, opts...)
+	_, err = control.Benchmark().Start(ctx, cluster, benchmark, opts...)
 	if err != nil {
 		return err
 	}
@@ -91,7 +109,7 @@ func startBenchmarkAction(c *cli.Context) error {
 	return nil
 }
 
-func cancelBenchmarkAction(c *cli.Context) error {
+func inspectBenchmarkAction(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return errors.New("benchmark id must be provided")
 	}
@@ -101,29 +119,28 @@ func cancelBenchmarkAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
-	benchmark, err := control.Benchmark().Get(ctx, c.Args().First())
+	id := c.Args().First()
+	benchmark, err := control.Benchmark().Get(CommandContext(c), id)
 	if err != nil {
 		return err
 	}
 
-	err = benchmark.Cancel(ctx)
-	if err != nil {
-		return err
-	}
-
-	log.Info().Msgf("Cancelled benchmark %q", benchmark.Metadata().ID)
-	return nil
+	return CommandPrinter(c).Print(benchmark.Metadata())
 }
 
-func listBenchmarkAction(c *cli.Context) error {
+func labelBenchmarksAction(c *cli.Context) error {
+	var ids []string
+	for i := 0; i < c.NArg(); i++ {
+		ids = append(ids, c.Args().Get(i))
+	}
+
 	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
 	ctx := CommandContext(c)
-	benchmarks, err := control.Benchmark().List(ctx)
+	benchmarks, err := control.Benchmark().Label(ctx, ids, c.StringSlice("add"), c.StringSlice("remove"))
 	if err != nil {
 		return err
 	}
@@ -136,33 +153,41 @@ func listBenchmarkAction(c *cli.Context) error {
 	return CommandPrinter(c).Print(l)
 }
 
-func reportBenchmarkAction(c *cli.Context) error {
-	if c.NArg() != 1 {
-		return errors.New("benchmark id must be provided")
-	}
-
+func listBenchmarkAction(c *cli.Context) error {
 	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
+	var opts []p2plab.ListOption
+	if c.IsSet("query") {
+		q, err := query.Parse(c.String("query"))
+		if err != nil {
+			return err
+		}
+		log.Debug().Msgf("Parsed query as %q", q)
+
+		opts = append(opts, p2plab.WithQuery(q.String()))
+	}
+
 	ctx := CommandContext(c)
-	benchmark, err := control.Benchmark().Get(ctx, c.Args().First())
+	benchmarks, err := control.Benchmark().List(ctx, opts...)
 	if err != nil {
 		return err
 	}
 
-	report, err := benchmark.Report(ctx)
-	if err != nil {
-		return err
+	l := make([]interface{}, len(benchmarks))
+	for i, b := range benchmarks {
+		l[i] = b.Metadata()
 	}
 
-	return CommandPrinter(c).Print(report)
+	return CommandPrinter(c).Print(l)
 }
 
-func logBenchmarkAction(c *cli.Context) error {
-	if c.NArg() != 1 {
-		return errors.New("benchmark id must be provided")
+func removeBenchmarksAction(c *cli.Context) error {
+	var ids []string
+	for i := 0; i < c.NArg(); i++ {
+		ids = append(ids, c.Args().Get(i))
 	}
 
 	control, err := ResolveControl(c)
@@ -171,17 +196,10 @@ func logBenchmarkAction(c *cli.Context) error {
 	}
 
 	ctx := CommandContext(c)
-	benchmark, err := control.Benchmark().Get(ctx, c.Args().First())
+	err = control.Benchmark().Remove(ctx, ids...)
 	if err != nil {
 		return err
 	}
 
-	logs, err := benchmark.Logs(ctx)
-	if err != nil {
-		return err
-	}
-	defer logs.Close()
-
-	// TODO: Stream logs
-	return CommandPrinter(c).Print(logs)
+	return nil
 }

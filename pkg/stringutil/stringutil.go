@@ -12,34 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package nodes
+package stringutil
 
-import (
-	"context"
-
-	"github.com/Netflix/p2plab"
-	"golang.org/x/sync/errgroup"
-)
-
-func Update(ctx context.Context, ns []p2plab.Node, url string) error {
-	err := WaitHealthy(ctx, ns)
-	if err != nil {
-		return err
+func Coalesce(slice []string) []string {
+	var r []string
+	for _, e := range slice {
+		if e == "" {
+			continue
+		}
+		r = append(r, e)
 	}
-
-	updatePeers, gctx := errgroup.WithContext(ctx)
-	for _, n := range ns {
-		n := n
-		updatePeers.Go(func() error {
-			return n.Update(gctx, url)
-		})
-
-	}
-
-	err = updatePeers.Wait()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r
 }

@@ -72,7 +72,7 @@ var (
 	ObjectContainerImage ObjectType = "oci-image"
 )
 
-func (m *DB) GetScenario(ctx context.Context, id string) (Scenario, error) {
+func (m *db) GetScenario(ctx context.Context, id string) (Scenario, error) {
 	var scenario Scenario
 
 	err := m.View(ctx, func(tx *bolt.Tx) error {
@@ -101,7 +101,7 @@ func (m *DB) GetScenario(ctx context.Context, id string) (Scenario, error) {
 	return scenario, nil
 }
 
-func (m *DB) ListScenarios(ctx context.Context) ([]Scenario, error) {
+func (m *db) ListScenarios(ctx context.Context) ([]Scenario, error) {
 	var scenarios []Scenario
 	err := m.View(ctx, func(tx *bolt.Tx) error {
 		bkt := getScenariosBucket(tx)
@@ -133,7 +133,7 @@ func (m *DB) ListScenarios(ctx context.Context) ([]Scenario, error) {
 	return scenarios, nil
 }
 
-func (m *DB) CreateScenario(ctx context.Context, scenario Scenario) (Scenario, error) {
+func (m *db) CreateScenario(ctx context.Context, scenario Scenario) (Scenario, error) {
 	err := m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt, err := createScenariosBucket(tx)
 		if err != nil {
@@ -159,7 +159,7 @@ func (m *DB) CreateScenario(ctx context.Context, scenario Scenario) (Scenario, e
 	return scenario, err
 }
 
-func (m *DB) UpdateScenario(ctx context.Context, scenario Scenario) (Scenario, error) {
+func (m *db) UpdateScenario(ctx context.Context, scenario Scenario) (Scenario, error) {
 	if scenario.ID == "" {
 		return Scenario{}, errors.Wrapf(errdefs.ErrInvalidArgument, "scenario id required for update")
 	}
@@ -185,18 +185,63 @@ func (m *DB) UpdateScenario(ctx context.Context, scenario Scenario) (Scenario, e
 	return scenario, nil
 }
 
-func (m *DB) DeleteScenario(ctx context.Context, id string) error {
+func (m *db) LabelScenarios(ctx context.Context, ids, adds, removes []string) ([]Scenario, error) {
+	var scenarios []Scenario
+	err := m.Update(ctx, func(tx *bolt.Tx) error {
+		bkt, err := createScenariosBucket(tx)
+		if err != nil {
+			return err
+		}
+
+		err = batchUpdateLabels(bkt, ids, adds, removes, func(ibkt *bolt.Bucket, id string, labels []string) error {
+			var scenario Scenario
+			scenario.ID = id
+			err = readScenario(ibkt, &scenario)
+			if err != nil {
+				return err
+			}
+
+			scenario.Labels = labels
+			scenario.UpdatedAt = time.Now().UTC()
+
+			err = writeScenario(ibkt, &scenario)
+			if err != nil {
+				return err
+			}
+			scenarios = append(scenarios, scenario)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return scenarios, nil
+}
+
+func (m *db) DeleteScenarios(ctx context.Context, ids ...string) error {
 	return m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt := getScenariosBucket(tx)
 		if bkt == nil {
-			return errors.Wrapf(errdefs.ErrNotFound, "scenario %q", id)
+			return nil
 		}
 
-		err := bkt.DeleteBucket([]byte(id))
-		if err == bolt.ErrBucketNotFound {
-			return errors.Wrapf(errdefs.ErrNotFound, "scenario %q", id)
+		for _, id := range ids {
+			err := bkt.DeleteBucket([]byte(id))
+			if err != nil {
+				if err == bolt.ErrBucketNotFound {
+					return errors.Wrapf(errdefs.ErrNotFound, "scenario %q", id)
+				}
+				return err
+			}
 		}
-		return err
+
+		return nil
 	})
 }
 
@@ -207,6 +252,11 @@ func readScenario(bkt *bolt.Bucket, scenario *Scenario) error {
 	}
 
 	scenario.Definition, err = readScenarioDefinition(bkt)
+	if err != nil {
+		return err
+	}
+
+	scenario.Labels, err = readLabels(bkt)
 	if err != nil {
 		return err
 	}
@@ -259,6 +309,11 @@ func writeScenario(bkt *bolt.Bucket, scenario *Scenario) error {
 	}
 
 	err = writeScenarioDefinition(bkt, scenario.Definition)
+	if err != nil {
+		return err
+	}
+
+	err = writeLabels(bkt, scenario.Labels)
 	if err != nil {
 		return err
 	}

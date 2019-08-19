@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/labagent/agentapi"
@@ -32,7 +33,7 @@ type nodeAPI struct {
 }
 
 func (a *nodeAPI) Get(ctx context.Context, cluster, id string) (p2plab.Node, error) {
-	req := a.client.NewRequest("GET", a.url("/clusters/%s/nodes/%s", cluster, id))
+	req := a.client.NewRequest("GET", a.url("/clusters/%s/nodes/%s/json", cluster, id))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err
@@ -48,6 +49,71 @@ func (a *nodeAPI) Get(ctx context.Context, cluster, id string) (p2plab.Node, err
 	return NewNode(a.client, m), nil
 }
 
+func (a *nodeAPI) Label(ctx context.Context, cluster string, ids, adds, removes []string) ([]p2plab.Node, error) {
+	req := a.client.NewRequest("PUT", a.url("/clusters/%s/nodes/label", cluster)).
+		Option("ids", strings.Join(ids, ","))
+
+	if len(adds) > 0 {
+		req.Option("adds", strings.Join(adds, ","))
+	}
+	if len(removes) > 0 {
+		req.Option("removes", strings.Join(removes, ","))
+	}
+
+	resp, err := req.Send(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var metadatas []metadata.Node
+	err = json.NewDecoder(resp.Body).Decode(&metadatas)
+	if err != nil {
+		return nil, err
+	}
+
+	var nodes []p2plab.Node
+	for _, m := range metadatas {
+		nodes = append(nodes, NewNode(a.client, m))
+	}
+
+	return nodes, nil
+}
+
+func (a *nodeAPI) List(ctx context.Context, cluster string, opts ...p2plab.ListOption) ([]p2plab.Node, error) {
+	var settings p2plab.ListSettings
+	for _, opt := range opts {
+		err := opt(&settings)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	req := a.client.NewRequest("GET", a.url("/clusters/%s/nodes/json", cluster))
+	if settings.Query != "" {
+		req.Option("query", settings.Query)
+	}
+
+	resp, err := req.Send(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var metadatas []metadata.Node
+	err = json.NewDecoder(resp.Body).Decode(&metadatas)
+	if err != nil {
+		return nil, err
+	}
+
+	var nodes []p2plab.Node
+	for _, m := range metadatas {
+		nodes = append(nodes, NewNode(a.client, m))
+	}
+
+	return nodes, nil
+}
+
 type node struct {
 	p2plab.AgentAPI
 	p2plab.AppAPI
@@ -60,6 +126,14 @@ func NewNode(client *httputil.Client, m metadata.Node) p2plab.Node {
 		AppAPI:   appapi.New(client, fmt.Sprintf("http://%s:7003", m.Address)),
 		metadata: m,
 	}
+}
+
+func (n *node) ID() string {
+	return n.metadata.ID
+}
+
+func (n *node) Labels() []string {
+	return n.metadata.Labels
 }
 
 func (n *node) Metadata() metadata.Node {
