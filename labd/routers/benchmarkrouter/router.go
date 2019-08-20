@@ -102,8 +102,10 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 	if err != nil {
 		return err
 	}
-	zerolog.Ctx(ctx).With().Str("scenario", sid).Str("cluster", cid)
+	logger := zerolog.Ctx(ctx).With().Str("scenario", sid).Str("cluster", cid).Logger()
+	ctx = logger.WithContext(ctx)
 
+	zerolog.Ctx(ctx).Info().Msg("Retrieving nodes in cluster")
 	mns, err := s.db.ListNodes(ctx, cid)
 	if err != nil {
 		return err
@@ -113,6 +115,7 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 	lset := query.NewLabeledSet()
 	for _, n := range mns {
 		node := controlapi.NewNode(s.client, n)
+
 		ns = append(ns, node)
 		lset.Add(node)
 	}
@@ -138,7 +141,9 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 	}
 
 	bid := time.Now().Format(time.RFC3339Nano)
-	zerolog.Ctx(ctx).With().Str("benchmark", bid)
+	logger = zerolog.Ctx(ctx).With().Str("benchmark", bid).Logger()
+	ctx = logger.WithContext(ctx)
+
 	benchmark := metadata.Benchmark{
 		ID:        bid,
 		Status:    metadata.BenchmarkRunning,
@@ -147,20 +152,22 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 		Plan:      plan,
 	}
 
-	zerolog.Ctx(ctx).Info().Msg("Creating benchmark")
+	zerolog.Ctx(ctx).Info().Msg("Creating benchmark metadata")
 	benchmark, err = s.db.CreateBenchmark(ctx, benchmark)
 	if err != nil {
 		return err
 	}
 
 	seederAddr := fmt.Sprintf("%s/p2p/%s", s.seeder.Host().Addrs()[1], s.seeder.Host().ID())
-	zerolog.Ctx(ctx).Info().Msg("Running scenario plan")
+	zerolog.Ctx(ctx).Info().Msg("Executing scenario plan")
 	err = scenarios.Run(ctx, lset, plan, seederAddr)
 	if err != nil {
 		return errors.Wrap(err, "failed to run scenario plan")
 	}
-
 	zerolog.Ctx(ctx).Info().Msg("Benchmark completed")
+
+
+	zerolog.Ctx(ctx).Info().Msg("Updating benchmark metadata")
 	benchmark.Status = metadata.BenchmarkDone
 	benchmark, err = s.db.UpdateBenchmark(ctx, benchmark)
 	if err != nil {

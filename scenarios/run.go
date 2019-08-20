@@ -35,12 +35,14 @@ func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan
 			if labeled == nil {
 				return errors.Wrapf(errdefs.ErrNotFound, "could not find %q in labeled set", id)
 			}
+			logger := zerolog.Ctx(ctx).With().Str("node", id).Logger()
 
 			n, ok := labeled.(p2plab.Node)
 			if !ok {
 				return errors.Wrap(errdefs.ErrInvalidArgument, "could not cast labeled to node")
 			}
 
+			logger.Debug().Str("addr", seederAddr).Msg("Connecting to seeding peer")
 			err := n.Run(gctx, metadata.Task{
 				Type:    metadata.TaskConnect,
 				Subject: seederAddr,
@@ -49,11 +51,13 @@ func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan
 				return errors.Wrap(err, "failed to connect to seeding peer")
 			}
 
+			logger.Debug().Str("task", string(task.Type)).Msg("Executing seeding task")
 			err = n.Run(gctx, task)
 			if err != nil {
 				return errors.Wrap(err, "failed to run seeding task")
 			}
 
+			logger.Debug().Str("addr", seederAddr).Msg("Disconnecting from seeding peer")
 			err = n.Run(gctx, metadata.Task{
 				Type:    metadata.TaskDisconnect,
 				Subject: seederAddr,
@@ -79,12 +83,14 @@ func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan
 			if labeled == nil {
 				return errors.Wrapf(errdefs.ErrNotFound, "could not find %q in labeled set", id)
 			}
+			logger := zerolog.Ctx(ctx).With().Str("node", id).Logger()
 
 			n, ok := labeled.(p2plab.Node)
 			if !ok {
 				return errors.Wrap(errdefs.ErrInvalidArgument, "could not cast labeled to node")
 			}
 
+			logger.Debug().Str("task", string(task.Type)).Msg("Executing benchmarking task")
 			return n.Run(gctx, task)
 		})
 	}

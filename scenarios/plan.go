@@ -47,11 +47,11 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 				return err
 			}
 
-			zerolog.Ctx(ctx).Info().Str("type", odef.Type).Str("source", odef.Source).Msg("Transforming object")
 			c, err := t.Transform(gctx, peer, odef.Source, nil)
 			if err != nil {
 				return err
 			}
+			zerolog.Ctx(ctx).Debug().Str("type", odef.Type).Str("source", odef.Source).Str("cid", c.String()).Msg("Transformed object")
 
 			mu.Lock()
 			plan.Objects[name] = c
@@ -76,6 +76,12 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 		if err != nil {
 			return plan, err
 		}
+
+		var ids []string
+		for _, l := range mset.Slice() {
+			ids = append(ids, l.ID())
+		}
+		zerolog.Ctx(ctx).Debug().Str("query", qry.String()).Strs("ids", ids).Msg("Matched query")
 
 		action, err := actions.Parse(plan.Objects, a)
 		if err != nil {
@@ -107,6 +113,12 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 		if err != nil {
 			return plan, err
 		}
+
+		var ids []string
+		for _, l := range mset.Slice() {
+			ids = append(ids, l.ID())
+		}
+		zerolog.Ctx(ctx).Debug().Str("query", qry.String()).Strs("ids", ids).Msg("Matched query")
 
 		action, err := actions.Parse(plan.Objects, a)
 		if err != nil {
