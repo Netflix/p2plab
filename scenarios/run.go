@@ -94,10 +94,12 @@ func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan
 			return n.Run(gctx, task)
 		})
 	}
+
 	err = benchmark.Wait()
 	if err != nil {
 		return err
 	}
 
+	zerolog.Ctx(ctx).Info().Msg("Benchmark completed")
 	return nil
 }

@@ -29,6 +29,7 @@ import (
 	"github.com/Netflix/p2plab/nodes"
 	"github.com/Netflix/p2plab/peer"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/Netflix/p2plab/pkg/logutil"
 	"github.com/Netflix/p2plab/pkg/stringutil"
 	"github.com/Netflix/p2plab/query"
 	"github.com/Netflix/p2plab/scenarios"
@@ -102,7 +103,8 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 	if err != nil {
 		return err
 	}
-	logger := zerolog.Ctx(ctx).With().Str("scenario", sid).Str("cluster", cid).Logger()
+
+	logger := logutil.ResponseLogger(ctx, w).With().Str("scenario", sid).Str("cluster", cid).Logger()
 	ctx = logger.WithContext(ctx)
 
 	zerolog.Ctx(ctx).Info().Msg("Retrieving nodes in cluster")
@@ -145,11 +147,11 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 	ctx = logger.WithContext(ctx)
 
 	benchmark := metadata.Benchmark{
-		ID:        bid,
-		Status:    metadata.BenchmarkRunning,
-		Cluster: cluster,
-		Scenario:  scenario,
-		Plan:      plan,
+		ID:       bid,
+		Status:   metadata.BenchmarkRunning,
+		Cluster:  cluster,
+		Scenario: scenario,
+		Plan:     plan,
 	}
 
 	zerolog.Ctx(ctx).Info().Msg("Creating benchmark metadata")
@@ -164,17 +166,15 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 	if err != nil {
 		return errors.Wrap(err, "failed to run scenario plan")
 	}
-	zerolog.Ctx(ctx).Info().Msg("Benchmark completed")
-
 
 	zerolog.Ctx(ctx).Info().Msg("Updating benchmark metadata")
 	benchmark.Status = metadata.BenchmarkDone
-	benchmark, err = s.db.UpdateBenchmark(ctx, benchmark)
+	_, err = s.db.UpdateBenchmark(ctx, benchmark)
 	if err != nil {
 		return errors.Wrap(err, "failed to update benchmark")
 	}
 
-	return daemon.WriteJSON(w, &benchmark)
+	return nil
 }
 
 func (s *router) putBenchmarksLabel(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
