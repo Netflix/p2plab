@@ -22,11 +22,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/Netflix/p2plab/pkg/logutil"
 	"github.com/Netflix/p2plab/printer"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	opentracing "github.com/opentracing/opentracing-go"
 	tlog "github.com/opentracing/opentracing-go/log"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	jaeger "github.com/uber/jaeger-client-go"
 	"github.com/urfave/cli"
@@ -63,6 +66,11 @@ func AttachAppContext(ctx context.Context, app *cli.App) {
 						return err
 					}
 					ctx = logger.WithContext(ctx)
+
+					if c.GlobalString("log-writer") == "console" {
+						ctx = logutil.WithConsoleWriter(ctx)
+					}
+
 					ctx = opentracing.ContextWithSpan(ctx, span)
 
 					c.App.Metadata["context"] = ctx
@@ -180,12 +188,22 @@ func (*nopCloser) Close() error {
 }
 
 func newLogger(c *cli.Context) (*zerolog.Logger, error) {
+	var out io.Writer
+	switch c.GlobalString("log-writer") {
+	case "console":
+		out = zerolog.ConsoleWriter{Out: os.Stderr}
+	case "json":
+		out = os.Stderr
+	default:
+		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "unknown log writer %q", c.GlobalString("log-writer"))
+	}
+
 	level, err := zerolog.ParseLevel(c.GlobalString("log-level"))
 	if err != nil {
 		return nil, err
 	}
 
-	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).
+	logger := zerolog.New(out).
 		Level(level).
 		With().Timestamp().Logger()
 

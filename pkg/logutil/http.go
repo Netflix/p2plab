@@ -12,35 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package logutil
 
 import (
 	"context"
-	"fmt"
+	"io"
+	"net/http"
 	"os"
-	"syscall"
 
-	"github.com/Netflix/p2plab/cmd/labctl/command"
-	"github.com/Netflix/p2plab/cmd/labctl/interrupt"
 	"github.com/rs/zerolog"
 )
 
-func init() {
-	// UNIX Time is faster and smaller than most timestamps. If you set
-	// zerolog.TimeFieldFormat to an empty string, logs will write with UNIX
-	// time.
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
+func ResponseLogger(ctx context.Context, w http.ResponseWriter) *zerolog.Logger {
+	logger := zerolog.Ctx(ctx).Output(io.MultiWriter(os.Stderr, newWriteFlusher(w)))
+	return &logger
 }
 
-func main() {
-	ctx, cancel := context.WithCancel(context.Background())
+type writeFlusher struct {
+	w io.Writer
+	f http.Flusher
+}
 
-	ih := interrupt.NewInterruptHandler(cancel, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
-	defer ih.Close()
-
-	app := command.App(ctx)
-	if err := app.Run(os.Args); err != nil {
-		fmt.Fprintf(os.Stderr, "labctl: %s\n", err)
-		os.Exit(1)
+func newWriteFlusher(w io.Writer) *writeFlusher {
+	wf := writeFlusher{w: w}
+	f, ok := w.(http.Flusher)
+	if ok {
+		wf.f = f
 	}
+	return &wf
+}
+
+func (wf *writeFlusher) Write(p []byte) (int, error) {
+	n, err := wf.w.Write(p)
+	if err != nil {
+		return n, err
+	}
+	wf.f.Flush()
+	return n, err
 }

@@ -206,5 +206,6 @@ func removeScenariosAction(c *cli.Context) error {
 		return err
 	}
 
+	zerolog.Ctx(ctx).Info().Strs("names", names).Msg("Removed scenarios")
 	return nil
 }

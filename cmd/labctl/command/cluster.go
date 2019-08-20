@@ -136,12 +136,11 @@ func createClusterAction(c *cli.Context) error {
 	}
 
 	name := c.Args().First()
-	cluster, err := control.Cluster().Create(ctx, name, options...)
+	err = control.Cluster().Create(ctx, name, options...)
 	if err != nil {
 		return err
 	}
 
-	zerolog.Ctx(ctx).Info().Msgf("Created cluster %q", cluster.Metadata().ID)
 	return nil
 }
 

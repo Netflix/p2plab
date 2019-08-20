@@ -23,7 +23,7 @@ import (
 // ClusterAPI defines API for cluster operations.
 type ClusterAPI interface {
 	// Create deploys a cluster.
-	Create(ctx context.Context, name string, opts ...CreateClusterOption) (Cluster, error)
+	Create(ctx context.Context, name string, opts ...CreateClusterOption) error
 
 	// Get returns a cluster.
 	Get(ctx context.Context, name string) (Cluster, error)

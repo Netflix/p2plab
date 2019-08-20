@@ -26,6 +26,7 @@ import (
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/nodes"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/Netflix/p2plab/pkg/logutil"
 	"github.com/Netflix/p2plab/pkg/stringutil"
 	"github.com/Netflix/p2plab/query"
 	"github.com/pkg/errors"
@@ -84,11 +85,12 @@ func (s *router) postClustersCreate(ctx context.Context, w http.ResponseWriter, 
 		return err
 	}
 
-	id := r.FormValue("name")
-	zerolog.Ctx(ctx).With().Str("id", id)
+	name := r.FormValue("name")
+	logger := logutil.ResponseLogger(ctx, w).With().Str("name", name).Logger()
+	ctx = logger.WithContext(ctx)
 
 	cluster, err := s.db.CreateCluster(ctx, metadata.Cluster{
-		ID:         id,
+		ID:         name,
 		Status:     metadata.ClusterCreating,
 		Definition: cdef,
 	})
@@ -97,7 +99,7 @@ func (s *router) postClustersCreate(ctx context.Context, w http.ResponseWriter, 
 	}
 
 	zerolog.Ctx(ctx).Info().Msg("Creating node group")
-	ng, err := s.provider.CreateNodeGroup(ctx, id, cdef)
+	ng, err := s.provider.CreateNodeGroup(ctx, name, cdef)
 	if err != nil {
 		return err
 	}
@@ -175,9 +177,12 @@ func (s *router) putClusterUpdate(ctx context.Context, w http.ResponseWriter, r 
 func (s *router) deleteClusters(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
 	names := strings.Split(r.FormValue("names"), ",")
 
+	logger := logutil.ResponseLogger(ctx, w)
+
 	// TODO: parallelize with different color loggers?
 	for _, name := range names {
-		logger := zerolog.Ctx(ctx).With().Str("name", name).Logger()
+		logger := logger.With().Str("name", name).Logger()
+		ctx = logger.WithContext(ctx)
 
 		cluster, err := s.db.GetCluster(ctx, name)
 		if err != nil {

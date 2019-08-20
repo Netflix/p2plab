@@ -32,9 +32,14 @@ func App(ctx context.Context) *cli.App {
 			Value: "http://127.0.0.1:7001",
 		},
 		cli.StringFlag{
-			Name:  "log-level,l",
+			Name:  "log-level",
 			Usage: "set the logging level [debug, info, warn, error, fatal, panic]",
 			Value: "info",
+		},
+		cli.StringFlag{
+			Name:  "log-writer",
+			Usage: "set the log writer [console, json]",
+			Value: "console",
 		},
 		cli.StringFlag{
 			Name:  "output,o",

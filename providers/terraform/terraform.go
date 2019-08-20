@@ -18,12 +18,13 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
+	"github.com/Netflix/p2plab/pkg/logutil"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 type Terraform struct {
@@ -115,7 +116,11 @@ func (t *Terraform) Close() {
 }
 
 func (t *Terraform) terraform(ctx context.Context, args ...string) error {
-	return t.terraformWithStdio(ctx, os.Stdout, os.Stderr, args...)
+	logger := zerolog.Ctx(ctx).With().Strs("exec", args).Logger()
+	logWriter := logutil.NewWriter(&logger, zerolog.DebugLevel)
+	defer logWriter.Close()
+
+	return t.terraformWithStdio(ctx, logWriter, logWriter, args...)
 }
 
 func (t *Terraform) terraformWithStdio(ctx context.Context, stdout, stderr io.Writer, args ...string) error {

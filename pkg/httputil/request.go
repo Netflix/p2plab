@@ -36,7 +36,8 @@ type Request struct {
 	Options map[string]string
 	body    io.Reader
 
-	client *retryablehttp.Client
+	client    *retryablehttp.Client
+	rawClient *http.Client
 }
 
 func (r *Request) Option(key string, value interface{}) *Request {
@@ -84,14 +85,14 @@ func (r *Request) Send(ctx context.Context) (*http.Response, error) {
 	}
 
 	switch resp.StatusCode {
-		case http.StatusConflict:
-			return nil, errdefs.ErrAlreadyExists
-		case http.StatusNotFound:
-			return nil, errdefs.ErrNotFound
-		case http.StatusBadRequest:
-			return nil, errdefs.ErrInvalidArgument
-		case http.StatusServiceUnavailable:
-			return nil, errdefs.ErrUnavailable
+	case http.StatusConflict:
+		return nil, errdefs.ErrAlreadyExists
+	case http.StatusNotFound:
+		return nil, errdefs.ErrNotFound
+	case http.StatusBadRequest:
+		return nil, errdefs.ErrInvalidArgument
+	case http.StatusServiceUnavailable:
+		return nil, errdefs.ErrUnavailable
 
 	}
 

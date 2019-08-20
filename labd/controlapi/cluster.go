@@ -24,6 +24,7 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/Netflix/p2plab/pkg/logutil"
 	"github.com/pkg/errors"
 )
 
@@ -32,12 +33,12 @@ type clusterAPI struct {
 	url    urlFunc
 }
 
-func (a *clusterAPI) Create(ctx context.Context, name string, opts ...p2plab.CreateClusterOption) (p2plab.Cluster, error) {
+func (a *clusterAPI) Create(ctx context.Context, name string, opts ...p2plab.CreateClusterOption) error {
 	var settings p2plab.CreateClusterSettings
 	for _, opt := range opts {
 		err := opt(&settings)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
@@ -45,13 +46,13 @@ func (a *clusterAPI) Create(ctx context.Context, name string, opts ...p2plab.Cre
 	if settings.Definition != "" {
 		f, err := os.Open(settings.Definition)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		defer f.Close()
 
 		err = json.NewDecoder(f).Decode(&cdef)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	} else {
 		cdef.Groups = append(cdef.Groups, metadata.ClusterGroup{
@@ -63,7 +64,7 @@ func (a *clusterAPI) Create(ctx context.Context, name string, opts ...p2plab.Cre
 
 	content, err := json.MarshalIndent(&cdef, "", "    ")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	req := a.client.NewRequest("POST", a.url("/clusters/create"), httputil.WithRetryMax(0)).
@@ -72,17 +73,16 @@ func (a *clusterAPI) Create(ctx context.Context, name string, opts ...p2plab.Cre
 
 	resp, err := req.Send(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer resp.Body.Close()
 
-	c := cluster{client: a.client}
-	err = json.NewDecoder(resp.Body).Decode(&c.metadata)
+	err = logutil.WriteRemoteLogs(ctx, resp.Body)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &c, nil
+	return nil
 }
 
 func (a *clusterAPI) Get(ctx context.Context, name string) (p2plab.Cluster, error) {
@@ -174,6 +174,9 @@ func (a *clusterAPI) List(ctx context.Context, opts ...p2plab.ListOption) ([]p2p
 	return clusters, nil
 }
 
+type Event struct {
+}
+
 func (a *clusterAPI) Remove(ctx context.Context, names ...string) error {
 	req := a.client.NewRequest("DELETE", a.url("/clusters/delete")).
 		Option("names", strings.Join(names, ","))
@@ -183,6 +186,11 @@ func (a *clusterAPI) Remove(ctx context.Context, names ...string) error {
 		return errors.Wrap(err, "failed to remove clusters")
 	}
 	defer resp.Body.Close()
+
+	err = logutil.WriteRemoteLogs(ctx, resp.Body)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
