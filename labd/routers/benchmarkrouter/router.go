@@ -53,7 +53,7 @@ func (s *router) Routes() []daemon.Route {
 	return []daemon.Route{
 		// GET
 		daemon.NewGetRoute("/benchmarks/json", s.getBenchmarks),
-		daemon.NewGetRoute("/benchmarks/{id}/json", s.getBenchmarkByName),
+		daemon.NewGetRoute("/benchmarks/{id}/json", s.getBenchmarkById),
 		// POST
 		daemon.NewPostRoute("/benchmarks/create", s.postBenchmarksCreate),
 		// PUT
@@ -72,8 +72,8 @@ func (s *router) getBenchmarks(ctx context.Context, w http.ResponseWriter, r *ht
 	return daemon.WriteJSON(w, &benchmarks)
 }
 
-func (s *router) getBenchmarkByName(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
-	id := vars["name"]
+func (s *router) getBenchmarkById(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
+	id := vars["id"]
 	benchmark, err := s.db.GetBenchmark(ctx, id)
 	if err != nil {
 		return err
@@ -109,7 +109,7 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 
 	ctx, logger := logutil.WithResponseLogger(ctx, w)
 	logger.UpdateContext(func(c zerolog.Context) zerolog.Context {
-	     return c.Str("bid", bid)
+		return c.Str("bid", bid)
 	})
 
 	zerolog.Ctx(ctx).Info().Msg("Retrieving nodes in cluster")
