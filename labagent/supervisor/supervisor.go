@@ -103,7 +103,7 @@ func (s *supervisor) start(ctx context.Context) error {
 		return err
 	}
 
-	zerolog.Ctx(ctx).Info().Str("version", v.String()).Msg("Started p2p app")
+	zerolog.Ctx(ctx).Debug().Str("version", v.String()).Msg("Started p2p app")
 	return nil
 }
 
@@ -130,7 +130,7 @@ func (s *supervisor) kill(ctx context.Context) error {
 		}
 	}
 
-	zerolog.Ctx(ctx).Info().Msg("Successfully killed app")
+	zerolog.Ctx(ctx).Debug().Msg("Successfully killed app")
 	return nil
 }
 

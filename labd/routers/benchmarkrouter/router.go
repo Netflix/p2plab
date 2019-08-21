@@ -130,20 +130,20 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 		zerolog.Ctx(ctx).Info().Msg("Updating cluster")
 		err = nodes.Update(ctx, ns, "")
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to update cluster")
 		}
 
 		zerolog.Ctx(ctx).Info().Msg("Connecting cluster")
 		err = nodes.Connect(ctx, ns)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to connect cluster")
 		}
 	}
 
 	zerolog.Ctx(ctx).Info().Msg("Creating scenario plan")
 	plan, err := scenarios.Plan(ctx, scenario.Definition, s.ts, s.seeder, lset)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to create scenario plan")
 	}
 
 	benchmark := metadata.Benchmark{

@@ -129,7 +129,7 @@ func (s *router) getFile(ctx context.Context, target string) error {
 		return err
 	}
 
-	zerolog.Ctx(ctx).Info().Str("cid", c.String()).Int64("bytes", n).Msg("Got file from peers")
+	zerolog.Ctx(ctx).Debug().Str("cid", c.String()).Int64("bytes", n).Msg("Retrieved file")
 	return nil
 }
 
@@ -144,7 +144,7 @@ func (s *router) connect(ctx context.Context, addrs []string) error {
 		return err
 	}
 
-	zerolog.Ctx(ctx).Info().Int("peers", len(addrs)).Msg("Connected to peers")
+	zerolog.Ctx(ctx).Debug().Int("peers", len(addrs)).Msg("Connected to peers")
 	return nil
 }
 
@@ -159,7 +159,7 @@ func (s *router) disconnect(ctx context.Context, addrs []string) error {
 		return err
 	}
 
-	zerolog.Ctx(ctx).Info().Int("peers", len(addrs)).Msg("Disconnected from peers")
+	zerolog.Ctx(ctx).Debug().Int("peers", len(addrs)).Msg("Disconnected from peers")
 	return nil
 }
 
