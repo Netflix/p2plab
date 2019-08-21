@@ -31,7 +31,7 @@ func Update(ctx context.Context, ns []p2plab.Node, url string) error {
 
 	}
 
-	err = updatePeers.Wait()
+	err := updatePeers.Wait()
 	if err != nil {
 		return err
 	}
