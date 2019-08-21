@@ -22,11 +22,6 @@ import (
 )
 
 func Update(ctx context.Context, ns []p2plab.Node, url string) error {
-	err := WaitHealthy(ctx, ns)
-	if err != nil {
-		return err
-	}
-
 	updatePeers, gctx := errgroup.WithContext(ctx)
 	for _, n := range ns {
 		n := n
