@@ -15,6 +15,7 @@
 package transformers
 
 import (
+	"net/http"
 	"path/filepath"
 	"sync"
 
@@ -24,15 +25,17 @@ import (
 )
 
 type Transformers struct {
-	root string
-	mu   sync.Mutex
-	ts   map[string]p2plab.Transformer
+	root   string
+	client *http.Client
+	mu     sync.Mutex
+	ts     map[string]p2plab.Transformer
 }
 
-func New(root string) *Transformers {
+func New(root string, client *http.Client) *Transformers {
 	return &Transformers{
-		root: root,
-		ts:   make(map[string]p2plab.Transformer),
+		root:   root,
+		client: client,
+		ts:     make(map[string]p2plab.Transformer),
 	}
 }
 
@@ -66,7 +69,7 @@ func (t *Transformers) newTransformer(objectType string) (p2plab.Transformer, er
 	root := filepath.Join(t.root, objectType)
 	switch objectType {
 	case "oci":
-		return oci.New(root)
+		return oci.New(root, t.client)
 	default:
 		return nil, errors.Errorf("unrecognized object type: %q", objectType)
 	}

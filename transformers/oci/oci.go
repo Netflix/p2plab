@@ -21,7 +21,6 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
-	"time"
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/errdefs"
@@ -52,7 +51,7 @@ type transformer struct {
 	resolver remotes.Resolver
 }
 
-func New(root string) (p2plab.Transformer, error) {
+func New(root string, client *http.Client) (p2plab.Transformer, error) {
 	store, err := local.NewStore(filepath.Join(root, "store"))
 	if err != nil {
 		return nil, err
@@ -65,13 +64,7 @@ func New(root string) (p2plab.Transformer, error) {
 	}
 
 	resolver := docker.NewResolver(docker.ResolverOptions{
-		Client: &http.Client{
-			Transport: &http.Transport{
-				Proxy:                 http.ProxyFromEnvironment,
-				DisableKeepAlives:     true,
-				ResponseHeaderTimeout: 5 * time.Second,
-			},
-		},
+		Client: client,
 	})
 
 	return &transformer{

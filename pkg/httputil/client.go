@@ -33,13 +33,13 @@ func NewHTTPClient() *http.Client {
 }
 
 type Client struct {
-	client *http.Client
+	HTTPClient *http.Client
 	logger *zerolog.Logger
 }
 
 func NewClient(hclient *http.Client, opts ...ClientOption) (*Client, error) {
 	client := &Client{
-		client: hclient,
+		HTTPClient: hclient,
 	}
 
 	for _, opt := range opts {
@@ -65,7 +65,7 @@ func (c *Client) NewRequest(method, url string, opts ...RequestOption) *Request 
 	}
 
 	client := &retryablehttp.Client{
-		HTTPClient:   c.client,
+		HTTPClient:   c.HTTPClient,
 		RetryWaitMin: settings.RetryWaitMin,
 		RetryWaitMax: settings.RetryWaitMax,
 		RetryMax:     settings.RetryMax,

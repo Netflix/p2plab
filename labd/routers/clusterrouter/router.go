@@ -134,13 +134,11 @@ func (s *router) postClustersCreate(ctx context.Context, w http.ResponseWriter, 
 		ns = append(ns, controlapi.NewNode(s.client, n))
 	}
 
-	zerolog.Ctx(ctx).Info().Msg("Waiting for healthy nodes")
 	err = nodes.WaitHealthy(ctx, ns)
 	if err != nil {
 		return err
 	}
 
-	zerolog.Ctx(ctx).Info().Msg("Connecting cluster")
 	err = nodes.Connect(ctx, ns)
 	if err != nil {
 		return err

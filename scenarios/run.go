@@ -16,10 +16,12 @@ package scenarios
 
 import (
 	"context"
+	"time"
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
+	"github.com/Netflix/p2plab/pkg/logutil"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -44,8 +46,13 @@ func Seed(ctx context.Context, lset p2plab.LabeledSet, seed metadata.ScenarioSta
 	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster seed")
 	defer span.Finish()
 
-	zerolog.Ctx(ctx).Info().Msg("Seeding cluster")
 	seeding, gctx := errgroup.WithContext(ctx)
+
+	go logutil.Elapsed(gctx, 20*time.Second, func(ctx context.Context, elapsed time.Duration) {
+		zerolog.Ctx(ctx).Info().Dur("elapsed", elapsed).Msg("Seeding cluster")
+	})
+
+	zerolog.Ctx(ctx).Info().Msg("Seeding cluster")
 	for id, task := range seed {
 		id, task := id, task
 		seeding.Go(func() error {
@@ -101,8 +108,13 @@ func Benchmark(ctx context.Context, lset p2plab.LabeledSet, benchmark metadata.S
 	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster benchmark")
 	defer span.Finish()
 
-	zerolog.Ctx(ctx).Info().Msg("Benchmarking cluster")
 	benchmarking, gctx := errgroup.WithContext(ctx)
+
+	go logutil.Elapsed(gctx, 20*time.Second, func(ctx context.Context, elapsed time.Duration) {
+		zerolog.Ctx(ctx).Info().Dur("elapsed", elapsed).Msg("Benchmarking cluster")
+	})
+
+	zerolog.Ctx(ctx).Info().Msg("Benchmarking cluster")
 	for id, task := range benchmark {
 		id, task := id, task
 		benchmarking.Go(func() error {

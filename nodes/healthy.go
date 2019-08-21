@@ -19,35 +19,42 @@ import (
 	"time"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/pkg/logutil"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 )
 
-func Update(ctx context.Context, ns []p2plab.Node, url string) error {
+func WaitHealthy(ctx context.Context, ns []p2plab.Node) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster healthy")
 	defer span.Finish()
 	span.SetTag("nodes", len(ns))
 
-	updatePeers, gctx := errgroup.WithContext(ctx)
+	healthchecks, gctx := errgroup.WithContext(ctx)
 
 	go logutil.Elapsed(gctx, 20*time.Second, func(ctx context.Context, elapsed time.Duration) {
-		zerolog.Ctx(ctx).Info().Dur("elapsed", elapsed).Msg("Updating cluster")
+		zerolog.Ctx(ctx).Info().Dur("elapsed", elapsed).Msg("Waiting for healthy nodes")
 	})
 
-	zerolog.Ctx(ctx).Info().Msg("Updating cluster")
+	zerolog.Ctx(ctx).Info().Msg("Waiting for healthy nodes")
 	for _, n := range ns {
 		n := n
-		updatePeers.Go(func() error {
-			return n.Update(gctx, url)
+		healthchecks.Go(func() error {
+			ok := n.Healthcheck(gctx)
+			if !ok {
+				return errors.Wrapf(errdefs.ErrUnavailable, "node %q", n.ID())
+			}
+			return nil
 		})
 	}
 
-	err := updatePeers.Wait()
+	err := healthchecks.Wait()
 	if err != nil {
 		return err
 	}
 
 	return nil
+
 }

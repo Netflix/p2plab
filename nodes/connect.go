@@ -18,49 +18,30 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
-	"github.com/Netflix/p2plab/errdefs"
+	"github.com/Netflix/p2plab/pkg/logutil"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 )
-
-func WaitHealthy(ctx context.Context, ns []p2plab.Node) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster healthy")
-	defer span.Finish()
-	span.SetTag("nodes", len(ns))
-
-	healthchecks, gctx := errgroup.WithContext(ctx)
-
-	for _, n := range ns {
-		n := n
-		healthchecks.Go(func() error {
-			ok := n.Healthcheck(gctx)
-			if !ok {
-				return errors.Wrapf(errdefs.ErrUnavailable, "node %q", n.ID())
-			}
-			return nil
-		})
-	}
-
-	err := healthchecks.Wait()
-	if err != nil {
-		return err
-	}
-
-	return nil
-
-}
 
 func Connect(ctx context.Context, ns []p2plab.Node) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster connect")
 	defer span.Finish()
 	span.SetTag("nodes", len(ns))
 
-	peerAddrs := make([]string, len(ns))
 	collectPeerAddrs, gctx := errgroup.WithContext(ctx)
+
+	go logutil.Elapsed(gctx, 20*time.Second, func(ctx context.Context, elapsed time.Duration) {
+		zerolog.Ctx(ctx).Info().Dur("elapsed", elapsed).Msg("Retrieving peer infos")
+	})
+
+	peerAddrs := make([]string, len(ns))
+	zerolog.Ctx(ctx).Info().Msg("Retrieving peer infos")
 	for i, n := range ns {
 		i, n := i, n
 		collectPeerAddrs.Go(func() error {
@@ -84,6 +65,12 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 	}
 
 	connectPeers, gctx := errgroup.WithContext(ctx)
+
+	go logutil.Elapsed(gctx, 20*time.Second, func(ctx context.Context, elapsed time.Duration) {
+		zerolog.Ctx(ctx).Info().Dur("elapsed", elapsed).Msg("Connecting cluster")
+	})
+
+	zerolog.Ctx(ctx).Info().Msg("Connecting cluster")
 	for _, n := range ns {
 		n := n
 		connectPeers.Go(func() error {

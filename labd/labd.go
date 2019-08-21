@@ -59,7 +59,7 @@ func New(root, addr string, logger *zerolog.Logger) (*Labd, error) {
 		return nil, err
 	}
 
-	ts := transformers.New(filepath.Join(root, "transformers"))
+	ts := transformers.New(filepath.Join(root, "transformers"), client.HTTPClient)
 	closers = append(closers, ts)
 
 	sctx, cancel := context.WithCancel(context.Background())

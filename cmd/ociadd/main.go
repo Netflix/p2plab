@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 
 	"github.com/Netflix/p2plab/peer"
+	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/transformers/oci"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -64,7 +65,7 @@ func run(ref string) error {
 	}
 	log.Info().Str("id", p.Host().ID().String()).Strs("listen", addrs).Msg("Starting libp2p peer")
 
-	transformer, err := oci.New(filepath.Join(root, "transformers/oci"))
+	transformer, err := oci.New(filepath.Join(root, "transformers/oci"), httputil.NewHTTPClient())
 	if err != nil {
 		return err
 	}

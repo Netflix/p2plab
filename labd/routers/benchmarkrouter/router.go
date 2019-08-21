@@ -127,19 +127,16 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 	}
 
 	if !noReset {
-		zerolog.Ctx(ctx).Info().Msg("Updating cluster")
 		err = nodes.Update(ctx, ns, "")
 		if err != nil {
 			return errors.Wrap(err, "failed to update cluster")
 		}
 
-		zerolog.Ctx(ctx).Info().Msg("Waiting for healthy nodes")
 		err = nodes.WaitHealthy(ctx, ns)
 		if err != nil {
 			return err
 		}
 
-		zerolog.Ctx(ctx).Info().Msg("Connecting cluster")
 		err = nodes.Connect(ctx, ns)
 		if err != nil {
 			return errors.Wrap(err, "failed to connect cluster")
