@@ -20,10 +20,10 @@ import (
 	"path/filepath"
 
 	"github.com/Netflix/p2plab/daemon"
+	"github.com/Netflix/p2plab/daemon/healthcheckrouter"
 	"github.com/Netflix/p2plab/labd/routers/benchmarkrouter"
 	"github.com/Netflix/p2plab/labd/routers/clusterrouter"
 	"github.com/Netflix/p2plab/labd/routers/experimentrouter"
-	"github.com/Netflix/p2plab/labd/routers/healthcheckrouter"
 	"github.com/Netflix/p2plab/labd/routers/noderouter"
 	"github.com/Netflix/p2plab/labd/routers/scenariorouter"
 	"github.com/Netflix/p2plab/metadata"
@@ -37,7 +37,6 @@ import (
 )
 
 type Labd struct {
-	root    string
 	daemon  *daemon.Daemon
 	seeder  *peer.Peer
 	closers []io.Closer
@@ -64,12 +63,12 @@ func New(root, addr string, logger *zerolog.Logger) (*Labd, error) {
 	ts := transformers.New(filepath.Join(root, "transformers"))
 	closers = append(closers, ts)
 
-	seedCtx, cancel := context.WithCancel(context.Background())
-	seeder, err := peer.New(seedCtx, filepath.Join(root, "seeder"))
+	sctx, cancel := context.WithCancel(context.Background())
+	seeder, err := peer.New(sctx, filepath.Join(root, "seeder"))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create seeder peer")
 	}
-	closers = append(closers, &cancelCloser{cancel})
+	closers = append(closers, &daemon.CancelCloser{cancel})
 
 	daemon := daemon.New(addr, logger,
 		healthcheckrouter.New(),
@@ -81,7 +80,6 @@ func New(root, addr string, logger *zerolog.Logger) (*Labd, error) {
 	)
 
 	d := &Labd{
-		root:    root,
 		daemon:  daemon,
 		seeder:  seeder,
 		closers: closers,
@@ -108,13 +106,4 @@ func (d *Labd) Serve(ctx context.Context) error {
 	zerolog.Ctx(ctx).Info().Strs("addrs", addrs).Msg("IPFS listening")
 
 	return d.daemon.Serve(ctx)
-}
-
-type cancelCloser struct {
-	cancel func()
-}
-
-func (c *cancelCloser) Close() error {
-	c.cancel()
-	return nil
 }

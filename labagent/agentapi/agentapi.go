@@ -20,6 +20,7 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/Netflix/p2plab/pkg/logutil"
 )
 
 type api struct {
@@ -35,7 +36,7 @@ func New(client *httputil.Client, addr string) p2plab.AgentAPI {
 }
 
 func (a *api) url(endpoint string, v ...interface{}) string {
-	return fmt.Sprintf("%s/api/v0%s", a.addr, fmt.Sprintf(endpoint, v...))
+	return fmt.Sprintf("%s%s", a.addr, fmt.Sprintf(endpoint, v...))
 }
 
 func (a *api) Update(ctx context.Context, url string) error {
@@ -47,6 +48,14 @@ func (a *api) Update(ctx context.Context, url string) error {
 		return err
 	}
 	defer resp.Body.Close()
+
+	logWriter := logutil.LogWriter(ctx)
+	if logWriter != nil {
+		err = logutil.WriteRemoteLogs(ctx, resp.Body, logWriter)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

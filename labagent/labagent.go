@@ -15,232 +15,40 @@
 package labagent
 
 import (
-	"bytes"
 	"context"
-	"fmt"
-	"io"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"time"
 
+	"github.com/Netflix/p2plab/daemon"
+	"github.com/Netflix/p2plab/labagent/agentrouter"
+	"github.com/Netflix/p2plab/labagent/supervisor"
 	"github.com/Netflix/p2plab/pkg/httputil"
-	"github.com/gorilla/mux"
-	"github.com/pkg/errors"
+	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"github.com/rs/zerolog"
 )
 
-var (
-	LabAppBinary = "labapp"
-	LabAppFifo   = "labapp-fifo"
-)
-
 type LabAgent struct {
-	root       string
-	addr       string
-	appRoot    string
-	appAddr    string
-	appPort    string
-	router     *mux.Router
-	httpClient *http.Client
-	app        *exec.Cmd
-	appCancel  func()
+	daemon *daemon.Daemon
 }
 
-func New(root, addr, appRoot, appAddr string) (*LabAgent, error) {
-	u, err := url.Parse(appAddr)
+func New(root, addr, appRoot, appAddr string, logger *zerolog.Logger) (*LabAgent, error) {
+	client, err := httputil.NewClient(cleanhttp.DefaultClient(), httputil.WithLogger(logger))
 	if err != nil {
 		return nil, err
 	}
 
-	_, port, err := net.SplitHostPort(u.Host)
+	s, err := supervisor.New(root, appRoot, appAddr, client)
 	if err != nil {
 		return nil, err
 	}
 
-	r := mux.NewRouter().UseEncodedPath().StrictSlash(true)
-	agent := &LabAgent{
-		root:    root,
-		addr:    addr,
-		appRoot: appRoot,
-		appAddr: appAddr,
-		appPort: port,
-		router:  r,
-		httpClient: &http.Client{
-			Transport: &http.Transport{
-				Proxy:             http.ProxyFromEnvironment,
-				DisableKeepAlives: true,
-			},
-		},
-	}
-	agent.registerRoutes(r)
+	daemon := daemon.New(addr, logger,
+		agentrouter.New(appAddr, client, s),
+	)
 
-	return agent, nil
+	return &LabAgent{
+		daemon: daemon,
+	}, nil
 }
 
 func (a *LabAgent) Serve(ctx context.Context) error {
-	zerolog.Ctx(ctx).Info().Msgf("labagent listening on %s", a.addr)
-	s := &http.Server{
-		Handler:     a.router,
-		Addr:        a.addr,
-		ReadTimeout: 10 * time.Second,
-	}
-
-	// TODO: remove when S3 update flow is complete
-	err := a.updateApp(ctx, "")
-	if err != nil {
-		return err
-	}
-
-	return s.ListenAndServe()
-}
-
-func (a *LabAgent) registerRoutes(r *mux.Router) {
-	api := r.PathPrefix("/api/v0").Subrouter()
-	api.Handle("/update", httputil.ErrorHandler{a.updateHandler}).Methods("PUT")
-}
-
-func (a *LabAgent) updateHandler(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
-	zerolog.Ctx(ctx).Info().Msg("labagent/update")
-
-	err := a.updateApp(ctx, r.FormValue("url"))
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (a *LabAgent) updateApp(ctx context.Context, url string) error {
-	err := a.killApp(ctx)
-	if err != nil {
-		return err
-	}
-
-	if url != "" {
-		err = a.updateBinary(url)
-		if err != nil {
-			return err
-		}
-	}
-
-	err = a.clearAppState()
-	if err != nil {
-	}
-
-	err = a.startApp(ctx)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (a *LabAgent) clearAppState() error {
-	err := os.RemoveAll(a.appRoot)
-	if err != nil {
-		return err
-	}
-
-	err = os.MkdirAll(a.appRoot, 0711)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (a *LabAgent) killApp(ctx context.Context) error {
-	if a.appCancel != nil {
-		// Kill subprocess.
-		a.appCancel()
-
-		err := a.app.Wait()
-		if err != nil {
-			exitErr, ok := err.(*exec.ExitError)
-			if !ok {
-				return errors.Wrap(err, "failed to wait for labapp to exit")
-			}
-
-			if exitErr.ProcessState.String() != "signal: killed" {
-				return errors.Wrapf(err, "labapp exited with unexpected status: %q", exitErr.ProcessState)
-			}
-		}
-
-		zerolog.Ctx(ctx).Info().Msg("Successfully killed labapp")
-	}
-
-	return nil
-}
-
-func (a *LabAgent) updateBinary(url string) error {
-	resp, err := a.httpClient.Get(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	f, err := ioutil.TempFile(filepath.Join(a.root, "tmp"), "labapp")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(f.Name())
-	defer f.Close()
-
-	_, err = io.Copy(f, resp.Body)
-	if err != nil {
-		return err
-	}
-
-	// Atomically replace the binary.
-	binaryPath := filepath.Join(a.root, LabAppBinary)
-	err = os.Rename(f.Name(), binaryPath)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (a *LabAgent) startApp(ctx context.Context) error {
-	var appCtx context.Context
-	appCtx, a.appCancel = context.WithCancel(context.Background())
-
-	binaryPath := filepath.Join(a.root, LabAppBinary)
-	a.app = exec.CommandContext(appCtx, binaryPath, fmt.Sprintf("--root=%s", a.appRoot), fmt.Sprintf("--address=:%s", a.appPort))
-	a.app.Stdout = os.Stdout
-	a.app.Stderr = os.Stderr
-
-	err := a.app.Start()
-	if err != nil {
-		return err
-	}
-
-	v, err := a.getAppVersion()
-	if err != nil {
-		return err
-	}
-
-	zerolog.Ctx(ctx).Info().Msgf("Started p2p app %q", v)
-	return nil
-}
-
-func (a *LabAgent) getAppVersion() (string, error) {
-	binaryPath := filepath.Join(a.root, LabAppBinary)
-
-	buf := new(bytes.Buffer)
-	cmd := exec.Command(binaryPath, "--version")
-	cmd.Stdout = buf
-
-	err := cmd.Run()
-	if err != nil {
-		return "", err
-	}
-
-	return buf.String(), nil
+	return a.daemon.Serve(ctx)
 }

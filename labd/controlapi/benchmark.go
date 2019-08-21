@@ -22,6 +22,7 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/Netflix/p2plab/pkg/logutil"
 	"github.com/pkg/errors"
 )
 
@@ -30,12 +31,12 @@ type benchmarkAPI struct {
 	url    urlFunc
 }
 
-func (a *benchmarkAPI) Start(ctx context.Context, cluster, scenario string, opts ...p2plab.StartBenchmarkOption) (p2plab.Benchmark, error) {
+func (a *benchmarkAPI) Start(ctx context.Context, cluster, scenario string, opts ...p2plab.StartBenchmarkOption) (id string, err error) {
 	var settings p2plab.StartBenchmarkSettings
 	for _, opt := range opts {
-		err := opt(&settings)
+		err = opt(&settings)
 		if err != nil {
-			return nil, err
+			return id, err
 		}
 	}
 
@@ -49,17 +50,19 @@ func (a *benchmarkAPI) Start(ctx context.Context, cluster, scenario string, opts
 
 	resp, err := req.Send(ctx)
 	if err != nil {
-		return nil, err
+		return id, err
 	}
 	defer resp.Body.Close()
 
-	b := benchmark{client: a.client}
-	err = json.NewDecoder(resp.Body).Decode(&b.metadata)
-	if err != nil {
-		return nil, err
+	logWriter := logutil.LogWriter(ctx)
+	if logWriter != nil {
+		err = logutil.WriteRemoteLogs(ctx, resp.Body, logWriter)
+		if err != nil {
+			return id, err
+		}
 	}
 
-	return &b, nil
+	return resp.Header.Get(ResourceID), nil
 }
 
 func (a *benchmarkAPI) Get(ctx context.Context, id string) (p2plab.Benchmark, error) {

@@ -12,28 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package daemon
 
-import (
-	"fmt"
-	"os"
-
-	"github.com/Netflix/p2plab/cmd/labapp/command"
-	"github.com/rs/zerolog"
-)
-
-func init() {
-	// UNIX Time is faster and smaller than most timestamps. If you set
-	// zerolog.TimeFieldFormat to an empty string, logs will write with UNIX
-	// time.
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
+type CancelCloser struct {
+	Cancel func()
 }
 
-func main() {
-	app := command.App()
-	if err := app.Run(os.Args); err != nil {
-		fmt.Printf("problemo: %s", err)
-		fmt.Fprintf(os.Stderr, "labapp: %s\n", err)
-		os.Exit(1)
-	}
+func (c *CancelCloser) Close() error {
+	c.Cancel()
+	return nil
 }

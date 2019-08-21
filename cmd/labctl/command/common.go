@@ -61,16 +61,12 @@ func AttachAppContext(ctx context.Context, app *cli.App) {
 					span = tracer.StartSpan(name)
 					span.LogFields(tlog.String("command", strings.Join(os.Args, " ")))
 
-					logger, err := newLogger(c)
+					logger, writer, err := newLogger(c)
 					if err != nil {
 						return err
 					}
 					ctx = logger.WithContext(ctx)
-
-					if c.GlobalString("log-writer") == "console" {
-						ctx = logutil.WithConsoleWriter(ctx)
-					}
-
+					ctx = logutil.WithLogWriter(ctx, writer)
 					ctx = opentracing.ContextWithSpan(ctx, span)
 
 					c.App.Metadata["context"] = ctx
@@ -118,7 +114,7 @@ func AttachAppClient(app *cli.App) {
 	app.Before = joinBefore(app.Before, func(c *cli.Context) error {
 		var opts []httputil.ClientOption
 		if c.GlobalString("log-level") == "debug" {
-			logger, err := newLogger(c)
+			logger, _, err := newLogger(c)
 			if err != nil {
 				return err
 			}
@@ -187,7 +183,7 @@ func (*nopCloser) Close() error {
 	return nil
 }
 
-func newLogger(c *cli.Context) (*zerolog.Logger, error) {
+func newLogger(c *cli.Context) (*zerolog.Logger, io.Writer, error) {
 	var out io.Writer
 	switch c.GlobalString("log-writer") {
 	case "console":
@@ -195,19 +191,19 @@ func newLogger(c *cli.Context) (*zerolog.Logger, error) {
 	case "json":
 		out = os.Stderr
 	default:
-		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "unknown log writer %q", c.GlobalString("log-writer"))
+		return nil, nil, errors.Wrapf(errdefs.ErrInvalidArgument, "unknown log writer %q", c.GlobalString("log-writer"))
 	}
 
 	level, err := zerolog.ParseLevel(c.GlobalString("log-level"))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	logger := zerolog.New(out).
 		Level(level).
 		With().Timestamp().Logger()
 
-	return &logger, nil
+	return &logger, out, nil
 }
 
 func ExtractNameFromFilename(filename string) string {

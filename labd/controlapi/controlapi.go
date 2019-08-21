@@ -21,6 +21,10 @@ import (
 	"github.com/Netflix/p2plab/pkg/httputil"
 )
 
+const (
+	ResourceID = "ResourceID"
+)
+
 type api struct {
 	addr   string
 	client *httputil.Client

@@ -33,12 +33,12 @@ type clusterAPI struct {
 	url    urlFunc
 }
 
-func (a *clusterAPI) Create(ctx context.Context, name string, opts ...p2plab.CreateClusterOption) error {
+func (a *clusterAPI) Create(ctx context.Context, name string, opts ...p2plab.CreateClusterOption) (id string, err error) {
 	var settings p2plab.CreateClusterSettings
 	for _, opt := range opts {
 		err := opt(&settings)
 		if err != nil {
-			return err
+			return id, err
 		}
 	}
 
@@ -46,13 +46,13 @@ func (a *clusterAPI) Create(ctx context.Context, name string, opts ...p2plab.Cre
 	if settings.Definition != "" {
 		f, err := os.Open(settings.Definition)
 		if err != nil {
-			return err
+			return id, err
 		}
 		defer f.Close()
 
 		err = json.NewDecoder(f).Decode(&cdef)
 		if err != nil {
-			return err
+			return id, err
 		}
 	} else {
 		cdef.Groups = append(cdef.Groups, metadata.ClusterGroup{
@@ -64,7 +64,7 @@ func (a *clusterAPI) Create(ctx context.Context, name string, opts ...p2plab.Cre
 
 	content, err := json.MarshalIndent(&cdef, "", "    ")
 	if err != nil {
-		return err
+		return id, err
 	}
 
 	req := a.client.NewRequest("POST", a.url("/clusters/create"), httputil.WithRetryMax(0)).
@@ -73,16 +73,19 @@ func (a *clusterAPI) Create(ctx context.Context, name string, opts ...p2plab.Cre
 
 	resp, err := req.Send(ctx)
 	if err != nil {
-		return err
+		return id, err
 	}
 	defer resp.Body.Close()
 
-	err = logutil.WriteRemoteLogs(ctx, resp.Body)
-	if err != nil {
-		return err
+	logWriter := logutil.LogWriter(ctx)
+	if logWriter != nil {
+		err = logutil.WriteRemoteLogs(ctx, resp.Body, logWriter)
+		if err != nil {
+			return id, err
+		}
 	}
 
-	return nil
+	return resp.Header.Get(ResourceID), nil
 }
 
 func (a *clusterAPI) Get(ctx context.Context, name string) (p2plab.Cluster, error) {
@@ -187,9 +190,12 @@ func (a *clusterAPI) Remove(ctx context.Context, names ...string) error {
 	}
 	defer resp.Body.Close()
 
-	err = logutil.WriteRemoteLogs(ctx, resp.Body)
-	if err != nil {
-		return err
+	logWriter := logutil.LogWriter(ctx)
+	if logWriter != nil {
+		err = logutil.WriteRemoteLogs(ctx, resp.Body, logWriter)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -222,6 +228,14 @@ func (c *cluster) Update(ctx context.Context, commit string) error {
 		return err
 	}
 	defer resp.Body.Close()
+
+	logWriter := logutil.LogWriter(ctx)
+	if logWriter != nil {
+		err = logutil.WriteRemoteLogs(ctx, resp.Body, logWriter)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

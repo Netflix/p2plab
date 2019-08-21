@@ -84,30 +84,15 @@ func (r *Request) Send(ctx context.Context) (*http.Response, error) {
 		return resp, errors.Wrap(err, "failed to do http request")
 	}
 
-	switch resp.StatusCode {
-	case http.StatusConflict:
-		return nil, errdefs.ErrAlreadyExists
-	case http.StatusNotFound:
-		return nil, errdefs.ErrNotFound
-	case http.StatusBadRequest:
-		return nil, errdefs.ErrInvalidArgument
-	case http.StatusServiceUnavailable:
-		return nil, errdefs.ErrUnavailable
-
-	}
-
-	if resp.StatusCode >= 400 && resp.StatusCode <= 499 {
-		return nil, errors.Wrap(errdefs.ErrUnavailable, "server rejected request")
-	}
-
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+	if (resp.StatusCode >= 400 && resp.StatusCode <= 499) ||
+		resp.StatusCode < 200 || resp.StatusCode > 299 {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			log.Error().Msgf("failed to read body: %s", err)
 		}
 		defer resp.Body.Close()
 
-		return nil, errors.Errorf("invalid status code [%d]: %s", resp.StatusCode, body)
+		return nil, errors.Errorf("server rejected request [%d]: %s", resp.StatusCode, body)
 	}
 
 	return resp, nil

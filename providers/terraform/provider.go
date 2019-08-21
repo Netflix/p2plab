@@ -89,8 +89,9 @@ func (p *provider) CreateNodeGroup(ctx context.Context, id string, cdef metadata
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to prepare cluster directory")
 	}
-	logger := zerolog.Ctx(ctx).With().Str("dir", clusterDir).Logger()
-	ctx = logger.WithContext(ctx)
+	zerolog.Ctx(ctx).UpdateContext(func(c zerolog.Context) zerolog.Context {
+	     return c.Str("dir", clusterDir)
+	})
 
 	zerolog.Ctx(ctx).Debug().Msg("Executing tfvars template")
 	err = p.executeTfvarsTemplate(id, cdef)

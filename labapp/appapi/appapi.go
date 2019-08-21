@@ -24,6 +24,7 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/Netflix/p2plab/pkg/logutil"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/rs/zerolog"
 )
@@ -41,7 +42,7 @@ func New(client *httputil.Client, addr string) p2plab.AppAPI {
 }
 
 func (a *api) url(endpoint string, v ...interface{}) string {
-	return fmt.Sprintf("%s/api/v0%s", a.addr, fmt.Sprintf(endpoint, v...))
+	return fmt.Sprintf("%s%s", a.addr, fmt.Sprintf(endpoint, v...))
 }
 
 func (a *api) Healthcheck(ctx context.Context) bool {
@@ -60,9 +61,9 @@ func (a *api) Healthcheck(ctx context.Context) bool {
 }
 
 func (a *api) PeerInfo(ctx context.Context) (peerstore.PeerInfo, error) {
-	req := a.client.NewRequest("GET", a.url("/peerInfo"))
-
 	var peerInfo peerstore.PeerInfo
+
+	req := a.client.NewRequest("GET", a.url("/peerInfo"))
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return peerInfo, err
@@ -91,6 +92,14 @@ func (a *api) Run(ctx context.Context, task metadata.Task) error {
 		return err
 	}
 	defer resp.Body.Close()
+
+	logWriter := logutil.LogWriter(ctx)
+	if logWriter != nil {
+		err = logutil.WriteRemoteLogs(ctx, resp.Body, logWriter)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

@@ -136,12 +136,17 @@ func createClusterAction(c *cli.Context) error {
 	}
 
 	name := c.Args().First()
-	err = control.Cluster().Create(ctx, name, options...)
+	id, err := control.Cluster().Create(ctx, name, options...)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	cluster, err := control.Cluster().Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	return CommandPrinter(c).Print(cluster.Metadata())
 }
 
 func inspectClusterAction(c *cli.Context) error {

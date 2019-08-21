@@ -84,7 +84,7 @@ var benchmarkCommand = cli.Command{
 
 func startBenchmarkAction(c *cli.Context) error {
 	if c.NArg() != 2 {
-		return errors.New("cluster id and benchmark name must be provided")
+		return errors.New("cluster and scenario name must be provided")
 	}
 
 	control, err := ResolveControl(c)
@@ -93,19 +93,24 @@ func startBenchmarkAction(c *cli.Context) error {
 	}
 
 	ctx := CommandContext(c)
-	cluster, benchmark := c.Args().Get(0), c.Args().Get(1)
+	cluster, scenario := c.Args().Get(0), c.Args().Get(1)
 
 	var opts []p2plab.StartBenchmarkOption
 	if c.Bool("no-reset") {
 		opts = append(opts, p2plab.WithBenchmarkNoReset())
 	}
 
-	_, err = control.Benchmark().Start(ctx, cluster, benchmark, opts...)
+	id, err := control.Benchmark().Start(ctx, cluster, scenario, opts...)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	benchmark, err := control.Benchmark().Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	return CommandPrinter(c).Print(benchmark.Metadata())
 }
 
 func inspectBenchmarkAction(c *cli.Context) error {

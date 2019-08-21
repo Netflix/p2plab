@@ -20,19 +20,11 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"os"
 
 	"github.com/rs/zerolog"
 )
 
-func WriteRemoteLogs(ctx context.Context, remote io.Reader) error {
-	var writer io.Writer
-	if HasConsoleWriter(ctx) {
-		writer = zerolog.ConsoleWriter{Out: os.Stderr}
-	} else {
-		writer = os.Stderr
-	}
-
+func WriteRemoteLogs(ctx context.Context, remote io.Reader, writer io.Writer) error {
 	scanner := bufio.NewScanner(remote)
 	for scanner.Scan() {
 		decoder := json.NewDecoder(bytes.NewReader([]byte(scanner.Text())))

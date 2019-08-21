@@ -23,18 +23,20 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func ResponseLogger(ctx context.Context, w http.ResponseWriter) *zerolog.Logger {
-	logger := zerolog.Ctx(ctx).Output(io.MultiWriter(os.Stderr, newWriteFlusher(w)))
-	return &logger
+func WithResponseLogger(ctx context.Context, w http.ResponseWriter) (context.Context, *zerolog.Logger) {
+	multiwriter := io.MultiWriter(os.Stderr, NewWriteFlusher(w))
+	logger := zerolog.Ctx(ctx).Output(multiwriter)
+	ctx = logger.WithContext(WithLogWriter(ctx, multiwriter))
+	return ctx, &logger
 }
 
-type writeFlusher struct {
+type WriteFlusher struct {
 	w io.Writer
 	f http.Flusher
 }
 
-func newWriteFlusher(w io.Writer) *writeFlusher {
-	wf := writeFlusher{w: w}
+func NewWriteFlusher(w io.Writer) *WriteFlusher {
+	wf := WriteFlusher{w: w}
 	f, ok := w.(http.Flusher)
 	if ok {
 		wf.f = f
@@ -42,7 +44,7 @@ func newWriteFlusher(w io.Writer) *writeFlusher {
 	return &wf
 }
 
-func (wf *writeFlusher) Write(p []byte) (int, error) {
+func (wf *WriteFlusher) Write(p []byte) (int, error) {
 	n, err := wf.w.Write(p)
 	if err != nil {
 		return n, err

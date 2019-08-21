@@ -104,8 +104,13 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 		return err
 	}
 
-	logger := logutil.ResponseLogger(ctx, w).With().Str("scenario", sid).Str("cluster", cid).Logger()
-	ctx = logger.WithContext(ctx)
+	bid := fmt.Sprintf("%s-%s-%d", sid, cid, time.Now().UnixNano())
+	w.Header().Add(controlapi.ResourceID, bid)
+
+	ctx, logger := logutil.WithResponseLogger(ctx, w)
+	logger.UpdateContext(func(c zerolog.Context) zerolog.Context {
+	     return c.Str("bid", bid)
+	})
 
 	zerolog.Ctx(ctx).Info().Msg("Retrieving nodes in cluster")
 	mns, err := s.db.ListNodes(ctx, cid)
@@ -117,7 +122,6 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 	lset := query.NewLabeledSet()
 	for _, n := range mns {
 		node := controlapi.NewNode(s.client, n)
-
 		ns = append(ns, node)
 		lset.Add(node)
 	}
@@ -142,16 +146,16 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 		return err
 	}
 
-	bid := time.Now().Format(time.RFC3339Nano)
-	logger = zerolog.Ctx(ctx).With().Str("benchmark", bid).Logger()
-	ctx = logger.WithContext(ctx)
-
 	benchmark := metadata.Benchmark{
 		ID:       bid,
 		Status:   metadata.BenchmarkRunning,
 		Cluster:  cluster,
 		Scenario: scenario,
 		Plan:     plan,
+		Labels: []string{
+			cid,
+			sid,
+		},
 	}
 
 	zerolog.Ctx(ctx).Info().Msg("Creating benchmark metadata")

@@ -86,8 +86,10 @@ func (s *router) postClustersCreate(ctx context.Context, w http.ResponseWriter, 
 	}
 
 	name := r.FormValue("name")
-	logger := logutil.ResponseLogger(ctx, w).With().Str("name", name).Logger()
-	ctx = logger.WithContext(ctx)
+	ctx, logger := logutil.WithResponseLogger(ctx, w)
+	logger.UpdateContext(func(c zerolog.Context) zerolog.Context {
+	     return c.Str("name", name)
+	})
 
 	cluster, err := s.db.CreateCluster(ctx, metadata.Cluster{
 		ID:         name,
@@ -97,6 +99,7 @@ func (s *router) postClustersCreate(ctx context.Context, w http.ResponseWriter, 
 	if err != nil {
 		return err
 	}
+	w.Header().Add(controlapi.ResourceID, name)
 
 	zerolog.Ctx(ctx).Info().Msg("Creating node group")
 	ng, err := s.provider.CreateNodeGroup(ctx, name, cdef)
@@ -132,19 +135,19 @@ func (s *router) postClustersCreate(ctx context.Context, w http.ResponseWriter, 
 	}
 
 	zerolog.Ctx(ctx).Info().Msg("Connecting cluster")
-	err = nodes.Connect(ctx, ns)
-	if err != nil {
-		return err
-	}
+	// err = nodes.Connect(ctx, ns)
+	// if err != nil {
+	// 	return err
+	// }
 
 	zerolog.Ctx(ctx).Info().Msg("Updating cluster metadata")
 	cluster.Status = metadata.ClusterCreated
-	cluster, err = s.db.UpdateCluster(ctx, cluster)
+	_, err = s.db.UpdateCluster(ctx, cluster)
 	if err != nil {
 		return err
 	}
 
-	return daemon.WriteJSON(w, &cluster)
+	return nil
 }
 
 func (s *router) putClustersLabel(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
@@ -165,19 +168,38 @@ func (s *router) putClustersLabel(ctx context.Context, w http.ResponseWriter, r 
 }
 
 func (s *router) putClusterUpdate(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
+	ctx, _ = logutil.WithResponseLogger(ctx, w)
+
 	id := vars["name"]
-	cluster, err := s.db.UpdateCluster(ctx, metadata.Cluster{ID: id})
+	cluster, err := s.db.GetCluster(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	return daemon.WriteJSON(w, &cluster)
+	mns, err := s.db.ListNodes(ctx, cluster.ID)
+	if err != nil {
+		return err
+	}
+
+	var ns []p2plab.Node
+	for _, n := range mns {
+		node := controlapi.NewNode(s.client, n)
+		ns = append(ns, node)
+	}
+
+	url := r.FormValue("url")
+	err = nodes.Update(ctx, ns, url)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *router) deleteClusters(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
 	names := strings.Split(r.FormValue("names"), ",")
 
-	logger := logutil.ResponseLogger(ctx, w)
+	ctx, logger := logutil.WithResponseLogger(ctx, w)
 
 	// TODO: parallelize with different color loggers?
 	for _, name := range names {

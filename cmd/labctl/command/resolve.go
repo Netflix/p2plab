@@ -34,7 +34,7 @@ func ResolveAgent(c *cli.Context, addr string) (p2plab.AgentAPI, error) {
 	return api, nil
 }
 
-func ResolveApplication(c *cli.Context, addr string) (p2plab.AppAPI, error) {
+func ResolveApp(c *cli.Context, addr string) (p2plab.AppAPI, error) {
 	api := appapi.New(CommandClient(c), addr)
 	// TODO: healthcheck
 	return api, nil

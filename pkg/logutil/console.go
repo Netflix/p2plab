@@ -16,19 +16,20 @@ package logutil
 
 import (
 	"context"
+	"io"
 )
 
 type writerKey struct{}
 
-func WithConsoleWriter(ctx context.Context) context.Context {
-	return context.WithValue(ctx, writerKey{}, true)
+func WithLogWriter(ctx context.Context, writer io.Writer) context.Context {
+	return context.WithValue(ctx, writerKey{}, writer)
 }
 
-func HasConsoleWriter(ctx context.Context) bool {
+func LogWriter(ctx context.Context) io.Writer {
 	value := ctx.Value(writerKey{})
-	has, ok := value.(bool)
+	writer, ok := value.(io.Writer)
 	if !ok {
-		return false
+		return nil
 	}
-	return has
+	return writer
 }

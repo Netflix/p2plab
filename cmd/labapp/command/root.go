@@ -20,6 +20,7 @@ import (
 
 	"github.com/Netflix/p2plab/labapp"
 	"github.com/Netflix/p2plab/version"
+	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
 )
 
@@ -41,7 +42,7 @@ func App() *cli.App {
 		cli.StringFlag{
 			Name:  "log-level,l",
 			Usage: "set the logging level [debug, info, warn, error, fatal, panic, none]",
-			Value: "info",
+			Value: "debug",
 		},
 	}
 	app.Action = appAction
@@ -49,12 +50,25 @@ func App() *cli.App {
 }
 
 func appAction(c *cli.Context) error {
-	root := c.GlobalString("root")
-	err := os.MkdirAll(root, 0711)
+	level, err := zerolog.ParseLevel(c.GlobalString("log-level"))
 	if err != nil {
 		return err
 	}
 
-	app := labapp.New(root, c.GlobalString("address"))
-	return app.Serve(context.Background())
+	rootLogger := zerolog.New(os.Stderr).Level(level).With().Timestamp().Logger()
+	logger := &rootLogger
+	ctx := logger.WithContext(context.Background())
+
+	root := c.GlobalString("root")
+	err = os.MkdirAll(root, 0711)
+	if err != nil {
+		return err
+	}
+
+	app, err := labapp.New(root, c.GlobalString("address"), logger)
+	if err != nil {
+		return err
+	}
+
+	return app.Serve(ctx)
 }
