@@ -18,10 +18,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
+	"github.com/Netflix/p2plab/errdefs"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -37,20 +37,11 @@ func WaitHealthy(ctx context.Context, ns []p2plab.Node) error {
 	for _, n := range ns {
 		n := n
 		healthchecks.Go(func() error {
-			ticker := time.NewTicker(time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-gctx.Done():
-					return errors.Wrapf(gctx.Err(), "timed out waiting for node %q to be healthy", n.Metadata().ID)
-				case <-ticker.C:
-					ok := n.Healthcheck(gctx)
-					if ok {
-						return nil
-					}
-				}
+			ok := n.Healthcheck(gctx)
+			if !ok {
+				return errors.Wrapf(errdefs.ErrUnavailable, "node %q", n.ID())
 			}
+			return nil
 		})
 	}
 

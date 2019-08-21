@@ -30,21 +30,25 @@ func App(ctx context.Context) *cli.App {
 			Name:  "address,a",
 			Usage: "address for labd",
 			Value: "http://127.0.0.1:7001",
+			EnvVar: "LABCTL_ADDRESS",
 		},
 		cli.StringFlag{
 			Name:  "log-level",
 			Usage: "set the logging level [debug, info, warn, error, fatal, panic]",
 			Value: "info",
+			EnvVar: "LABCTL_LOG_LEVEL",
 		},
 		cli.StringFlag{
 			Name:  "log-writer",
 			Usage: "set the log writer [console, json]",
 			Value: "console",
+			EnvVar: "LABCTL_LOG_WRITER",
 		},
 		cli.StringFlag{
 			Name:  "output,o",
 			Usage: "set the output printer [unix, json]",
 			Value: "unix",
+			EnvVar: "LABCTL_OUTPUT",
 		},
 	}
 	app.Commands = []cli.Command{

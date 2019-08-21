@@ -34,16 +34,19 @@ func App(ctx context.Context) *cli.App {
 			Name:  "root",
 			Usage: "path to state directory",
 			Value: "./tmp/labd",
+			EnvVar: "LABD_ROOT",
 		},
 		cli.StringFlag{
 			Name:  "address,a",
 			Usage: "address for labd's HTTP server",
 			Value: ":7001",
+			EnvVar: "LABD_ADDRESS",
 		},
 		cli.StringFlag{
 			Name:  "log-level,l",
 			Usage: "set the logging level [debug, info, warn, error, fatal, panic]",
 			Value: "debug",
+			EnvVar: "LABD_LOG_LEVEL",
 		},
 	}
 	app.Action = daemonAction

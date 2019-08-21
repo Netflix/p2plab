@@ -34,26 +34,31 @@ func App(ctx context.Context) *cli.App {
 			Name:  "root",
 			Usage: "path to state directory",
 			Value: "./tmp/labagent",
+			EnvVar: "LABAGENT_ROOT",
 		},
 		cli.StringFlag{
 			Name:  "address,a",
 			Usage: "address for labd's HTTP server",
 			Value: ":7002",
+			EnvVar: "LABAGENT_ADDRESS",
 		},
 		cli.StringFlag{
 			Name:  "app-root",
 			Usage: "path to labapp's state directory",
 			Value: "./tmp/labapp",
+			EnvVar: "LABAGENT_APP_ROOT",
 		},
 		cli.StringFlag{
 			Name:  "app-address",
 			Usage: "address for labapp's HTTP server",
 			Value: "http://localhost:7003",
+			EnvVar: "LABAGENT_APP_ADDRESS",
 		},
 		cli.StringFlag{
 			Name:  "log-level,l",
 			Usage: "set the logging level [debug, info, warn, error, fatal, panic]",
 			Value: "debug",
+			EnvVar: "LABAGENT_LOG_LEVEL",
 		},
 	}
 	app.Action = agentAction

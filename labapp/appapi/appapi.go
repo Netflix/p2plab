@@ -47,7 +47,7 @@ func (a *api) url(endpoint string, v ...interface{}) string {
 
 func (a *api) Healthcheck(ctx context.Context) bool {
 	req := a.client.NewRequest("GET", a.url("/healthcheck"),
-		httputil.WithRetryWaitMax(time.Minute),
+		httputil.WithRetryWaitMax(5*time.Minute),
 		httputil.WithRetryMax(10),
 	)
 	resp, err := req.Send(ctx)
