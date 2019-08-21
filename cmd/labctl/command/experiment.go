@@ -19,6 +19,7 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/experiments"
+	"github.com/Netflix/p2plab/pkg/cliutil"
 	"github.com/Netflix/p2plab/query"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
@@ -105,7 +106,7 @@ func startExperimentAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	experiment, err := control.Experiment().Start(ctx, name, edef)
 	if err != nil {
 		return err
@@ -125,8 +126,9 @@ func inspectExperimentAction(c *cli.Context) error {
 		return err
 	}
 
+	ctx := cliutil.CommandContext(c)
 	id := c.Args().First()
-	experiment, err := control.Experiment().Get(CommandContext(c), id)
+	experiment, err := control.Experiment().Get(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -145,7 +147,7 @@ func labelExperimentsAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	experiments, err := control.Experiment().Label(ctx, ids, c.StringSlice("add"), c.StringSlice("remove"))
 	if err != nil {
 		return err
@@ -166,7 +168,7 @@ func listExperimentAction(c *cli.Context) error {
 	}
 
 	var opts []p2plab.ListOption
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	if c.IsSet("query") {
 		q, err := query.Parse(ctx, c.String("query"))
 		if err != nil {
@@ -200,7 +202,7 @@ func removeExperimentsAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	err = control.Experiment().Remove(ctx, ids...)
 	if err != nil {
 		return err

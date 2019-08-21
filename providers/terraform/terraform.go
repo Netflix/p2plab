@@ -23,6 +23,7 @@ import (
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/logutil"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
@@ -58,6 +59,10 @@ func (t *Terraform) Apply(ctx context.Context, id string, cdef metadata.ClusterD
 		t.leaseCh <- struct{}{}
 	}()
 
+	span, ctx := opentracing.StartSpanFromContext(ctx, "terraform apply")
+	defer span.Finish()
+	span.SetTag("cluster", id)
+
 	err = t.terraform(ctx, "apply", "-auto-approve")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to auto-approve apply templates")
@@ -87,7 +92,7 @@ func (t *Terraform) Apply(ctx context.Context, id string, cdef metadata.ClusterD
 	return ns, nil
 }
 
-func (t *Terraform) Destroy(ctx context.Context) error {
+func (t *Terraform) Destroy(ctx context.Context, id string) error {
 	err := t.acquireLease()
 	if err != nil {
 		return err
@@ -95,6 +100,10 @@ func (t *Terraform) Destroy(ctx context.Context) error {
 	defer func() {
 		t.leaseCh <- struct{}{}
 	}()
+
+	span, ctx := opentracing.StartSpanFromContext(ctx, "terraform destroy")
+	defer span.Finish()
+	span.SetTag("cluster", id)
 
 	return t.terraform(ctx, "destroy", "-auto-approve")
 }

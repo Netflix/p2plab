@@ -39,9 +39,9 @@ import (
 	multihash "github.com/multiformats/go-multihash"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -87,6 +87,11 @@ func (t *transformer) Close() error {
 }
 
 func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source string, options []string) (cid.Cid, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "transform oci")
+	defer span.Finish()
+	span.SetTag("peer", p.Host().ID().String())
+	span.SetTag("source", source)
+
 	zerolog.Ctx(ctx).Info().Str("source", source).Msg("Resolving OCI reference")
 	name, desc, err := t.resolver.Resolve(ctx, source)
 	if err != nil {
@@ -205,7 +210,7 @@ func ConvertHandler(conversions map[digest.Digest]ocispec.Descriptor, peer p2pla
 			return nil, errors.Wrapf(err, "failed to convert %q [%s]", desc.Digest, desc.MediaType)
 		}
 
-		if log.Logger.GetLevel() == zerolog.DebugLevel {
+		if zerolog.Ctx(ctx).GetLevel() == zerolog.DebugLevel {
 			c, err := digestconv.DigestToCid(target.Digest)
 			if err != nil {
 				return nil, err

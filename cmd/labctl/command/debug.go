@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/Netflix/p2plab/metadata"
+	"github.com/Netflix/p2plab/pkg/cliutil"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
 )
@@ -88,7 +89,7 @@ func updateAgentAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	err = agent.Update(ctx, url)
 	if err != nil {
 		return err
@@ -113,7 +114,7 @@ func peerInfoAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	peerInfo, err := app.PeerInfo(ctx)
 	if err != nil {
 		return err
@@ -138,7 +139,7 @@ func runTaskAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	err = app.Run(ctx, metadata.Task{
 		Type:    metadata.TaskType(c.Args().Get(0)),
 		Subject: c.Args().Get(1),

@@ -122,8 +122,8 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 	lset := query.NewLabeledSet()
 	for _, n := range mns {
 		node := controlapi.NewNode(s.client, n)
-		ns = append(ns, node)
 		lset.Add(node)
+		ns = append(ns, node)
 	}
 
 	if !noReset {
@@ -131,6 +131,12 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 		err = nodes.Update(ctx, ns, "")
 		if err != nil {
 			return errors.Wrap(err, "failed to update cluster")
+		}
+
+		zerolog.Ctx(ctx).Info().Msg("Waiting for healthy nodes")
+		err = nodes.WaitHealthy(ctx, ns)
+		if err != nil {
+			return err
 		}
 
 		zerolog.Ctx(ctx).Info().Msg("Connecting cluster")

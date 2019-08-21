@@ -26,6 +26,8 @@ import (
 
 	"github.com/Netflix/p2plab/errdefs"
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
+	"github.com/opentracing-contrib/go-stdlib/nethttp"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -73,13 +75,26 @@ func (r *Request) Body(value interface{}) *Request {
 }
 
 func (r *Request) Send(ctx context.Context) (*http.Response, error) {
-	req, err := retryablehttp.NewRequest(r.Method, r.url(), r.body)
+	u := r.url()
+	req, err := http.NewRequest(r.Method, u, r.body)
 	if err != nil {
 		return nil, errors.Wrap(errdefs.ErrInvalidArgument, "failed to create new http request")
 	}
-
 	req = req.WithContext(ctx)
-	resp, err := r.client.Do(req)
+
+	span := opentracing.SpanFromContext(ctx)
+	if span != nil {
+		var ht *nethttp.Tracer
+		req, ht = nethttp.TraceRequest(span.Tracer(), req)
+		defer ht.Finish()
+	}
+
+	retryablereq, err := retryablehttp.FromRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := r.client.Do(retryablereq)
 	if err != nil {
 		return resp, errors.Wrap(err, "failed to do http request")
 	}

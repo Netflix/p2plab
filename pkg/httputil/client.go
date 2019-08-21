@@ -18,9 +18,19 @@ import (
 	"net/http"
 	"time"
 
+	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
+	"github.com/opentracing-contrib/go-stdlib/nethttp"
 	"github.com/rs/zerolog"
 )
+
+func NewHTTPClient() *http.Client {
+	return &http.Client{
+		Transport: &nethttp.Transport{
+			RoundTripper: cleanhttp.DefaultTransport(),
+		},
+	}
+}
 
 type Client struct {
 	client *http.Client

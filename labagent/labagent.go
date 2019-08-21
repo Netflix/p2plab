@@ -16,21 +16,22 @@ package labagent
 
 import (
 	"context"
+	"io"
 
 	"github.com/Netflix/p2plab/daemon"
 	"github.com/Netflix/p2plab/labagent/agentrouter"
 	"github.com/Netflix/p2plab/labagent/supervisor"
 	"github.com/Netflix/p2plab/pkg/httputil"
-	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"github.com/rs/zerolog"
 )
 
 type LabAgent struct {
-	daemon *daemon.Daemon
+	daemon  *daemon.Daemon
+	closers []io.Closer
 }
 
 func New(root, addr, appRoot, appAddr string, logger *zerolog.Logger) (*LabAgent, error) {
-	client, err := httputil.NewClient(cleanhttp.DefaultClient(), httputil.WithLogger(logger))
+	client, err := httputil.NewClient(httputil.NewHTTPClient(), httputil.WithLogger(logger))
 	if err != nil {
 		return nil, err
 	}
@@ -40,13 +41,29 @@ func New(root, addr, appRoot, appAddr string, logger *zerolog.Logger) (*LabAgent
 		return nil, err
 	}
 
-	daemon := daemon.New(addr, logger,
+	var closers []io.Closer
+	daemon, err := daemon.New("labagent", addr, logger,
 		agentrouter.New(appAddr, client, s),
 	)
+	if err != nil {
+		return nil, err
+	}
+	closers = append(closers, daemon)
 
 	return &LabAgent{
-		daemon: daemon,
+		daemon:  daemon,
+		closers: closers,
 	}, nil
+}
+
+func (a *LabAgent) Close() error {
+	for _, closer := range a.closers {
+		err := closer.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (a *LabAgent) Serve(ctx context.Context) error {

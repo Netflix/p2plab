@@ -19,12 +19,13 @@ import (
 	"os"
 
 	"github.com/Netflix/p2plab/labd"
+	"github.com/Netflix/p2plab/pkg/cliutil"
 	"github.com/Netflix/p2plab/version"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
 )
 
-func App() *cli.App {
+func App(ctx context.Context) *cli.App {
 	app := cli.NewApp()
 	app.Name = "labd"
 	app.Version = version.Version
@@ -46,26 +47,22 @@ func App() *cli.App {
 		},
 	}
 	app.Action = daemonAction
+
+	// Setup context.
+	cliutil.AttachAppContext(ctx, app)
+
 	return app
 }
 
 func daemonAction(c *cli.Context) error {
-	level, err := zerolog.ParseLevel(c.GlobalString("log-level"))
-	if err != nil {
-		return err
-	}
-
-	rootLogger := zerolog.New(os.Stderr).Level(level).With().Timestamp().Logger()
-	logger := &rootLogger
-	ctx := logger.WithContext(context.Background())
-
 	root := c.GlobalString("root")
-	err = os.MkdirAll(root, 0711)
+	err := os.MkdirAll(root, 0711)
 	if err != nil {
 		return err
 	}
 
-	daemon, err := labd.New(root, c.String("address"), logger)
+	ctx := cliutil.CommandContext(c)
+	daemon, err := labd.New(root, c.String("address"), zerolog.Ctx(ctx))
 	if err != nil {
 		return err
 	}
