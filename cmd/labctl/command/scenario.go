@@ -18,6 +18,7 @@ import (
 	"errors"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/pkg/cliutil"
 	"github.com/Netflix/p2plab/query"
 	"github.com/Netflix/p2plab/scenarios"
 	"github.com/rs/zerolog"
@@ -105,7 +106,7 @@ func createScenarioAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	scenario, err := control.Scenario().Create(ctx, name, sdef)
 	if err != nil {
 		return err
@@ -125,8 +126,9 @@ func inspectScenarioAction(c *cli.Context) error {
 		return err
 	}
 
+	ctx := cliutil.CommandContext(c)
 	name := c.Args().Get(0)
-	scenario, err := control.Scenario().Get(CommandContext(c), name)
+	scenario, err := control.Scenario().Get(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -145,7 +147,7 @@ func labelScenariosAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	scenarios, err := control.Scenario().Label(ctx, names, c.StringSlice("add"), c.StringSlice("remove"))
 	if err != nil {
 		return err
@@ -166,7 +168,7 @@ func listScenarioAction(c *cli.Context) error {
 	}
 
 	var opts []p2plab.ListOption
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	if c.IsSet("query") {
 		q, err := query.Parse(ctx, c.String("query"))
 		if err != nil {
@@ -200,7 +202,7 @@ func removeScenariosAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	err = control.Scenario().Remove(ctx, names...)
 	if err != nil {
 		return err

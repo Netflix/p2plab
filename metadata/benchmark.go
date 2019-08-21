@@ -54,10 +54,12 @@ var (
 type ScenarioPlan struct {
 	Objects map[string]cid.Cid
 
-	Seed map[string]Task
+	Seed ScenarioStage
 
-	Benchmark map[string]Task
+	Benchmark ScenarioStage
 }
+
+type ScenarioStage map[string]Task
 
 type Task struct {
 	Type TaskType

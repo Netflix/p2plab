@@ -132,7 +132,7 @@ func (p *provider) DestroyNodeGroup(ctx context.Context, ng *p2plab.NodeGroup) e
 	}
 
 	zerolog.Ctx(ctx).Debug().Msg("Terraform destroying")
-	err := t.Destroy(ctx)
+	err := t.Destroy(ctx, ng.ID)
 	if err != nil {
 		return errors.Wrap(err, "failed to terraform destroy")
 	}

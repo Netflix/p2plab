@@ -22,11 +22,16 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 )
 
 func WaitHealthy(ctx context.Context, ns []p2plab.Node) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster healthy")
+	defer span.Finish()
+	span.SetTag("nodes", len(ns))
+
 	healthchecks, gctx := errgroup.WithContext(ctx)
 
 	for _, n := range ns {
@@ -59,10 +64,9 @@ func WaitHealthy(ctx context.Context, ns []p2plab.Node) error {
 }
 
 func Connect(ctx context.Context, ns []p2plab.Node) error {
-	err := WaitHealthy(ctx, ns)
-	if err != nil {
-		return err
-	}
+	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster connect")
+	defer span.Finish()
+	span.SetTag("nodes", len(ns))
 
 	peerAddrs := make([]string, len(ns))
 	collectPeerAddrs, gctx := errgroup.WithContext(ctx)
@@ -83,7 +87,7 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 		})
 	}
 
-	err = collectPeerAddrs.Wait()
+	err := collectPeerAddrs.Wait()
 	if err != nil {
 		return err
 	}

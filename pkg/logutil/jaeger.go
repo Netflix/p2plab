@@ -12,34 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package nodes
+package logutil
 
 import (
-	"context"
-
-	"github.com/Netflix/p2plab"
-	opentracing "github.com/opentracing/opentracing-go"
-	"golang.org/x/sync/errgroup"
+	"github.com/rs/zerolog"
+	jaeger "github.com/uber/jaeger-client-go"
 )
 
-func Update(ctx context.Context, ns []p2plab.Node, url string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster healthy")
-	defer span.Finish()
-	span.SetTag("nodes", len(ns))
+type jaegerLogger struct {
+	logger *zerolog.Logger
+}
 
-	updatePeers, gctx := errgroup.WithContext(ctx)
-	for _, n := range ns {
-		n := n
-		updatePeers.Go(func() error {
-			return n.Update(gctx, url)
-		})
+func NewJaegerLogger(logger *zerolog.Logger) jaeger.Logger {
+	return &jaegerLogger{logger}
+}
 
-	}
+type Logger interface {
+	// Error logs a message at error priority
+	Error(msg string)
 
-	err := updatePeers.Wait()
-	if err != nil {
-		return err
-	}
+	// Infof logs a message at info priority
+	Infof(msg string, args ...interface{})
+}
 
-	return nil
+func (jl *jaegerLogger) Error(msg string) {
+	jl.logger.Error().Msg(msg)
+}
+
+func (jl *jaegerLogger) Infof(msg string, args ...interface{}) {
+	jl.logger.Info().Msgf(msg, args...)
 }

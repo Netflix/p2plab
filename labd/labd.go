@@ -31,7 +31,6 @@ import (
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/providers"
 	"github.com/Netflix/p2plab/transformers"
-	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
@@ -50,7 +49,7 @@ func New(root, addr string, logger *zerolog.Logger) (*Labd, error) {
 	}
 	closers = append(closers, db)
 
-	client, err := httputil.NewClient(cleanhttp.DefaultClient(), httputil.WithLogger(logger))
+	client, err := httputil.NewClient(httputil.NewHTTPClient(), httputil.WithLogger(logger))
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +69,7 @@ func New(root, addr string, logger *zerolog.Logger) (*Labd, error) {
 	}
 	closers = append(closers, &daemon.CancelCloser{cancel})
 
-	daemon := daemon.New(addr, logger,
+	daemon, err := daemon.New("labd", addr, logger,
 		healthcheckrouter.New(),
 		clusterrouter.New(db, provider, client),
 		noderouter.New(db, client),
@@ -78,6 +77,10 @@ func New(root, addr string, logger *zerolog.Logger) (*Labd, error) {
 		benchmarkrouter.New(db, client, ts, seeder),
 		experimentrouter.New(db, provider, client, ts, seeder),
 	)
+	if err != nil {
+		return nil, err
+	}
+	closers = append(closers, daemon)
 
 	d := &Labd{
 		daemon:  daemon,

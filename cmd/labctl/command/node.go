@@ -16,6 +16,7 @@ package command
 
 import (
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/pkg/cliutil"
 	"github.com/Netflix/p2plab/query"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -78,9 +79,10 @@ func inspectNodeAction(c *cli.Context) error {
 		return err
 	}
 
+	ctx := cliutil.CommandContext(c)
 	cluster := c.Args().First()
 	id := c.Args().Get(1)
-	node, err := control.Node().Get(CommandContext(c), cluster, id)
+	node, err := control.Node().Get(ctx, cluster, id)
 	if err != nil {
 		return err
 	}
@@ -103,7 +105,7 @@ func labelNodesAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	cluster := c.Args().First()
 	nodes, err := control.Node().Label(ctx, cluster, ids, c.StringSlice("add"), c.StringSlice("remove"))
 	if err != nil {
@@ -129,7 +131,7 @@ func listNodeAction(c *cli.Context) error {
 	}
 
 	var opts []p2plab.ListOption
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	if c.IsSet("query") {
 		q, err := query.Parse(ctx, c.String("query"))
 		if err != nil {
@@ -163,7 +165,7 @@ func sshNodeAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	node, err := control.Node().Get(ctx, c.Args().Get(0), c.Args().Get(1))
 	if err != nil {
 		return err

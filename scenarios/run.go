@@ -20,17 +20,35 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 )
 
 func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan, seederAddr string) error {
+	err := Seed(ctx, lset, plan.Seed, seederAddr)
+	if err != nil {
+		return err
+	}
+
+	err = Benchmark(ctx, lset, plan.Benchmark)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Seed(ctx context.Context, lset p2plab.LabeledSet, seed metadata.ScenarioStage, seederAddr string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster seed")
+	defer span.Finish()
+
 	zerolog.Ctx(ctx).Info().Msg("Seeding cluster")
-	seed, gctx := errgroup.WithContext(ctx)
-	for id, task := range plan.Seed {
+	seeding, gctx := errgroup.WithContext(ctx)
+	for id, task := range seed {
 		id, task := id, task
-		seed.Go(func() error {
+		seeding.Go(func() error {
 			labeled := lset.Get(id)
 			if labeled == nil {
 				return errors.Wrapf(errdefs.ErrNotFound, "could not find %q in labeled set", id)
@@ -69,16 +87,25 @@ func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan
 			return nil
 		})
 	}
-	err := seed.Wait()
+
+	err := seeding.Wait()
 	if err != nil {
 		return err
 	}
 
+	zerolog.Ctx(ctx).Info().Msg("Seeding completed")
+	return nil
+}
+
+func Benchmark(ctx context.Context, lset p2plab.LabeledSet, benchmark metadata.ScenarioStage) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster benchmark")
+	defer span.Finish()
+
 	zerolog.Ctx(ctx).Info().Msg("Benchmarking cluster")
-	benchmark, gctx := errgroup.WithContext(ctx)
-	for id, task := range plan.Benchmark {
+	benchmarking, gctx := errgroup.WithContext(ctx)
+	for id, task := range benchmark {
 		id, task := id, task
-		benchmark.Go(func() error {
+		benchmarking.Go(func() error {
 			labeled := lset.Get(id)
 			if labeled == nil {
 				return errors.Wrapf(errdefs.ErrNotFound, "could not find %q in labeled set", id)
@@ -95,7 +122,7 @@ func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan
 		})
 	}
 
-	err = benchmark.Wait()
+	err := benchmarking.Wait()
 	if err != nil {
 		return err
 	}

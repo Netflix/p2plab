@@ -15,11 +15,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"syscall"
 
-	"github.com/rs/zerolog"
 	"github.com/Netflix/p2plab/cmd/labagent/command"
+	"github.com/Netflix/p2plab/pkg/cliutil"
+	"github.com/rs/zerolog"
 )
 
 func init() {
@@ -30,7 +33,12 @@ func init() {
 }
 
 func main() {
-	app := command.App()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	ih := cliutil.NewInterruptHandler(cancel, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+	defer ih.Close()
+
+	app := command.App(ctx)
 	if err := app.Run(os.Args); err != nil {
 		fmt.Fprintf(os.Stderr, "labagent: %s\n", err)
 		os.Exit(1)

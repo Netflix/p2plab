@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 
 	"github.com/Netflix/p2plab/pkg/httputil"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
@@ -149,6 +150,10 @@ func (s *supervisor) clear(ctx context.Context) error {
 }
 
 func (s *supervisor) atomicReplaceBinary(ctx context.Context, url string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "updatng binary")
+	defer span.Finish()
+	span.SetTag("url", url)
+
 	zerolog.Ctx(ctx).Info().Msg("Atomically replacing binary")
 
 	req := s.client.NewRequest("GET", url)

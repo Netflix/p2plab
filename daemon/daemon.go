@@ -17,27 +17,48 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"time"
 
 	"github.com/Netflix/p2plab/errdefs"
+	"github.com/Netflix/p2plab/pkg/logutil"
 	"github.com/gorilla/mux"
+	"github.com/opentracing-contrib/go-stdlib/nethttp"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/rs/zerolog"
 )
 
 type Daemon struct {
-	addr   string
-	router *mux.Router
-	logger *zerolog.Logger
+	addr    string
+	logger  *zerolog.Logger
+	tracer  opentracing.Tracer
+	router  *mux.Router
+	closers []io.Closer
 }
 
-func New(addr string, logger *zerolog.Logger, routers ...Router) *Daemon {
+func New(service, addr string, logger *zerolog.Logger, routers ...Router) (*Daemon, error) {
+	var closers []io.Closer
+	tracer, traceCloser := NewTracer(service, logutil.NewJaegerLogger(logger))
+	closers = append(closers, traceCloser)
+
 	d := &Daemon{
 		addr:   addr,
 		logger: logger,
+		tracer: tracer,
 	}
 	d.router = d.createMux(routers...)
-	return d
+	return d, nil
+}
+
+func (d *Daemon) Close() error {
+	for _, closer := range d.closers {
+		err := closer.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (d *Daemon) Serve(ctx context.Context) error {
@@ -55,8 +76,11 @@ func (d *Daemon) createMux(routers ...Router) *mux.Router {
 	d.router = mux.NewRouter().UseEncodedPath().StrictSlash(true)
 	for _, router := range routers {
 		for _, route := range router.Routes() {
+			var h http.Handler
+			h = d.createHTTPHandler(route.Handler())
+			h = nethttp.Middleware(d.tracer, h)
+
 			d.logger.Debug().Str("path", route.Path()).Str("method", route.Method()).Msg("Registering route")
-			h := d.createHTTPHandler(route.Handler())
 			d.router.Path(route.Path()).Methods(route.Method()).Handler(h)
 		}
 	}
@@ -66,7 +90,6 @@ func (d *Daemon) createMux(routers ...Router) *mux.Router {
 func (d *Daemon) createHTTPHandler(handler Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := d.logger.WithContext(r.Context())
-
 		r = r.WithContext(ctx)
 
 		vars := mux.Vars(r)

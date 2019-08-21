@@ -18,6 +18,7 @@ import (
 	"errors"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/pkg/cliutil"
 	"github.com/Netflix/p2plab/query"
 	"github.com/urfave/cli"
 )
@@ -92,7 +93,7 @@ func startBenchmarkAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	cluster, scenario := c.Args().Get(0), c.Args().Get(1)
 
 	var opts []p2plab.StartBenchmarkOption
@@ -123,8 +124,9 @@ func inspectBenchmarkAction(c *cli.Context) error {
 		return err
 	}
 
+	ctx := cliutil.CommandContext(c)
 	id := c.Args().First()
-	benchmark, err := control.Benchmark().Get(CommandContext(c), id)
+	benchmark, err := control.Benchmark().Get(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -143,7 +145,7 @@ func labelBenchmarksAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	benchmarks, err := control.Benchmark().Label(ctx, ids, c.StringSlice("add"), c.StringSlice("remove"))
 	if err != nil {
 		return err
@@ -164,7 +166,7 @@ func listBenchmarkAction(c *cli.Context) error {
 	}
 
 	var opts []p2plab.ListOption
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	if c.IsSet("query") {
 		q, err := query.Parse(ctx, c.String("query"))
 		if err != nil {
@@ -198,7 +200,7 @@ func removeBenchmarksAction(c *cli.Context) error {
 		return err
 	}
 
-	ctx := CommandContext(c)
+	ctx := cliutil.CommandContext(c)
 	err = control.Benchmark().Remove(ctx, ids...)
 	if err != nil {
 		return err

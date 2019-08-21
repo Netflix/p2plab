@@ -17,6 +17,7 @@ package approuter
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -32,6 +33,7 @@ import (
 	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	multiaddr "github.com/multiformats/go-multiaddr"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
@@ -95,6 +97,10 @@ func (s *router) postRunTask(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func (s *router) getFile(ctx context.Context, target string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "get")
+	defer span.Finish()
+	span.SetTag("cid", target)
+
 	c, err := cid.Parse(target)
 	if err != nil {
 		return errors.Wrapf(errdefs.ErrInvalidArgument, "%s", err)
@@ -134,6 +140,10 @@ func (s *router) getFile(ctx context.Context, target string) error {
 }
 
 func (s *router) connect(ctx context.Context, addrs []string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "connect")
+	defer span.Finish()
+	span.SetTag("addrs", fmt.Sprintf("%s", addrs))
+
 	infos, err := parseAddrs(addrs)
 	if err != nil {
 		return err
@@ -149,6 +159,10 @@ func (s *router) connect(ctx context.Context, addrs []string) error {
 }
 
 func (s *router) disconnect(ctx context.Context, addrs []string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "disconnect")
+	defer span.Finish()
+	span.SetTag("addrs", fmt.Sprintf("%s", addrs))
+
 	infos, err := parseAddrs(addrs)
 	if err != nil {
 		return err

@@ -21,7 +21,7 @@ import (
 	"syscall"
 
 	"github.com/Netflix/p2plab/cmd/labctl/command"
-	"github.com/Netflix/p2plab/cmd/labctl/interrupt"
+	"github.com/Netflix/p2plab/pkg/cliutil"
 	"github.com/rs/zerolog"
 )
 
@@ -35,7 +35,7 @@ func init() {
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	ih := interrupt.NewInterruptHandler(cancel, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+	ih := cliutil.NewInterruptHandler(cancel, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 	defer ih.Close()
 
 	app := command.App(ctx)

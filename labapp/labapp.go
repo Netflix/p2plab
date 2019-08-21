@@ -40,10 +40,14 @@ func New(root, addr string, logger *zerolog.Logger) (*LabApp, error) {
 	}
 	closers = append(closers, &daemon.CancelCloser{cancel})
 
-	daemon := daemon.New(addr, logger,
+	daemon, err := daemon.New("labapp", addr, logger,
 		healthcheckrouter.New(),
 		approuter.New(p),
 	)
+	if err != nil {
+		return nil, err
+	}
+	closers = append(closers, daemon)
 
 	return &LabApp{
 		daemon:  daemon,

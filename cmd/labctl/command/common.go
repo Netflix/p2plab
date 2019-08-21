@@ -22,16 +22,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Netflix/p2plab/daemon"
 	"github.com/Netflix/p2plab/errdefs"
+	"github.com/Netflix/p2plab/pkg/cliutil"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/pkg/logutil"
 	"github.com/Netflix/p2plab/printer"
-	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	opentracing "github.com/opentracing/opentracing-go"
-	tlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	jaeger "github.com/uber/jaeger-client-go"
 	"github.com/urfave/cli"
 )
 
@@ -43,14 +42,36 @@ var (
 )
 
 func AttachAppContext(ctx context.Context, app *cli.App) {
-	tracer, closer := getTracer()
+	var (
+		logger *zerolog.Logger
+		writer io.Writer
+		tracer opentracing.Tracer
+		closer io.Closer
+		span   opentracing.Span
+	)
 
-	var span opentracing.Span
+	before := app.Before
+	app.Before = func(c *cli.Context) error {
+		if before != nil {
+			if err := before(c); err != nil {
+				return err
+			}
+		}
+
+		var err error
+		logger, writer, err = newLogger(c)
+		if err != nil {
+			return err
+		}
+
+		tracer, closer = daemon.NewTracer("labctl", nil)
+		return nil
+	}
 
 	for i, cmd := range app.Commands {
 		for j, subcmd := range cmd.Subcommands {
 			func(before cli.BeforeFunc) {
-				name := subcmd.Name
+				name := strings.Join([]string{cmd.Name, subcmd.Name}, " ")
 				app.Commands[i].Subcommands[j].Before = func(c *cli.Context) error {
 					if before != nil {
 						if err := before(c); err != nil {
@@ -59,12 +80,8 @@ func AttachAppContext(ctx context.Context, app *cli.App) {
 					}
 
 					span = tracer.StartSpan(name)
-					span.LogFields(tlog.String("command", strings.Join(os.Args, " ")))
+					span.SetTag("command", strings.Join(os.Args, " "))
 
-					logger, writer, err := newLogger(c)
-					if err != nil {
-						return err
-					}
 					ctx = logger.WithContext(ctx)
 					ctx = logutil.WithLogWriter(ctx, writer)
 					ctx = opentracing.ContextWithSpan(ctx, span)
@@ -92,7 +109,7 @@ func AttachAppContext(ctx context.Context, app *cli.App) {
 }
 
 func AttachAppPrinter(app *cli.App) {
-	app.Before = joinBefore(app.Before, func(c *cli.Context) error {
+	app.Before = cliutil.JoinBefore(app.Before, func(c *cli.Context) error {
 		output := OutputType(c.String("output"))
 
 		var p printer.Printer
@@ -111,7 +128,7 @@ func AttachAppPrinter(app *cli.App) {
 }
 
 func AttachAppClient(app *cli.App) {
-	app.Before = joinBefore(app.Before, func(c *cli.Context) error {
+	app.Before = cliutil.JoinBefore(app.Before, func(c *cli.Context) error {
 		var opts []httputil.ClientOption
 		if c.GlobalString("log-level") == "debug" {
 			logger, _, err := newLogger(c)
@@ -122,7 +139,7 @@ func AttachAppClient(app *cli.App) {
 			opts = append(opts, httputil.WithLogger(logger))
 		}
 
-		client, err := httputil.NewClient(cleanhttp.DefaultClient(), opts...)
+		client, err := httputil.NewClient(httputil.NewHTTPClient(), opts...)
 		if err != nil {
 			return err
 		}
@@ -132,55 +149,12 @@ func AttachAppClient(app *cli.App) {
 	})
 }
 
-func joinBefore(fns ...cli.BeforeFunc) cli.BeforeFunc {
-	return func(c *cli.Context) error {
-		for _, fn := range fns {
-			if fn == nil {
-				continue
-			}
-
-			err := fn(c)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-}
-
-func CommandContext(c *cli.Context) context.Context {
-	return c.App.Metadata["context"].(context.Context)
-}
-
 func CommandPrinter(c *cli.Context) printer.Printer {
 	return c.App.Metadata["printer"].(printer.Printer)
 }
 
 func CommandClient(c *cli.Context) *httputil.Client {
 	return c.App.Metadata["client"].(*httputil.Client)
-}
-
-func getTracer() (opentracing.Tracer, io.Closer) {
-	if traceAddr := os.Getenv("JAEGER_TRACE"); traceAddr != "" {
-		tr, err := jaeger.NewUDPTransport(traceAddr, 0)
-		if err != nil {
-			panic(err)
-		}
-
-		return jaeger.NewTracer(
-			"labctl",
-			jaeger.NewConstSampler(true),
-			jaeger.NewRemoteReporter(tr),
-		)
-	}
-
-	return opentracing.NoopTracer{}, &nopCloser{}
-}
-
-type nopCloser struct{}
-
-func (*nopCloser) Close() error {
-	return nil
 }
 
 func newLogger(c *cli.Context) (*zerolog.Logger, io.Writer, error) {

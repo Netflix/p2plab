@@ -88,7 +88,7 @@ func (s *router) postClustersCreate(ctx context.Context, w http.ResponseWriter, 
 	name := r.FormValue("name")
 	ctx, logger := logutil.WithResponseLogger(ctx, w)
 	logger.UpdateContext(func(c zerolog.Context) zerolog.Context {
-	     return c.Str("name", name)
+		return c.Str("name", name)
 	})
 
 	cluster, err := s.db.CreateCluster(ctx, metadata.Cluster{
@@ -134,11 +134,17 @@ func (s *router) postClustersCreate(ctx context.Context, w http.ResponseWriter, 
 		ns = append(ns, controlapi.NewNode(s.client, n))
 	}
 
+	zerolog.Ctx(ctx).Info().Msg("Waiting for healthy nodes")
+	err = nodes.WaitHealthy(ctx, ns)
+	if err != nil {
+		return err
+	}
+
 	zerolog.Ctx(ctx).Info().Msg("Connecting cluster")
-	// err = nodes.Connect(ctx, ns)
-	// if err != nil {
-	// 	return err
-	// }
+	err = nodes.Connect(ctx, ns)
+	if err != nil {
+		return err
+	}
 
 	zerolog.Ctx(ctx).Info().Msg("Updating cluster metadata")
 	cluster.Status = metadata.ClusterCreated
