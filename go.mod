@@ -5,6 +5,8 @@ go 1.12
 require (
 	github.com/Microsoft/go-winio v0.4.13-0.20190408173621-84b4ab48a507 // indirect
 	github.com/Microsoft/hcsshim v0.8.6 // indirect
+	github.com/aws/aws-sdk-go v1.23.6
+	github.com/aws/aws-sdk-go-v2 v0.10.0
 	github.com/codahale/hdrhistogram v0.0.0-20160425231609-f8ad88b59a58 // indirect
 	github.com/containerd/containerd v1.3.0-0.20190507210959-7c1e88399ec0
 	github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc // indirect

@@ -19,10 +19,14 @@ import (
 	"io"
 )
 
-type Uploader interface {
-	Upload(ctx context.Context, r io.Reader) (url string, err error)
+type Builder interface {
+	Build(ctx context.Context, ref string) (io.Reader, error)
 }
 
-type Fetcher interface {
-	Fetch(ctx context.Context, url string) (io.ReadCloser, error)
+type Uploader interface {
+	Upload(ctx context.Context, r io.Reader) (ref string, err error)
+}
+
+type Downloader interface {
+	Download(ctx context.Context, ref string) (io.ReadCloser, error)
 }

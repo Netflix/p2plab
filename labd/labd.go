@@ -31,6 +31,7 @@ import (
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/providers"
 	"github.com/Netflix/p2plab/transformers"
+	"github.com/Netflix/p2plab/uploaders"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
@@ -41,7 +42,15 @@ type Labd struct {
 	closers []io.Closer
 }
 
-func New(root, addr string, logger *zerolog.Logger) (*Labd, error) {
+func New(root, addr string, logger *zerolog.Logger, opts ...LabdOption) (*Labd, error) {
+	var settings LabdSettings
+	for _, opt := range opts {
+		err := opt(&settings)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var closers []io.Closer
 	db, err := metadata.NewDB(root)
 	if err != nil {
@@ -54,7 +63,13 @@ func New(root, addr string, logger *zerolog.Logger) (*Labd, error) {
 		return nil, err
 	}
 
-	provider, err := providers.GetNodeProvider(filepath.Join(root, "providers"), "terraform")
+	provider, err := providers.GetNodeProvider(filepath.Join(root, "providers"), settings.Provider, settings.ProviderSettings)
+	if err != nil {
+		return nil, err
+	}
+
+	settings.UploaderSettings.Client = client
+	uploader, err := uploaders.GetUploader(filepath.Join(root, "uploaders"), settings.Uploader, settings.UploaderSettings)
 	if err != nil {
 		return nil, err
 	}
@@ -74,8 +89,8 @@ func New(root, addr string, logger *zerolog.Logger) (*Labd, error) {
 		clusterrouter.New(db, provider, client),
 		noderouter.New(db, client),
 		scenariorouter.New(db),
-		benchmarkrouter.New(db, client, ts, seeder),
-		experimentrouter.New(db, provider, client, ts, seeder),
+		benchmarkrouter.New(db, client, ts, seeder, uploader),
+		experimentrouter.New(db, provider, client, ts, seeder, uploader),
 	)
 	if err != nil {
 		return nil, err

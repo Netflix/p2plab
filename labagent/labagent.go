@@ -17,9 +17,11 @@ package labagent
 import (
 	"context"
 	"io"
+	"path/filepath"
 
 	"github.com/Netflix/p2plab/daemon"
 	"github.com/Netflix/p2plab/daemon/healthcheckrouter"
+	"github.com/Netflix/p2plab/downloaders"
 	"github.com/Netflix/p2plab/labagent/agentrouter"
 	"github.com/Netflix/p2plab/labagent/supervisor"
 	"github.com/Netflix/p2plab/pkg/httputil"
@@ -31,13 +33,24 @@ type LabAgent struct {
 	closers []io.Closer
 }
 
-func New(root, addr, appRoot, appAddr string, logger *zerolog.Logger) (*LabAgent, error) {
+func New(root, addr, appRoot, appAddr string, logger *zerolog.Logger, opts ...LabagentOption) (*LabAgent, error) {
+	var settings LabagentSettings
+	for _, opt := range opts {
+		err := opt(&settings)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	client, err := httputil.NewClient(httputil.NewHTTPClient(), httputil.WithLogger(logger))
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := supervisor.New(root, appRoot, appAddr, client)
+	settings.DownloaderSettings.Client = client
+	fs := downloaders.New(filepath.Join(root, "downloaders"), settings.DownloaderSettings)
+
+	s, err := supervisor.New(root, appRoot, appAddr, client, fs)
 	if err != nil {
 		return nil, err
 	}

@@ -26,6 +26,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/Netflix/p2plab/downloaders"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -33,7 +34,7 @@ import (
 )
 
 type Supervisor interface {
-	Supervise(ctx context.Context, url string) error
+	Supervise(ctx context.Context, ref string) error
 }
 
 type supervisor struct {
@@ -41,11 +42,12 @@ type supervisor struct {
 	appRoot string
 	appPort string
 	client  *httputil.Client
+	fs      *downloaders.Downloaders
 	app     *exec.Cmd
 	cancel  func()
 }
 
-func New(root, appRoot, appAddr string, client *httputil.Client) (Supervisor, error) {
+func New(root, appRoot, appAddr string, client *httputil.Client, fs *downloaders.Downloaders) (Supervisor, error) {
 	u, err := url.Parse(appAddr)
 	if err != nil {
 		return nil, err
@@ -61,17 +63,18 @@ func New(root, appRoot, appAddr string, client *httputil.Client) (Supervisor, er
 		appRoot: appRoot,
 		appPort: appPort,
 		client:  client,
+		fs:      fs,
 	}, nil
 }
 
-func (s *supervisor) Supervise(ctx context.Context, url string) error {
+func (s *supervisor) Supervise(ctx context.Context, ref string) error {
 	err := s.kill(ctx)
 	if err != nil {
 		return err
 	}
 
-	if url != "" {
-		err = s.atomicReplaceBinary(ctx, url)
+	if ref != "" {
+		err = s.atomicReplaceBinary(ctx, ref)
 		if err != nil {
 			return err
 		}
@@ -149,19 +152,28 @@ func (s *supervisor) clear(ctx context.Context) error {
 	return nil
 }
 
-func (s *supervisor) atomicReplaceBinary(ctx context.Context, url string) error {
+func (s *supervisor) atomicReplaceBinary(ctx context.Context, ref string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "updating binary")
 	defer span.Finish()
-	span.SetTag("url", url)
+	span.SetTag("ref", ref)
 
 	zerolog.Ctx(ctx).Info().Msg("Atomically replacing binary")
 
-	req := s.client.NewRequest("GET", url)
-	resp, err := req.Send(ctx)
+	u, err := url.Parse(ref)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+
+	downloader, err := s.fs.Get(u.Scheme)
+	if err != nil {
+		return err
+	}
+
+	rc, err := downloader.Download(ctx, ref)
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
 
 	f, err := ioutil.TempFile(filepath.Join(s.root, "tmp"), "labapp")
 	if err != nil {
@@ -170,7 +182,7 @@ func (s *supervisor) atomicReplaceBinary(ctx context.Context, url string) error 
 	defer os.Remove(f.Name())
 	defer f.Close()
 
-	_, err = io.Copy(f, resp.Body)
+	_, err = io.Copy(f, rc)
 	if err != nil {
 		return err
 	}

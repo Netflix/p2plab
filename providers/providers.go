@@ -18,16 +18,20 @@ import (
 	"path/filepath"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/providers/terraform"
 	"github.com/pkg/errors"
 )
 
-func GetNodeProvider(root, providerType string) (p2plab.NodeProvider, error) {
+type ProviderSettings struct {
+}
+
+func GetNodeProvider(root, providerType string, settings ProviderSettings) (p2plab.NodeProvider, error) {
 	root = filepath.Join(root, providerType)
 	switch providerType {
 	case "terraform":
 		return terraform.New(root)
 	default:
-		return nil, errors.Errorf("unrecognized node provider type: %q", providerType)
+		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "unrecognized node provider type %q", providerType)
 	}
 }

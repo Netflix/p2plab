@@ -64,13 +64,10 @@ func (t *Terraform) Apply(ctx context.Context, id string, cdef metadata.ClusterD
 	defer span.Finish()
 	span.SetTag("cluster", id)
 
-	if zerolog.Ctx(ctx).GetLevel() == zerolog.InfoLevel {
-		ectx, cancel := context.WithCancel(ctx)
-		defer cancel()
+	ectx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-		go logutil.Elapsed(ectx, 20*time.Second, "Applying terraform configuration")
-	}
-
+	go logutil.Elapsed(ectx, 20*time.Second, "Applying terraform configuration")
 	err = t.terraform(ctx, "apply", "-auto-approve")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to auto-approve apply templates")
@@ -115,13 +112,10 @@ func (t *Terraform) Destroy(ctx context.Context, id string) error {
 	defer span.Finish()
 	span.SetTag("cluster", id)
 
-	if zerolog.Ctx(ctx).GetLevel() == zerolog.InfoLevel {
-		ectx, cancel := context.WithCancel(ctx)
-		defer cancel()
+	ectx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-		go logutil.Elapsed(ectx, 20*time.Second, "Destroying terraform-managed infrastructure")
-	}
-
+	go logutil.Elapsed(ectx, 20*time.Second, "Destroying terraform-managed infrastructure")
 	return t.terraform(ctx, "destroy", "-auto-approve")
 }
 

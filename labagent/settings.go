@@ -12,4 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fetchers
+package labagent
+
+import "github.com/Netflix/p2plab/downloaders"
+
+type LabagentOption func(*LabagentSettings) error
+
+type LabagentSettings struct {
+	DownloaderSettings downloaders.DownloaderSettings
+}
+
+func WithDownloaderSettings(settings downloaders.DownloaderSettings) LabagentOption {
+	return func(s *LabagentSettings) error {
+		s.DownloaderSettings = settings
+		return nil
+	}
+}

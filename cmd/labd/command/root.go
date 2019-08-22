@@ -20,6 +20,8 @@ import (
 
 	"github.com/Netflix/p2plab/labd"
 	"github.com/Netflix/p2plab/pkg/cliutil"
+	"github.com/Netflix/p2plab/uploaders"
+	"github.com/Netflix/p2plab/uploaders/s3uploader"
 	"github.com/Netflix/p2plab/version"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
@@ -31,22 +33,44 @@ func App(ctx context.Context) *cli.App {
 	app.Version = version.Version
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "root",
-			Usage: "path to state directory",
-			Value: "./tmp/labd",
+			Name:   "root",
+			Usage:  "path to state directory",
+			Value:  "./tmp/labd",
 			EnvVar: "LABD_ROOT",
 		},
 		cli.StringFlag{
-			Name:  "address,a",
-			Usage: "address for labd's HTTP server",
-			Value: ":7001",
+			Name:   "address,a",
+			Usage:  "address for labd's HTTP server",
+			Value:  ":7001",
 			EnvVar: "LABD_ADDRESS",
 		},
 		cli.StringFlag{
-			Name:  "log-level,l",
-			Usage: "set the logging level [debug, info, warn, error, fatal, panic]",
-			Value: "debug",
+			Name:   "log-level,l",
+			Usage:  "set the logging level [debug, info, warn, error, fatal, panic]",
+			Value:  "debug",
 			EnvVar: "LABD_LOG_LEVEL",
+		},
+		cli.StringFlag{
+			Name:   "provider,p",
+			Usage:  "set the provider to create node groups [terraform]",
+			Value:  "terraform",
+			EnvVar: "LABD_PROVIDER",
+		},
+		cli.StringFlag{
+			Name:   "uploader,u",
+			Usage:  "set the uploader to use to distribute p2p app binaries [s3]",
+			Value:  "s3",
+			EnvVar: "LABD_UPLOADER",
+		},
+		cli.StringFlag{
+			Name:   "uploader.s3.bucket",
+			Usage:  "bucket name for s3 uploader",
+			EnvVar: "LABD_UPLOADER_S3_BUCKET",
+		},
+		cli.StringFlag{
+			Name:   "uploader.s3.prefix",
+			Usage:  "bucket prefix for s3 uploader",
+			EnvVar: "LABD_UPLOADER_S3_PREFIX",
 		},
 	}
 	app.Action = daemonAction
@@ -65,7 +89,16 @@ func daemonAction(c *cli.Context) error {
 	}
 
 	ctx := cliutil.CommandContext(c)
-	daemon, err := labd.New(root, c.String("address"), zerolog.Ctx(ctx))
+	daemon, err := labd.New(root, c.String("address"), zerolog.Ctx(ctx),
+		labd.WithProvider(c.String("provider")),
+		labd.WithUploader(c.String("uploader")),
+		labd.WithUploaderSettings(uploaders.UploaderSettings{
+			S3: s3uploader.S3UploaderSettings{
+				Bucket: c.String("uploader.s3.bucket"),
+				Prefix: c.String("uploader.s3.prefix"),
+			},
+		}),
+	)
 	if err != nil {
 		return err
 	}

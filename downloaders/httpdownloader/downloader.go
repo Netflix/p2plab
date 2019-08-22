@@ -12,29 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package uploaders
+package httpdownloader
 
 import (
-	"path/filepath"
+	"context"
+	"io"
 
 	"github.com/Netflix/p2plab"
-	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/pkg/httputil"
-	"github.com/Netflix/p2plab/uploaders/s3uploader"
-	"github.com/pkg/errors"
 )
 
-type UploaderSettings struct {
-	Client *httputil.Client
-	S3     s3uploader.S3UploaderSettings
+type downloader struct {
+	client *httputil.Client
 }
 
-func GetUploader(root, uploaderType string, settings UploaderSettings) (p2plab.Uploader, error) {
-	root = filepath.Join(root, uploaderType)
-	switch uploaderType {
-	case "s3":
-		return s3uploader.New(settings.Client.HTTPClient, settings.S3)
-	default:
-		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "unrecognized uploader type %q", uploaderType)
+func New(client *httputil.Client) p2plab.Downloader {
+	return &downloader{client}
+}
+
+func (f *downloader) Download(ctx context.Context, ref string) (io.ReadCloser, error) {
+	req := f.client.NewRequest("GET", ref)
+	resp, err := req.Send(ctx)
+	if err != nil {
+		return nil, err
 	}
+
+	return resp.Body, nil
 }

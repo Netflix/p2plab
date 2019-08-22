@@ -39,14 +39,15 @@ import (
 )
 
 type router struct {
-	db     metadata.DB
-	client *httputil.Client
-	ts     *transformers.Transformers
-	seeder *peer.Peer
+	db       metadata.DB
+	client   *httputil.Client
+	ts       *transformers.Transformers
+	seeder   *peer.Peer
+	uploader p2plab.Uploader
 }
 
-func New(db metadata.DB, client *httputil.Client, ts *transformers.Transformers, seeder *peer.Peer) daemon.Router {
-	return &router{db, client, ts, seeder}
+func New(db metadata.DB, client *httputil.Client, ts *transformers.Transformers, seeder *peer.Peer, uploader p2plab.Uploader) daemon.Router {
+	return &router{db, client, ts, seeder, uploader}
 }
 
 func (s *router) Routes() []daemon.Route {
