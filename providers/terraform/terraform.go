@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"time"
 
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
@@ -63,6 +64,15 @@ func (t *Terraform) Apply(ctx context.Context, id string, cdef metadata.ClusterD
 	defer span.Finish()
 	span.SetTag("cluster", id)
 
+	if zerolog.Ctx(ctx).GetLevel() == zerolog.InfoLevel {
+		ectx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		go logutil.Elapsed(ectx, 20*time.Second, func(ctx context.Context, elapsed time.Duration) {
+			zerolog.Ctx(ctx).Info().Dur("elapsed", elapsed).Msg("Applying terraform configuration")
+		})
+	}
+
 	err = t.terraform(ctx, "apply", "-auto-approve")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to auto-approve apply templates")
@@ -71,6 +81,8 @@ func (t *Terraform) Apply(ctx context.Context, id string, cdef metadata.ClusterD
 	var ns []metadata.Node
 	for i, cg := range cdef.Groups {
 		asg := fmt.Sprintf("%s-%d", id, i)
+
+		zerolog.Ctx(ctx).Debug().Str("asg", asg).Msg("Discovering instances in ASG")
 		instances, err := DiscoverInstances(ctx, asg, cg.Region)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to discover instances for ASG %q in %q", asg, cg.Region)
@@ -104,6 +116,15 @@ func (t *Terraform) Destroy(ctx context.Context, id string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "terraform destroy")
 	defer span.Finish()
 	span.SetTag("cluster", id)
+
+	if zerolog.Ctx(ctx).GetLevel() == zerolog.InfoLevel {
+		ectx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		go logutil.Elapsed(ectx, 20*time.Second, func(ctx context.Context, elapsed time.Duration) {
+			zerolog.Ctx(ctx).Info().Dur("elapsed", elapsed).Msg("Applying terraform configuration")
+		})
+	}
 
 	return t.terraform(ctx, "destroy", "-auto-approve")
 }

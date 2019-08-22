@@ -63,9 +63,11 @@ func (d *Daemon) Close() error {
 
 func (d *Daemon) Serve(ctx context.Context) error {
 	s := &http.Server{
-		Handler:     d.router,
-		Addr:        d.addr,
-		ReadTimeout: 10 * time.Second,
+		Handler:           d.router,
+		Addr:              d.addr,
+		ReadHeaderTimeout: 20 * time.Second,
+		ReadTimeout:       1 * time.Minute,
+		WriteTimeout:      30 * time.Minute,
 	}
 
 	zerolog.Ctx(ctx).Info().Str("addr", d.addr).Msg("daemon listening")
