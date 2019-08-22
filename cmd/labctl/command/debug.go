@@ -21,7 +21,6 @@ import (
 
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/cliutil"
-	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
 )
 
@@ -95,17 +94,7 @@ func updateAgentAction(c *cli.Context) error {
 		return err
 	}
 
-	app, err := ResolveApp(c, c.String("app-addr"))
-	if err != nil {
-		return err
-	}
-
-	if app.Healthcheck(ctx) {
-		zerolog.Ctx(ctx).Info().Msg("Labapp healthy")
-		return nil
-	}
-
-	return errors.New("labapp unhealthy")
+	return nil
 }
 
 func peerInfoAction(c *cli.Context) error {

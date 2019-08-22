@@ -48,11 +48,8 @@ func Seed(ctx context.Context, lset p2plab.LabeledSet, seed metadata.ScenarioSta
 
 	seeding, gctx := errgroup.WithContext(ctx)
 
-	go logutil.Elapsed(gctx, 20*time.Second, func(ctx context.Context, elapsed time.Duration) {
-		zerolog.Ctx(ctx).Info().Dur("elapsed", elapsed).Msg("Seeding cluster")
-	})
-
 	zerolog.Ctx(ctx).Info().Msg("Seeding cluster")
+	go logutil.Elapsed(gctx, 20*time.Second, "Seeding cluster")
 	for id, task := range seed {
 		id, task := id, task
 		seeding.Go(func() error {
@@ -110,11 +107,8 @@ func Benchmark(ctx context.Context, lset p2plab.LabeledSet, benchmark metadata.S
 
 	benchmarking, gctx := errgroup.WithContext(ctx)
 
-	go logutil.Elapsed(gctx, 20*time.Second, func(ctx context.Context, elapsed time.Duration) {
-		zerolog.Ctx(ctx).Info().Dur("elapsed", elapsed).Msg("Benchmarking cluster")
-	})
-
 	zerolog.Ctx(ctx).Info().Msg("Benchmarking cluster")
+	go logutil.Elapsed(gctx, 20*time.Second, "Benchmarking cluster")
 	for id, task := range benchmark {
 		id, task := id, task
 		benchmarking.Go(func() error {

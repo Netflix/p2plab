@@ -20,23 +20,18 @@ import (
 	"time"
 
 	"github.com/Netflix/p2plab/daemon"
-	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/labagent/supervisor"
-	"github.com/Netflix/p2plab/labapp/appapi"
-	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/pkg/logutil"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
 
 type router struct {
 	addr       string
-	client     *httputil.Client
 	supervisor supervisor.Supervisor
 }
 
-func New(addr string, client *httputil.Client, s supervisor.Supervisor) daemon.Router {
-	return &router{addr, client, s}
+func New(addr string, s supervisor.Supervisor) daemon.Router {
+	return &router{addr, s}
 }
 
 func (s *router) Routes() []daemon.Route {
@@ -60,12 +55,6 @@ func (s *router) putUpdate(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	// Give supervised process time to accept network connections.
 	time.Sleep(time.Second)
-
-	app := appapi.New(s.client, s.addr)
-	healthy := app.Healthcheck(ctx)
-	if !healthy {
-		return errors.Wrap(errdefs.ErrUnavailable, "labapp unhealthy")
-	}
 
 	return nil
 }

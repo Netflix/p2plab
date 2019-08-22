@@ -17,10 +17,12 @@ package agentapi
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/pkg/logutil"
+	"github.com/rs/zerolog"
 )
 
 type api struct {
@@ -37,6 +39,21 @@ func New(client *httputil.Client, addr string) p2plab.AgentAPI {
 
 func (a *api) url(endpoint string, v ...interface{}) string {
 	return fmt.Sprintf("%s%s", a.addr, fmt.Sprintf(endpoint, v...))
+}
+
+func (a *api) Healthcheck(ctx context.Context) bool {
+	req := a.client.NewRequest("GET", a.url("/healthcheck"),
+		httputil.WithRetryWaitMax(5*time.Minute),
+		httputil.WithRetryMax(10),
+	)
+	resp, err := req.Send(ctx)
+	if err != nil {
+		zerolog.Ctx(ctx).Debug().Str("err", err.Error()).Str("addr", a.addr).Msg("unhealthy")
+		return false
+	}
+	defer resp.Body.Close()
+
+	return true
 }
 
 func (a *api) Update(ctx context.Context, url string) error {

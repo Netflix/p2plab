@@ -32,11 +32,8 @@ func Update(ctx context.Context, ns []p2plab.Node, url string) error {
 
 	updatePeers, gctx := errgroup.WithContext(ctx)
 
-	go logutil.Elapsed(gctx, 20*time.Second, func(ctx context.Context, elapsed time.Duration) {
-		zerolog.Ctx(ctx).Info().Dur("elapsed", elapsed).Msg("Updating cluster")
-	})
-
 	zerolog.Ctx(ctx).Info().Msg("Updating cluster")
+	go logutil.Elapsed(gctx, 20*time.Second, "Updating cluster")
 	for _, n := range ns {
 		n := n
 		updatePeers.Go(func() error {

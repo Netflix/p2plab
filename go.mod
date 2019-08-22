@@ -11,6 +11,7 @@ require (
 	github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible // indirect
 	github.com/gobwas/glob v0.2.3
 	github.com/gorilla/mux v1.7.3
+	github.com/hako/durafmt v0.0.0-20190612201238-650ed9f29a84
 	github.com/hashicorp/go-cleanhttp v0.5.0
 	github.com/hashicorp/go-retryablehttp v0.5.4
 	github.com/ipfs/go-bitswap v0.1.3

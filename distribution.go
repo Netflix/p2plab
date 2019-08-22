@@ -12,28 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package logutil
+package p2plab
 
 import (
 	"context"
-	"time"
-
-	"github.com/hako/durafmt"
-	"github.com/rs/zerolog"
+	"io"
 )
 
-func Elapsed(ctx context.Context, tick time.Duration, msg string) {
-	ticker := time.NewTicker(tick)
-	defer ticker.Stop()
+type Uploader interface {
+	Upload(ctx context.Context, r io.Reader) (url string, err error)
+}
 
-	var elapsed time.Duration
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			elapsed += tick
-			zerolog.Ctx(ctx).Info().Str("elapsed", durafmt.Parse(elapsed).String()).Msg(msg)
-		}
-	}
+type Fetcher interface {
+	Fetch(ctx context.Context, url string) (io.ReadCloser, error)
 }

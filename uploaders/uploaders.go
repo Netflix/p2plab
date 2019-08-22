@@ -12,28 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package logutil
-
-import (
-	"context"
-	"time"
-
-	"github.com/hako/durafmt"
-	"github.com/rs/zerolog"
-)
-
-func Elapsed(ctx context.Context, tick time.Duration, msg string) {
-	ticker := time.NewTicker(tick)
-	defer ticker.Stop()
-
-	var elapsed time.Duration
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			elapsed += tick
-			zerolog.Ctx(ctx).Info().Str("elapsed", durafmt.Parse(elapsed).String()).Msg(msg)
-		}
-	}
-}
+package uploaders

@@ -36,12 +36,9 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 
 	collectPeerAddrs, gctx := errgroup.WithContext(ctx)
 
-	go logutil.Elapsed(gctx, 20*time.Second, func(ctx context.Context, elapsed time.Duration) {
-		zerolog.Ctx(ctx).Info().Dur("elapsed", elapsed).Msg("Retrieving peer infos")
-	})
-
 	peerAddrs := make([]string, len(ns))
 	zerolog.Ctx(ctx).Info().Msg("Retrieving peer infos")
+	go logutil.Elapsed(gctx, 20*time.Second, "Retrieving peer infos")
 	for i, n := range ns {
 		i, n := i, n
 		collectPeerAddrs.Go(func() error {
@@ -66,11 +63,8 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 
 	connectPeers, gctx := errgroup.WithContext(ctx)
 
-	go logutil.Elapsed(gctx, 20*time.Second, func(ctx context.Context, elapsed time.Duration) {
-		zerolog.Ctx(ctx).Info().Dur("elapsed", elapsed).Msg("Connecting cluster")
-	})
-
 	zerolog.Ctx(ctx).Info().Msg("Connecting cluster")
+	go logutil.Elapsed(gctx, 20*time.Second, "Connecting cluster")
 	for _, n := range ns {
 		n := n
 		connectPeers.Go(func() error {

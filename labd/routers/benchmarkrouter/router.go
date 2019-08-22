@@ -132,11 +132,6 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 			return errors.Wrap(err, "failed to update cluster")
 		}
 
-		err = nodes.WaitHealthy(ctx, ns)
-		if err != nil {
-			return err
-		}
-
 		err = nodes.Connect(ctx, ns)
 		if err != nil {
 			return errors.Wrap(err, "failed to connect cluster")

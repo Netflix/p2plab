@@ -19,6 +19,7 @@ import (
 	"io"
 
 	"github.com/Netflix/p2plab/daemon"
+	"github.com/Netflix/p2plab/daemon/healthcheckrouter"
 	"github.com/Netflix/p2plab/labagent/agentrouter"
 	"github.com/Netflix/p2plab/labagent/supervisor"
 	"github.com/Netflix/p2plab/pkg/httputil"
@@ -43,7 +44,8 @@ func New(root, addr, appRoot, appAddr string, logger *zerolog.Logger) (*LabAgent
 
 	var closers []io.Closer
 	daemon, err := daemon.New("labagent", addr, logger,
-		agentrouter.New(appAddr, client, s),
+		healthcheckrouter.New(),
+		agentrouter.New(appAddr, s),
 	)
 	if err != nil {
 		return nil, err

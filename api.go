@@ -40,6 +40,8 @@ type ControlAPI interface {
 }
 
 type AgentAPI interface {
+	Healthcheck(ctx context.Context) bool
+
 	Update(ctx context.Context, url string) error
 
 	// SSH creates a SSH connection to the node.
@@ -47,8 +49,6 @@ type AgentAPI interface {
 }
 
 type AppAPI interface {
-	Healthcheck(ctx context.Context) bool
-
 	PeerInfo(ctx context.Context) (peerstore.PeerInfo, error)
 
 	// Run executes an task on the node.

@@ -68,9 +68,7 @@ func (t *Terraform) Apply(ctx context.Context, id string, cdef metadata.ClusterD
 		ectx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		go logutil.Elapsed(ectx, 20*time.Second, func(ctx context.Context, elapsed time.Duration) {
-			zerolog.Ctx(ctx).Info().Dur("elapsed", elapsed).Msg("Applying terraform configuration")
-		})
+		go logutil.Elapsed(ectx, 20*time.Second, "Applying terraform configuration")
 	}
 
 	err = t.terraform(ctx, "apply", "-auto-approve")
@@ -121,9 +119,7 @@ func (t *Terraform) Destroy(ctx context.Context, id string) error {
 		ectx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		go logutil.Elapsed(ectx, 20*time.Second, func(ctx context.Context, elapsed time.Duration) {
-			zerolog.Ctx(ctx).Info().Dur("elapsed", elapsed).Msg("Applying terraform configuration")
-		})
+		go logutil.Elapsed(ectx, 20*time.Second, "Destroying terraform-managed infrastructure")
 	}
 
 	return t.terraform(ctx, "destroy", "-auto-approve")

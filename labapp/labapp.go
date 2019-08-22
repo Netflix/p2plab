@@ -19,7 +19,6 @@ import (
 	"io"
 
 	"github.com/Netflix/p2plab/daemon"
-	"github.com/Netflix/p2plab/daemon/healthcheckrouter"
 	"github.com/Netflix/p2plab/labapp/approuter"
 	"github.com/Netflix/p2plab/peer"
 	"github.com/rs/zerolog"
@@ -41,7 +40,6 @@ func New(root, addr string, logger *zerolog.Logger) (*LabApp, error) {
 	closers = append(closers, &daemon.CancelCloser{cancel})
 
 	daemon, err := daemon.New("labapp", addr, logger,
-		healthcheckrouter.New(),
 		approuter.New(p),
 	)
 	if err != nil {

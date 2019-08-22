@@ -34,11 +34,8 @@ func WaitHealthy(ctx context.Context, ns []p2plab.Node) error {
 
 	healthchecks, gctx := errgroup.WithContext(ctx)
 
-	go logutil.Elapsed(gctx, 20*time.Second, func(ctx context.Context, elapsed time.Duration) {
-		zerolog.Ctx(ctx).Info().Dur("elapsed", elapsed).Msg("Waiting for healthy nodes")
-	})
-
 	zerolog.Ctx(ctx).Info().Msg("Waiting for healthy nodes")
+	go logutil.Elapsed(gctx, 20*time.Second, "Waiting for healthy nodes")
 	for _, n := range ns {
 		n := n
 		healthchecks.Go(func() error {

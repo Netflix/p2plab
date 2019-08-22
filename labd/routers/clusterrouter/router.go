@@ -139,6 +139,13 @@ func (s *router) postClustersCreate(ctx context.Context, w http.ResponseWriter, 
 		return err
 	}
 
+	// TODO: Use cluster definition to update each cluster group to their desired
+	// commit.
+	err = nodes.Update(ctx, ns, "")
+	if err != nil {
+		return err
+	}
+
 	err = nodes.Connect(ctx, ns)
 	if err != nil {
 		return err

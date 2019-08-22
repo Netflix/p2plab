@@ -89,24 +89,22 @@ func (p *provider) CreateNodeGroup(ctx context.Context, id string, cdef metadata
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to prepare cluster directory")
 	}
-	zerolog.Ctx(ctx).UpdateContext(func(c zerolog.Context) zerolog.Context {
-	     return c.Str("dir", clusterDir)
-	})
+	logger := zerolog.Ctx(ctx).With().Str("dir", clusterDir).Logger()
 
-	zerolog.Ctx(ctx).Debug().Msg("Executing tfvars template")
+	logger.Debug().Msg("Executing tfvars template")
 	err = p.executeTfvarsTemplate(id, cdef)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute tfvars template")
 	}
 
-	zerolog.Ctx(ctx).Debug().Msg("Creating terraform handler")
+	logger.Debug().Msg("Creating terraform handler")
 	t, err := NewTerraform(ctx, clusterDir)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create terraform handler")
 	}
 	p.terraformById[id] = t
 
-	zerolog.Ctx(ctx).Debug().Msg("Terraform applying")
+	logger.Debug().Msg("Terraform applying")
 	ns, err := t.Apply(ctx, id, cdef)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to terraform destroy")
