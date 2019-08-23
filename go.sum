@@ -195,6 +195,8 @@ github.com/hashicorp/hcl v0.0.0-20180404174102-ef8a98b0bbce/go.mod h1:oZtUIOe8dh
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
 github.com/hinshun/go-bitswap v0.1.7-0.20190820204142-cbb8d35c4dbb h1:AXRm5dD1aIg/YBe6wmugwAup/9Sv1YfReENAG+hpks4=
 github.com/hinshun/go-bitswap v0.1.7-0.20190820204142-cbb8d35c4dbb/go.mod h1:TOWoxllhccevbWFUR2N7B1MTSVVge1s6XSMiCSA4MzM=
+github.com/hinshun/go-bitswap v0.1.7-0.20190823181826-b2f3326eb6cb h1:l02ORvkLamQiex7bWZgHG6k97JqiQUYR+otwNDD+BRQ=
+github.com/hinshun/go-bitswap v0.1.7-0.20190823181826-b2f3326eb6cb/go.mod h1:TOWoxllhccevbWFUR2N7B1MTSVVge1s6XSMiCSA4MzM=
 github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/hsanjuan/go-libp2p-gostream v0.0.31/go.mod h1:cWvV5/NQ5XWi0eQZnX/svsAk6NLc4U26pItvj0eDeRk=
