@@ -25,6 +25,7 @@ import (
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/pkg/stringutil"
 	"github.com/Netflix/p2plab/query"
+	bolt "go.etcd.io/bbolt"
 )
 
 type router struct {
@@ -43,6 +44,7 @@ func (s *router) Routes() []daemon.Route {
 		daemon.NewGetRoute("/clusters/{name}/nodes/{id}/json", s.getNodeById),
 		// PUT
 		daemon.NewPutRoute("/clusters/{name}/nodes/label", s.putNodesLabel),
+		daemon.NewPutRoute("/clusters/{name}/nodes/update", s.putNodesUpdate),
 	}
 }
 
@@ -82,6 +84,38 @@ func (s *router) putNodesLabel(ctx context.Context, w http.ResponseWriter, r *ht
 	}
 
 	return daemon.WriteJSON(w, &nodes)
+}
+
+func (s *router) putNodesUpdate(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
+	clusterId := vars["name"]
+	ref := r.FormValue("ref")
+	matchedNodes, err := s.matchNodes(ctx, clusterId, r.FormValue("query"))
+	if err != nil {
+		return err
+	}
+
+	var ns []metadata.Node
+	err = s.db.Update(ctx, func(tx *bolt.Tx) error {
+		tctx := metadata.WithTransactionContext(ctx, tx)
+
+		for _, n := range matchedNodes {
+			n.GitReference = ref
+
+			var err error
+			n, err = s.db.UpdateNode(tctx, clusterId, n)
+			if err != nil {
+				return err
+			}
+			ns = append(ns, n)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return daemon.WriteJSON(w, &ns)
 }
 
 func (s *router) matchNodes(ctx context.Context, clusterId, q string) ([]metadata.Node, error) {

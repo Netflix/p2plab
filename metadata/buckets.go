@@ -22,11 +22,11 @@ var (
 	bucketKeyClusters    = []byte("clusters")
 	bucketKeyNodes       = []byte("nodes")
 	bucketKeyScenarios   = []byte("scenarios")
+	bucketKeyBuilds      = []byte("builds")
 	bucketKeyBenchmarks  = []byte("benchmarks")
 	bucketKeyExperiments = []byte("experiments")
 
 	// Cluster buckets.
-	bucketKeyCommit       = []byte("commit")
 	bucketKeySize         = []byte("size")
 	bucketKeyInstanceType = []byte("instanceType")
 	bucketKeyRegion       = []byte("region")
@@ -41,6 +41,9 @@ var (
 	// Node buckets.
 	bucketKeyAddress = []byte("address")
 
+	// Build buckets
+	bucketKeyLink = []byte("link")
+
 	// Benchmark buckets.
 	bucketKeyCluster  = []byte("cluster")
 	bucketKeyScenario = []byte("scenario")
@@ -54,6 +57,7 @@ var (
 	bucketKeyCreatedAt  = []byte("createdAt")
 	bucketKeyUpdatedAt  = []byte("updatedAt")
 	bucketKeyDefinition = []byte("definition")
+	bucketKeyGitReference = []byte("gitReference")
 )
 
 func getBucket(tx *bolt.Tx, keys ...[]byte) *bolt.Bucket {
@@ -119,6 +123,18 @@ func getScenarioBucket(tx *bolt.Tx, name string) *bolt.Bucket {
 
 func createScenariosBucket(tx *bolt.Tx) (*bolt.Bucket, error) {
 	return createBucketIfNotExists(tx, bucketKeyVersion, bucketKeyScenarios)
+}
+
+func getBuildsBucket(tx *bolt.Tx) *bolt.Bucket {
+	return getBucket(tx, bucketKeyVersion, bucketKeyBuilds)
+}
+
+func getBuildBucket(tx *bolt.Tx, id string) *bolt.Bucket {
+	return getBucket(tx, bucketKeyVersion, bucketKeyBuilds, []byte(id))
+}
+
+func createBuildsBucket(tx *bolt.Tx) (*bolt.Bucket, error) {
+	return createBucketIfNotExists(tx, bucketKeyVersion, bucketKeyBuilds)
 }
 
 func getBenchmarksBucket(tx *bolt.Tx) *bolt.Bucket {

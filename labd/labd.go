@@ -19,6 +19,8 @@ import (
 	"io"
 	"path/filepath"
 
+	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/builder"
 	"github.com/Netflix/p2plab/daemon"
 	"github.com/Netflix/p2plab/daemon/healthcheckrouter"
 	"github.com/Netflix/p2plab/labd/routers/benchmarkrouter"
@@ -39,6 +41,7 @@ import (
 type Labd struct {
 	daemon  *daemon.Daemon
 	seeder  *peer.Peer
+	builder p2plab.Builder
 	closers []io.Closer
 }
 
@@ -74,8 +77,10 @@ func New(root, addr string, logger *zerolog.Logger, opts ...LabdOption) (*Labd, 
 		return nil, err
 	}
 
-	ts := transformers.New(filepath.Join(root, "transformers"), client.HTTPClient)
-	closers = append(closers, ts)
+	builder, err := builder.New(filepath.Join(root, "builder"), db, uploader)
+	if err != nil {
+		return nil, err
+	}
 
 	sctx, cancel := context.WithCancel(context.Background())
 	seeder, err := peer.New(sctx, filepath.Join(root, "seeder"))
@@ -84,13 +89,16 @@ func New(root, addr string, logger *zerolog.Logger, opts ...LabdOption) (*Labd, 
 	}
 	closers = append(closers, &daemon.CancelCloser{cancel})
 
+	ts := transformers.New(filepath.Join(root, "transformers"), client.HTTPClient)
+	closers = append(closers, ts)
+
 	daemon, err := daemon.New("labd", addr, logger,
 		healthcheckrouter.New(),
 		clusterrouter.New(db, provider, client),
 		noderouter.New(db, client),
 		scenariorouter.New(db),
-		benchmarkrouter.New(db, client, ts, seeder, uploader),
-		experimentrouter.New(db, provider, client, ts, seeder, uploader),
+		benchmarkrouter.New(db, client, ts, seeder, builder),
+		experimentrouter.New(db, provider, client, ts, seeder, builder),
 	)
 	if err != nil {
 		return nil, err
@@ -100,6 +108,7 @@ func New(root, addr string, logger *zerolog.Logger, opts ...LabdOption) (*Labd, 
 	d := &Labd{
 		daemon:  daemon,
 		seeder:  seeder,
+		builder: builder,
 		closers: closers,
 	}
 
@@ -117,6 +126,12 @@ func (d *Labd) Close() error {
 }
 
 func (d *Labd) Serve(ctx context.Context) error {
+	err := d.builder.Init(ctx)
+	if err != nil {
+		return err
+	}
+	zerolog.Ctx(ctx).Debug().Msg("Build initialized")
+
 	var addrs []string
 	for _, ma := range d.seeder.Host().Addrs() {
 		addrs = append(addrs, ma.String())

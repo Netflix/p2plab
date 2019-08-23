@@ -20,13 +20,17 @@ import (
 )
 
 type Builder interface {
-	Build(ctx context.Context, ref string) (io.Reader, error)
+	Init(ctx context.Context) error
+
+	Resolve(ctx context.Context, ref string)  (commit string, err error)
+
+	Build(ctx context.Context, commit string) (link string, err error)
 }
 
 type Uploader interface {
-	Upload(ctx context.Context, r io.Reader) (ref string, err error)
+	Upload(ctx context.Context, r io.Reader) (link string, err error)
 }
 
 type Downloader interface {
-	Download(ctx context.Context, ref string) (io.ReadCloser, error)
+	Download(ctx context.Context, link string) (io.ReadCloser, error)
 }

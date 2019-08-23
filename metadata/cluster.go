@@ -52,10 +52,10 @@ type ClusterDefinition struct {
 }
 
 type ClusterGroup struct {
-	Commit       string
 	Size         int
 	InstanceType string
 	Region       string
+	GitReference       string
 	Labels       []string
 }
 
@@ -284,8 +284,6 @@ func readClusterDefinition(bkt *bolt.Bucket) (ClusterDefinition, error) {
 
 		err = gbkt.ForEach(func(k, v []byte) error {
 			switch string(k) {
-			case string(bucketKeyCommit):
-				group.Commit = string(v)
 			case string(bucketKeySize):
 				size, err := strconv.Atoi(string(v))
 				if err != nil {
@@ -296,6 +294,8 @@ func readClusterDefinition(bkt *bolt.Bucket) (ClusterDefinition, error) {
 				group.InstanceType = string(v)
 			case string(bucketKeyRegion):
 				group.Region = string(v)
+			case string(bucketKeyGitReference):
+				group.GitReference = string(v)
 			}
 			return nil
 		})
@@ -367,10 +367,10 @@ func writeClusterDefinition(bkt *bolt.Bucket, cdef ClusterDefinition) error {
 		}
 
 		for _, f := range []field{
-			{bucketKeyCommit, []byte(group.Commit)},
 			{bucketKeySize, []byte(strconv.Itoa(group.Size))},
 			{bucketKeyInstanceType, []byte(group.InstanceType)},
 			{bucketKeyRegion, []byte(group.Region)},
+			{bucketKeyGitReference, []byte(group.GitReference)},
 		} {
 			err = gbkt.Put(f.key, f.value)
 			if err != nil {

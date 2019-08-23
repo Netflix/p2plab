@@ -57,7 +57,19 @@ var nodeCommand = cli.Command{
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "query,q",
-					Usage: "Runodes a query to filter the listed nodes.",
+					Usage: "Runs a query to filter the listed nodes.",
+				},
+			},
+		},
+		{
+			Name:    "update",
+			Aliases: []string{"u"},
+			Usage:   "Updates nodes to a given p2plab git reference",
+			Action:  updateNodesAction,
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:  "query,q",
+					Usage: "Runs a query to update a subset of nodes.",
 				},
 			},
 		},
@@ -108,6 +120,47 @@ func labelNodesAction(c *cli.Context) error {
 	ctx := cliutil.CommandContext(c)
 	cluster := c.Args().First()
 	nodes, err := control.Node().Label(ctx, cluster, ids, c.StringSlice("add"), c.StringSlice("remove"))
+	if err != nil {
+		return err
+	}
+
+	l := make([]interface{}, len(nodes))
+	for i, n := range nodes {
+		l[i] = n.Metadata()
+	}
+
+	return CommandPrinter(c).Print(l)
+}
+
+func updateNodesAction(c *cli.Context) error {
+	if c.NArg() != 2 {
+		return errors.New("cluster id and git reference must be provided")
+	}
+
+	var opts []p2plab.ListOption
+	ctx := cliutil.CommandContext(c)
+	if c.IsSet("query") {
+		q, err := query.Parse(ctx, c.String("query"))
+		if err != nil {
+			return err
+		}
+
+		opts = append(opts, p2plab.WithQuery(q.String()))
+	}
+
+	control, err := ResolveControl(c)
+	if err != nil {
+		return err
+	}
+
+	cid := c.Args().Get(0)
+	cluster, err := control.Cluster().Get(ctx, cid)
+	if err != nil {
+		return err
+	}
+
+	ref := c.Args().Get(1)
+	nodes, err := cluster.Update(ctx, ref, opts...)
 	if err != nil {
 		return err
 	}

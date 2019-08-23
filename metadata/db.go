@@ -36,6 +36,7 @@ type DB interface {
 	ClusterStore
 	NodeStore
 	ScenarioStore
+	BuildStore
 	BenchmarkStore
 	ExperimentStore
 
@@ -69,6 +70,8 @@ type NodeStore interface {
 
 	CreateNodes(ctx context.Context, cluster string, node []Node) ([]Node, error)
 
+	UpdateNode(ctx context.Context, cluster string, node Node) (Node, error)
+
 	LabelNodes(ctx context.Context, cluster string, ids, adds, removes []string) ([]Node, error)
 }
 
@@ -84,6 +87,16 @@ type ScenarioStore interface {
 	LabelScenarios(ctx context.Context, ids, adds, removes []string) ([]Scenario, error)
 
 	DeleteScenarios(ctx context.Context, ids ...string) error
+}
+
+type BuildStore interface {
+	GetBuild(ctx context.Context, id string) (Build, error)
+
+	ListBuilds(ctx context.Context) ([]Build, error)
+
+	CreateBuild(ctx context.Context, build Build) (Build, error)
+
+	DeleteBuild(ctx context.Context, id string) error
 }
 
 type BenchmarkStore interface {

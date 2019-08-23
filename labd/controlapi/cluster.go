@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/builder"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/pkg/logutil"
@@ -54,11 +55,18 @@ func (a *clusterAPI) Create(ctx context.Context, name string, opts ...p2plab.Cre
 		if err != nil {
 			return id, err
 		}
+
+		for i, group := range cdef.Groups {
+			if group.GitReference == "" {
+				cdef.Groups[i].GitReference = builder.DefaultReference
+			}
+		}
 	} else {
 		cdef.Groups = append(cdef.Groups, metadata.ClusterGroup{
 			Size:         settings.Size,
 			InstanceType: settings.InstanceType,
 			Region:       settings.Region,
+			GitReference:       builder.DefaultReference,
 		})
 	}
 
@@ -219,23 +227,38 @@ func (c *cluster) Metadata() metadata.Cluster {
 	return c.metadata
 }
 
-func (c *cluster) Update(ctx context.Context, commit string) error {
-	req := c.client.NewRequest("PUT", c.url("/clusters/%s/update", c.metadata.ID)).
-		Option("commit", commit)
-
-	resp, err := req.Send(ctx)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	logWriter := logutil.LogWriter(ctx)
-	if logWriter != nil {
-		err = logutil.WriteRemoteLogs(ctx, resp.Body, logWriter)
+func (c *cluster) Update(ctx context.Context, ref string, opts ...p2plab.ListOption) ([]p2plab.Node, error) {
+	var settings p2plab.ListSettings
+	for _, opt := range opts {
+		err := opt(&settings)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	req := c.client.NewRequest("PUT", c.url("/clusters/%s/nodes/update", c.metadata.ID)).
+		Option("ref", ref)
+
+	if settings.Query != "" {
+		req.Option("query", settings.Query)
+	}
+
+	resp, err := req.Send(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var metadatas []metadata.Node
+	err = json.NewDecoder(resp.Body).Decode(&metadatas)
+	if err != nil {
+		return nil, err
+	}
+
+	var ns []p2plab.Node
+	for _, m := range metadatas {
+		ns = append(ns, NewNode(c.client, m))
+	}
+
+	return ns, nil
 }

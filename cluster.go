@@ -46,9 +46,9 @@ type Cluster interface {
 
 	Metadata() metadata.Cluster
 
-	// Update compiles a commit and updates the cluster to the new p2p
-	// application.
-	Update(ctx context.Context, commit string) error
+	// Updates builds p2plab's labapp for a git reference and updates nodes
+	// matching the list options to the reference.
+	Update(ctx context.Context, ref string, opts ...ListOption) ([]Node, error)
 }
 
 // CreateClusterOption is an option to modify create cluster settings.

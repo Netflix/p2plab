@@ -19,6 +19,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/rs/zerolog"
 )
@@ -31,8 +32,9 @@ func WithResponseLogger(ctx context.Context, w http.ResponseWriter) (context.Con
 }
 
 type WriteFlusher struct {
-	w io.Writer
-	f http.Flusher
+	w  io.Writer
+	f  http.Flusher
+	mu sync.Mutex
 }
 
 func NewWriteFlusher(w io.Writer) *WriteFlusher {
@@ -45,6 +47,9 @@ func NewWriteFlusher(w io.Writer) *WriteFlusher {
 }
 
 func (wf *WriteFlusher) Write(p []byte) (int, error) {
+	wf.mu.Lock()
+	defer wf.mu.Unlock()
+
 	n, err := wf.w.Write(p)
 	if err != nil {
 		return n, err

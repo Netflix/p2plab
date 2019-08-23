@@ -39,15 +39,15 @@ import (
 )
 
 type router struct {
-	db       metadata.DB
-	client   *httputil.Client
-	ts       *transformers.Transformers
-	seeder   *peer.Peer
-	uploader p2plab.Uploader
+	db      metadata.DB
+	client  *httputil.Client
+	ts      *transformers.Transformers
+	seeder  *peer.Peer
+	builder p2plab.Builder
 }
 
-func New(db metadata.DB, client *httputil.Client, ts *transformers.Transformers, seeder *peer.Peer, uploader p2plab.Uploader) daemon.Router {
-	return &router{db, client, ts, seeder, uploader}
+func New(db metadata.DB, client *httputil.Client, ts *transformers.Transformers, seeder *peer.Peer, builder p2plab.Builder) daemon.Router {
+	return &router{db, client, ts, seeder, builder}
 }
 
 func (s *router) Routes() []daemon.Route {
@@ -128,7 +128,7 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 	}
 
 	if !noReset {
-		err = nodes.Update(ctx, ns, "")
+		err = nodes.Update(ctx, s.builder, ns)
 		if err != nil {
 			return errors.Wrap(err, "failed to update cluster")
 		}

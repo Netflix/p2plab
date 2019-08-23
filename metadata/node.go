@@ -28,6 +28,8 @@ type Node struct {
 
 	Address string
 
+	GitReference string
+
 	Labels []string
 
 	CreatedAt, UpdatedAt time.Time
@@ -143,6 +145,32 @@ func (m *db) CreateNodes(ctx context.Context, cluster string, nodes []Node) ([]N
 	return nodes, err
 }
 
+func (m *db) UpdateNode(ctx context.Context, cluster string, node Node) (Node, error) {
+	if node.ID == "" {
+		return Node{}, errors.Wrapf(errdefs.ErrInvalidArgument, "node id required for update")
+	}
+
+	err := m.Update(ctx, func(tx *bolt.Tx) error {
+		bkt, err := createNodesBucket(tx, cluster)
+		if err != nil {
+			return err
+		}
+
+		cbkt := bkt.Bucket([]byte(node.ID))
+		if cbkt == nil {
+			return errors.Wrapf(errdefs.ErrNotFound, "node %q", node.ID)
+		}
+
+		node.UpdatedAt = time.Now().UTC()
+		return writeNode(cbkt, &node)
+	})
+	if err != nil {
+		return Node{}, err
+	}
+
+	return node, nil
+}
+
 func (m *db) LabelNodes(ctx context.Context, cluster string, ids, adds, removes []string) ([]Node, error) {
 	var nodes []Node
 	err := m.Update(ctx, func(tx *bolt.Tx) error {
@@ -225,6 +253,8 @@ func readNode(bkt *bolt.Bucket, node *Node) error {
 			node.ID = string(v)
 		case string(bucketKeyAddress):
 			node.Address = string(v)
+		case string(bucketKeyGitReference):
+			node.GitReference = string(v)
 		}
 
 		return nil
@@ -245,6 +275,7 @@ func writeNode(bkt *bolt.Bucket, node *Node) error {
 	for _, f := range []field{
 		{bucketKeyID, []byte(node.ID)},
 		{bucketKeyAddress, []byte(node.Address)},
+		{bucketKeyGitReference, []byte(node.GitReference)},
 	} {
 		err = bkt.Put(f.key, f.value)
 		if err != nil {

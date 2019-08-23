@@ -53,7 +53,6 @@ func (s *router) Routes() []daemon.Route {
 		daemon.NewPostRoute("/clusters/create", s.postClustersCreate),
 		// PUT
 		daemon.NewPutRoute("/clusters/label", s.putClustersLabel),
-		daemon.NewPutRoute("/clusters/{name}/update", s.putClusterUpdate),
 		// DELETE
 		daemon.NewDeleteRoute("/clusters/delete", s.deleteClusters),
 	}
@@ -139,18 +138,6 @@ func (s *router) postClustersCreate(ctx context.Context, w http.ResponseWriter, 
 		return err
 	}
 
-	// TODO: Use cluster definition to update each cluster group to their desired
-	// commit.
-	err = nodes.Update(ctx, ns, "")
-	if err != nil {
-		return err
-	}
-
-	err = nodes.Connect(ctx, ns)
-	if err != nil {
-		return err
-	}
-
 	zerolog.Ctx(ctx).Info().Msg("Updating cluster metadata")
 	cluster.Status = metadata.ClusterCreated
 	_, err = s.db.UpdateCluster(ctx, cluster)
@@ -176,35 +163,6 @@ func (s *router) putClustersLabel(ctx context.Context, w http.ResponseWriter, r 
 	}
 
 	return daemon.WriteJSON(w, &clusters)
-}
-
-func (s *router) putClusterUpdate(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
-	ctx, _ = logutil.WithResponseLogger(ctx, w)
-
-	id := vars["name"]
-	cluster, err := s.db.GetCluster(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	mns, err := s.db.ListNodes(ctx, cluster.ID)
-	if err != nil {
-		return err
-	}
-
-	var ns []p2plab.Node
-	for _, n := range mns {
-		node := controlapi.NewNode(s.client, n)
-		ns = append(ns, node)
-	}
-
-	url := r.FormValue("url")
-	err = nodes.Update(ctx, ns, url)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (s *router) deleteClusters(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {

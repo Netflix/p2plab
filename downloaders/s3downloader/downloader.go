@@ -52,10 +52,10 @@ func New(client *http.Client) (p2plab.Downloader, error) {
 	}, nil
 }
 
-func (f *downloader) Download(ctx context.Context, ref string) (io.ReadCloser, error) {
-	u, err := url.Parse(ref)
+func (f *downloader) Download(ctx context.Context, link string) (io.ReadCloser, error) {
+	u, err := url.Parse(link)
 	if err != nil {
-		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "invalid url %q", ref)
+		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "invalid url %q", link)
 	}
 	bucket := u.Host
 

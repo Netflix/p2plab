@@ -20,7 +20,6 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/pkg/cliutil"
 	"github.com/Netflix/p2plab/query"
-	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
 )
 
@@ -95,19 +94,6 @@ var clusterCommand = cli.Command{
 			Aliases: []string{"rm"},
 			Usage:   "Remove clusters.",
 			Action:  removeClustersAction,
-		},
-		{
-			Name:    "update",
-			Aliases: []string{"u"},
-			Usage:   "Compiles a commit and updates a cluster to the new p2p application.",
-			Action:  updateClusterAction,
-			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:  "commit",
-					Usage: "Specify commit to update to.",
-					Value: "HEAD",
-				},
-			},
 		},
 	},
 }
@@ -242,35 +228,5 @@ func removeClustersAction(c *cli.Context) error {
 		return err
 	}
 
-	return nil
-}
-
-func updateClusterAction(c *cli.Context) error {
-	if c.NArg() != 1 {
-		return errors.New("cluster name must be provided")
-	}
-
-	control, err := ResolveControl(c)
-	if err != nil {
-		return err
-	}
-
-	ctx := cliutil.CommandContext(c)
-	cluster, err := control.Cluster().Get(ctx, c.Args().First())
-	if err != nil {
-		return err
-	}
-
-	var commit string
-	if c.IsSet("commit") {
-		commit = c.String("commit")
-	}
-
-	err = cluster.Update(ctx, commit)
-	if err != nil {
-		return err
-	}
-
-	zerolog.Ctx(ctx).Info().Msgf("Updated cluster %q", cluster.Metadata().ID)
 	return nil
 }

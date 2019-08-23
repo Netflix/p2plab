@@ -64,7 +64,7 @@ func New(client *http.Client, settings S3UploaderSettings) (p2plab.Uploader, err
 	}, nil
 }
 
-func (u *uploader) Upload(ctx context.Context, r io.Reader) (ref string, err error) {
+func (u *uploader) Upload(ctx context.Context, r io.Reader) (link string, err error) {
 	content, err := ioutil.ReadAll(r)
 	if err != nil {
 		return "", err

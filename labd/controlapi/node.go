@@ -106,12 +106,12 @@ func (a *nodeAPI) List(ctx context.Context, cluster string, opts ...p2plab.ListO
 		return nil, err
 	}
 
-	var nodes []p2plab.Node
+	var ns []p2plab.Node
 	for _, m := range metadatas {
-		nodes = append(nodes, NewNode(a.client, m))
+		ns = append(ns, NewNode(a.client, m))
 	}
 
-	return nodes, nil
+	return ns, nil
 }
 
 type node struct {
