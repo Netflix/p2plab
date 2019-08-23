@@ -5,7 +5,7 @@ go 1.12
 require (
 	github.com/Microsoft/hcsshim v0.8.6 // indirect
 	github.com/alibaba/pouch v0.0.0-20190805080148-17ba8c3784a3
-	github.com/aws/aws-sdk-go-v2 v0.10.0
+	github.com/aws/aws-sdk-go-v2 v0.11.0
 	github.com/containerd/containerd v1.3.0-0.20190507210959-7c1e88399ec0
 	github.com/gobwas/glob v0.2.3
 	github.com/gorilla/mux v1.7.3
