@@ -24,6 +24,10 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
+const (
+	ClusterSizeMax = 1000
+)
+
 type Cluster struct {
 	ID string
 
@@ -34,6 +38,14 @@ type Cluster struct {
 	Labels []string
 
 	CreatedAt, UpdatedAt time.Time
+}
+
+func (c Cluster) Validate() error {
+	err := ValidateClusterID(c.ID)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type ClusterStatus string
@@ -51,11 +63,38 @@ type ClusterDefinition struct {
 	Groups []ClusterGroup
 }
 
+func (d ClusterDefinition) Size() int {
+	var sum int
+	for _, g := range d.Groups {
+		sum += g.Size
+	}
+	return sum
+}
+
+func (d ClusterDefinition) GenerateLabels() (labels []string) {
+	regionSet := make(map[string]struct{})
+	instanceTypeSet := make(map[string]struct{})
+	for _, g := range d.Groups {
+		regionSet[g.Region] = struct{}{}
+		instanceTypeSet[g.InstanceType] = struct{}{}
+	}
+
+	for region := range regionSet {
+		labels = append(labels, region)
+	}
+
+	for instanceType := range instanceTypeSet {
+		labels = append(labels, instanceType)
+	}
+
+	return labels
+}
+
 type ClusterGroup struct {
 	Size         int
 	InstanceType string
 	Region       string
-	GitReference       string
+	GitReference string
 	Labels       []string
 }
 
@@ -121,7 +160,12 @@ func (m *db) ListClusters(ctx context.Context) ([]Cluster, error) {
 }
 
 func (m *db) CreateCluster(ctx context.Context, cluster Cluster) (Cluster, error) {
-	err := m.Update(ctx, func(tx *bolt.Tx) error {
+	err := cluster.Validate()
+	if err != nil {
+		return Cluster{}, err
+	}
+
+	err = m.Update(ctx, func(tx *bolt.Tx) error {
 		bkt, err := createClustersBucket(tx)
 		if err != nil {
 			return err

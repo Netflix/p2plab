@@ -27,27 +27,27 @@ func App(ctx context.Context) *cli.App {
 	app.Version = version.Version
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "address,a",
-			Usage: "address for labd",
-			Value: "http://127.0.0.1:7001",
+			Name:   "address,a",
+			Usage:  "address for labd",
+			Value:  "http://127.0.0.1:7001",
 			EnvVar: "LABCTL_ADDRESS",
 		},
 		cli.StringFlag{
-			Name:  "log-level",
-			Usage: "set the logging level [debug, info, warn, error, fatal, panic]",
-			Value: "info",
+			Name:   "log-level",
+			Usage:  "set the logging level [debug, info, warn, error, fatal, panic]",
+			Value:  "info",
 			EnvVar: "LABCTL_LOG_LEVEL",
 		},
 		cli.StringFlag{
-			Name:  "log-writer",
-			Usage: "set the log writer [console, json]",
-			Value: "console",
+			Name:   "log-writer",
+			Usage:  "set the log writer [console, json]",
+			Value:  "console",
 			EnvVar: "LABCTL_LOG_WRITER",
 		},
 		cli.StringFlag{
-			Name:  "output,o",
-			Usage: "set the output printer [unix, json]",
-			Value: "unix",
+			Name:   "output,o",
+			Usage:  "set the output printer [auto, id, unix, json, table]",
+			Value:  "auto",
 			EnvVar: "LABCTL_OUTPUT",
 		},
 	}
@@ -62,9 +62,6 @@ func App(ctx context.Context) *cli.App {
 
 	// Setup tracers and context.
 	AttachAppContext(ctx, app)
-
-	// Setup output printer.
-	AttachAppPrinter(app)
 
 	// Setup http client.
 	AttachAppClient(app)

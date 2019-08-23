@@ -90,11 +90,16 @@ func (s *router) postClustersCreate(ctx context.Context, w http.ResponseWriter, 
 		return c.Str("name", name)
 	})
 
-	cluster, err := s.db.CreateCluster(ctx, metadata.Cluster{
+	cluster := metadata.Cluster{
 		ID:         name,
 		Status:     metadata.ClusterCreating,
 		Definition: cdef,
-	})
+		Labels: append([]string{
+			name,
+		}, cdef.GenerateLabels()...),
+	}
+
+	cluster, err = s.db.CreateCluster(ctx, cluster)
 	if err != nil {
 		return err
 	}

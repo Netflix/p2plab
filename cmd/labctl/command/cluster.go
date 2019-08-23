@@ -19,7 +19,9 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/pkg/cliutil"
+	"github.com/Netflix/p2plab/printer"
 	"github.com/Netflix/p2plab/query"
+	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
 )
 
@@ -108,6 +110,11 @@ func createClusterAction(c *cli.Context) error {
 		return errors.New("cluster name must be provnameed")
 	}
 
+	p, err := CommandPrinter(c, printer.OutputID)
+	if err != nil {
+		return err
+	}
+
 	control, err := ResolveControl(c)
 	if err != nil {
 		return err
@@ -138,12 +145,18 @@ func createClusterAction(c *cli.Context) error {
 		return err
 	}
 
-	return CommandPrinter(c).Print(cluster.Metadata())
+	zerolog.Ctx(ctx).Info().Msgf("Created cluster %q", cluster.Metadata().ID)
+	return p.Print(cluster.Metadata())
 }
 
 func inspectClusterAction(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return errors.New("cluster name must be provided")
+	}
+
+	p, err := CommandPrinter(c, printer.OutputJSON)
+	if err != nil {
+		return err
 	}
 
 	control, err := ResolveControl(c)
@@ -158,13 +171,18 @@ func inspectClusterAction(c *cli.Context) error {
 		return err
 	}
 
-	return CommandPrinter(c).Print(cluster.Metadata())
+	return p.Print(cluster.Metadata())
 }
 
 func labelClustersAction(c *cli.Context) error {
 	var names []string
 	for i := 0; i < c.NArg(); i++ {
 		names = append(names, c.Args().Get(i))
+	}
+
+	p, err := CommandPrinter(c, printer.OutputTable)
+	if err != nil {
+		return err
 	}
 
 	control, err := ResolveControl(c)
@@ -183,11 +201,16 @@ func labelClustersAction(c *cli.Context) error {
 		l[i] = c.Metadata()
 	}
 
-	return CommandPrinter(c).Print(l)
+	return p.Print(l)
 }
 
 func listClusterAction(c *cli.Context) error {
 	control, err := ResolveControl(c)
+	if err != nil {
+		return err
+	}
+
+	p, err := CommandPrinter(c, printer.OutputTable)
 	if err != nil {
 		return err
 	}
@@ -213,7 +236,7 @@ func listClusterAction(c *cli.Context) error {
 		l[i] = c.Metadata()
 	}
 
-	return CommandPrinter(c).Print(l)
+	return p.Print(l)
 }
 
 func removeClustersAction(c *cli.Context) error {

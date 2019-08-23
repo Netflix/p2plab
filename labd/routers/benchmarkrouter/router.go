@@ -152,6 +152,7 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 		Scenario: scenario,
 		Plan:     plan,
 		Labels: []string{
+			bid,
 			cid,
 			sid,
 		},

@@ -37,10 +37,15 @@ type clusterAPI struct {
 func (a *clusterAPI) Create(ctx context.Context, name string, opts ...p2plab.CreateClusterOption) (id string, err error) {
 	var settings p2plab.CreateClusterSettings
 	for _, opt := range opts {
-		err := opt(&settings)
+		err = opt(&settings)
 		if err != nil {
 			return id, err
 		}
+	}
+
+	err = metadata.ValidateClusterID(name)
+	if err != nil {
+		return "", err
 	}
 
 	var cdef metadata.ClusterDefinition
@@ -66,7 +71,7 @@ func (a *clusterAPI) Create(ctx context.Context, name string, opts ...p2plab.Cre
 			Size:         settings.Size,
 			InstanceType: settings.InstanceType,
 			Region:       settings.Region,
-			GitReference:       builder.DefaultReference,
+			GitReference: builder.DefaultReference,
 		})
 	}
 

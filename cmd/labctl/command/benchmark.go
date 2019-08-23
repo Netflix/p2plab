@@ -19,7 +19,9 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/pkg/cliutil"
+	"github.com/Netflix/p2plab/printer"
 	"github.com/Netflix/p2plab/query"
+	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
 )
 
@@ -93,6 +95,11 @@ func startBenchmarkAction(c *cli.Context) error {
 		return errors.New("cluster and scenario name must be provided")
 	}
 
+	p, err := CommandPrinter(c, printer.OutputID)
+	if err != nil {
+		return err
+	}
+
 	control, err := ResolveControl(c)
 	if err != nil {
 		return err
@@ -116,12 +123,18 @@ func startBenchmarkAction(c *cli.Context) error {
 		return err
 	}
 
-	return CommandPrinter(c).Print(benchmark.Metadata())
+	zerolog.Ctx(ctx).Info().Msgf("Completed benchmark %q", benchmark.Metadata().ID)
+	return p.Print(benchmark.Metadata())
 }
 
 func inspectBenchmarkAction(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return errors.New("benchmark id must be provided")
+	}
+
+	p, err := CommandPrinter(c, printer.OutputJSON)
+	if err != nil {
+		return err
 	}
 
 	control, err := ResolveControl(c)
@@ -136,13 +149,18 @@ func inspectBenchmarkAction(c *cli.Context) error {
 		return err
 	}
 
-	return CommandPrinter(c).Print(benchmark.Metadata())
+	return p.Print(benchmark.Metadata())
 }
 
 func labelBenchmarksAction(c *cli.Context) error {
 	var ids []string
 	for i := 0; i < c.NArg(); i++ {
 		ids = append(ids, c.Args().Get(i))
+	}
+
+	p, err := CommandPrinter(c, printer.OutputTable)
+	if err != nil {
+		return err
 	}
 
 	control, err := ResolveControl(c)
@@ -161,10 +179,15 @@ func labelBenchmarksAction(c *cli.Context) error {
 		l[i] = b.Metadata()
 	}
 
-	return CommandPrinter(c).Print(l)
+	return p.Print(l)
 }
 
 func listBenchmarkAction(c *cli.Context) error {
+	p, err := CommandPrinter(c, printer.OutputTable)
+	if err != nil {
+		return err
+	}
+
 	control, err := ResolveControl(c)
 	if err != nil {
 		return err
@@ -191,7 +214,7 @@ func listBenchmarkAction(c *cli.Context) error {
 		l[i] = b.Metadata()
 	}
 
-	return CommandPrinter(c).Print(l)
+	return p.Print(l)
 }
 
 func removeBenchmarksAction(c *cli.Context) error {

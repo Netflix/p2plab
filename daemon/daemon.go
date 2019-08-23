@@ -70,6 +70,14 @@ func (d *Daemon) Serve(ctx context.Context) error {
 		WriteTimeout:      30 * time.Minute,
 	}
 
+	go func() {
+		<-ctx.Done()
+		err := s.Shutdown(ctx)
+		if err != nil {
+			zerolog.Ctx(ctx).Warn().Err(err).Msg("Failed to shutdown daemon")
+		}
+	}()
+
 	zerolog.Ctx(ctx).Info().Str("addr", d.addr).Msg("daemon listening")
 	return s.ListenAndServe()
 }

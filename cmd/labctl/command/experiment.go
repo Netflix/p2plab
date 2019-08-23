@@ -20,6 +20,7 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/experiments"
 	"github.com/Netflix/p2plab/pkg/cliutil"
+	"github.com/Netflix/p2plab/printer"
 	"github.com/Netflix/p2plab/query"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
@@ -95,6 +96,11 @@ func startExperimentAction(c *cli.Context) error {
 		return errors.New("experiment definition must be provided")
 	}
 
+	p, err := CommandPrinter(c, printer.OutputID)
+	if err != nil {
+		return err
+	}
+
 	filename := c.Args().First()
 	name := c.String("name")
 	if name == "" {
@@ -117,13 +123,18 @@ func startExperimentAction(c *cli.Context) error {
 		return err
 	}
 
-	zerolog.Ctx(ctx).Info().Msgf("Started experiment %q", experiment.Metadata().ID)
-	return nil
+	zerolog.Ctx(ctx).Info().Msgf("Completed experiment %q", experiment.Metadata().ID)
+	return p.Print(experiment.Metadata())
 }
 
 func inspectExperimentAction(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return errors.New("experiment id must be provided")
+	}
+
+	p, err := CommandPrinter(c, printer.OutputJSON)
+	if err != nil {
+		return err
 	}
 
 	control, err := ResolveControl(c)
@@ -138,10 +149,15 @@ func inspectExperimentAction(c *cli.Context) error {
 		return err
 	}
 
-	return CommandPrinter(c).Print(experiment.Metadata())
+	return p.Print(experiment.Metadata())
 }
 
 func labelExperimentsAction(c *cli.Context) error {
+	p, err := CommandPrinter(c, printer.OutputTable)
+	if err != nil {
+		return err
+	}
+
 	var ids []string
 	for i := 0; i < c.NArg(); i++ {
 		ids = append(ids, c.Args().Get(i))
@@ -163,10 +179,15 @@ func labelExperimentsAction(c *cli.Context) error {
 		l[i] = e.Metadata()
 	}
 
-	return CommandPrinter(c).Print(l)
+	return p.Print(l)
 }
 
 func listExperimentAction(c *cli.Context) error {
+	p, err := CommandPrinter(c, printer.OutputTable)
+	if err != nil {
+		return err
+	}
+
 	control, err := ResolveControl(c)
 	if err != nil {
 		return err
@@ -193,7 +214,7 @@ func listExperimentAction(c *cli.Context) error {
 		l[i] = e.Metadata()
 	}
 
-	return CommandPrinter(c).Print(l)
+	return p.Print(l)
 }
 
 func removeExperimentsAction(c *cli.Context) error {

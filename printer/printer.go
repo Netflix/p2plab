@@ -14,6 +14,43 @@
 
 package printer
 
+import (
+	"github.com/Netflix/p2plab/errdefs"
+	"github.com/pkg/errors"
+)
+
 type Printer interface {
 	Print(v interface{}) error
+}
+
+type OutputType string
+
+var (
+	OutputAuto  OutputType = "auto"
+	OutputTable OutputType = "table"
+	OutputID    OutputType = "id"
+	OutputUnix  OutputType = "unix"
+	OutputJSON  OutputType = "json"
+)
+
+func GetPrinter(output, auto OutputType) (Printer, error) {
+	var p Printer
+	switch output {
+	case OutputAuto:
+		if auto == OutputAuto {
+			return nil, errors.Wrap(errdefs.ErrInvalidArgument, "auto printer cannot be auto")
+		}
+		return GetPrinter(auto, "")
+	case OutputTable:
+		p = NewTablePrinter()
+	case OutputID:
+		p = NewIDPrinter()
+	case OutputUnix:
+		p = NewUnixPrinter()
+	case OutputJSON:
+		p = NewJSONPrinter()
+	default:
+		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "output %q is not valid", output)
+	}
+	return p, nil
 }

@@ -17,6 +17,7 @@ package command
 import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/pkg/cliutil"
+	"github.com/Netflix/p2plab/printer"
 	"github.com/Netflix/p2plab/query"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -91,6 +92,11 @@ func inspectNodeAction(c *cli.Context) error {
 		return errors.New("cluster and node id must be provided")
 	}
 
+	p, err := CommandPrinter(c, printer.OutputJSON)
+	if err != nil {
+		return err
+	}
+
 	control, err := ResolveControl(c)
 	if err != nil {
 		return err
@@ -104,12 +110,17 @@ func inspectNodeAction(c *cli.Context) error {
 		return err
 	}
 
-	return CommandPrinter(c).Print(node.Metadata())
+	return p.Print(node.Metadata())
 }
 
 func labelNodesAction(c *cli.Context) error {
 	if c.NArg() < 1 {
 		return errors.New("cluster id must be provided")
+	}
+
+	p, err := CommandPrinter(c, printer.OutputTable)
+	if err != nil {
+		return err
 	}
 
 	var ids []string
@@ -134,12 +145,17 @@ func labelNodesAction(c *cli.Context) error {
 		l[i] = n.Metadata()
 	}
 
-	return CommandPrinter(c).Print(l)
+	return p.Print(l)
 }
 
 func updateNodesAction(c *cli.Context) error {
 	if c.NArg() != 2 {
 		return errors.New("cluster id and git reference must be provided")
+	}
+
+	p, err := CommandPrinter(c, printer.OutputTable)
+	if err != nil {
+		return err
 	}
 
 	var opts []p2plab.ListOption
@@ -175,12 +191,17 @@ func updateNodesAction(c *cli.Context) error {
 		l[i] = n.Metadata()
 	}
 
-	return CommandPrinter(c).Print(l)
+	return p.Print(l)
 }
 
 func listNodeAction(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return errors.New("cluster id must be provided")
+	}
+
+	p, err := CommandPrinter(c, printer.OutputTable)
+	if err != nil {
+		return err
 	}
 
 	control, err := ResolveControl(c)
@@ -210,7 +231,7 @@ func listNodeAction(c *cli.Context) error {
 		l[i] = n.Metadata()
 	}
 
-	return CommandPrinter(c).Print(l)
+	return p.Print(l)
 }
 
 func sshNodeAction(c *cli.Context) error {

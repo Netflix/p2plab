@@ -34,9 +34,9 @@ func WriteRemoteLogs(ctx context.Context, remote io.Reader, writer io.Writer) er
 		var evt map[string]interface{}
 		err := decoder.Decode(&evt)
 		if err != nil {
-			zerolog.Ctx(ctx).Debug().Msg(scanner.Text())
+			zerolog.Ctx(ctx).Error().Msg(scanner.Text())
 			for scanner.Scan() {
-				zerolog.Ctx(ctx).Debug().Msg(scanner.Text())
+				zerolog.Ctx(ctx).Error().Msg(scanner.Text())
 			}
 			return errors.New("unexpected non-json response")
 		}

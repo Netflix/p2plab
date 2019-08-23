@@ -77,8 +77,16 @@ func (s *router) postScenariosCreate(ctx context.Context, w http.ResponseWriter,
 	}
 
 	name := r.FormValue("name")
+	scenario := metadata.Scenario{
+		ID: name,
+		Definition: sdef,
+		Labels: []string{
+			name,
+		},
+	}
+
 	zerolog.Ctx(ctx).Info().Str("scenario", name).Msg("Creating scenario")
-	scenario, err := s.db.CreateScenario(ctx, metadata.Scenario{ID: name, Definition: sdef})
+	scenario, err = s.db.CreateScenario(ctx, scenario)
 	if err != nil {
 		return err
 	}

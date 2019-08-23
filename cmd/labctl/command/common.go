@@ -16,7 +16,6 @@ package command
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -32,13 +31,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
-)
-
-type OutputType string
-
-var (
-	OutputUnix OutputType = "unix"
-	OutputJSON OutputType = "json"
 )
 
 func AttachAppContext(ctx context.Context, app *cli.App) {
@@ -108,25 +100,6 @@ func AttachAppContext(ctx context.Context, app *cli.App) {
 	}
 }
 
-func AttachAppPrinter(app *cli.App) {
-	app.Before = cliutil.JoinBefore(app.Before, func(c *cli.Context) error {
-		output := OutputType(c.String("output"))
-
-		var p printer.Printer
-		switch output {
-		case OutputUnix:
-			p = printer.NewUnixPrinter()
-		case OutputJSON:
-			p = printer.NewJSONPrinter()
-		default:
-			return fmt.Errorf("output %q is not valid", output)
-		}
-
-		c.App.Metadata["printer"] = p
-		return nil
-	})
-}
-
 func AttachAppClient(app *cli.App) {
 	app.Before = cliutil.JoinBefore(app.Before, func(c *cli.Context) error {
 		var opts []httputil.ClientOption
@@ -149,8 +122,8 @@ func AttachAppClient(app *cli.App) {
 	})
 }
 
-func CommandPrinter(c *cli.Context) printer.Printer {
-	return c.App.Metadata["printer"].(printer.Printer)
+func CommandPrinter(c *cli.Context, auto printer.OutputType) (printer.Printer, error) {
+	return printer.GetPrinter(printer.OutputType(c.GlobalString("output")), auto)
 }
 
 func CommandClient(c *cli.Context) *httputil.Client {

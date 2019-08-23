@@ -19,6 +19,7 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/pkg/cliutil"
+	"github.com/Netflix/p2plab/printer"
 	"github.com/Netflix/p2plab/query"
 	"github.com/Netflix/p2plab/scenarios"
 	"github.com/rs/zerolog"
@@ -95,6 +96,11 @@ func createScenarioAction(c *cli.Context) error {
 		return errors.New("scenario definition must be provided")
 	}
 
+	p, err := CommandPrinter(c, printer.OutputID)
+	if err != nil {
+		return err
+	}
+
 	filename := c.Args().First()
 	name := c.String("name")
 	if name == "" {
@@ -118,12 +124,17 @@ func createScenarioAction(c *cli.Context) error {
 	}
 
 	zerolog.Ctx(ctx).Info().Msgf("Created scenario %q", scenario.Metadata().ID)
-	return nil
+	return p.Print(scenario.Metadata())
 }
 
 func inspectScenarioAction(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return errors.New("scenario id must be provided")
+	}
+
+	p, err := CommandPrinter(c, printer.OutputJSON)
+	if err != nil {
+		return err
 	}
 
 	control, err := ResolveControl(c)
@@ -138,13 +149,18 @@ func inspectScenarioAction(c *cli.Context) error {
 		return err
 	}
 
-	return CommandPrinter(c).Print(scenario.Metadata())
+	return p.Print(scenario.Metadata())
 }
 
 func labelScenariosAction(c *cli.Context) error {
 	var names []string
 	for i := 0; i < c.NArg(); i++ {
 		names = append(names, c.Args().Get(i))
+	}
+
+	p, err := CommandPrinter(c, printer.OutputTable)
+	if err != nil {
+		return err
 	}
 
 	control, err := ResolveControl(c)
@@ -163,11 +179,16 @@ func labelScenariosAction(c *cli.Context) error {
 		l[i] = s.Metadata()
 	}
 
-	return CommandPrinter(c).Print(l)
+	return p.Print(l)
 }
 
 func listScenarioAction(c *cli.Context) error {
 	control, err := ResolveControl(c)
+	if err != nil {
+		return err
+	}
+
+	p, err := CommandPrinter(c, printer.OutputTable)
 	if err != nil {
 		return err
 	}
@@ -193,7 +214,7 @@ func listScenarioAction(c *cli.Context) error {
 		l[i] = s.Metadata()
 	}
 
-	return CommandPrinter(c).Print(l)
+	return p.Print(l)
 }
 
 func removeScenariosAction(c *cli.Context) error {
