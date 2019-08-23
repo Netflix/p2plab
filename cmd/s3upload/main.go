@@ -49,8 +49,9 @@ func main() {
 func run(filename string) error {
 	client := httputil.NewHTTPClient()
 	uploader, err := s3uploader.New(client, s3uploader.S3UploaderSettings{
-		Bucket: os.Getenv("S3_UPLOADER_BUCKET"),
-		Prefix: os.Getenv("S3_UPLOADER_PREFIX"),
+		Bucket: os.Getenv("LABD_UPLOADER_S3_BUCKET"),
+		Prefix: os.Getenv("LABD_UPLOADER_S3_PREFIX"),
+		Region: os.Getenv("LABD_UPLOADER_S3_REGION"),
 	})
 	if err != nil {
 		return err

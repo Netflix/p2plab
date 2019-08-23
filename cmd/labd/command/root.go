@@ -72,6 +72,11 @@ func App(ctx context.Context) *cli.App {
 			Usage:  "bucket prefix for s3 uploader",
 			EnvVar: "LABD_UPLOADER_S3_PREFIX",
 		},
+		cli.StringFlag{
+			Name:   "uploader.s3.region",
+			Usage:  "region for s3 uploader",
+			EnvVar: "LABD_UPLOADER_S3_REGION",
+		},
 	}
 	app.Action = daemonAction
 
@@ -96,6 +101,7 @@ func daemonAction(c *cli.Context) error {
 			S3: s3uploader.S3UploaderSettings{
 				Bucket: c.String("uploader.s3.bucket"),
 				Prefix: c.String("uploader.s3.prefix"),
+				Region: c.String("uploader.s3.region"),
 			},
 		}),
 	)

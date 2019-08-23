@@ -49,7 +49,9 @@ func main() {
 
 func run(ref, filename string) error {
 	client := httputil.NewHTTPClient()
-	downloader, err := s3downloader.New(client)
+	downloader, err := s3downloader.New(client, s3downloader.S3DownloaderSettings{
+		Region: os.Getenv("LABAGENT_DOWNLOADER_S3_REGION"),
+	})
 	if err != nil {
 		return err
 	}

@@ -26,20 +26,22 @@ import (
 
 type DownloaderSettings struct {
 	Client *httputil.Client
+
+	S3 s3downloader.S3DownloaderSettings
 }
 
 type Downloaders struct {
-	root   string
-	client *httputil.Client
-	mu     sync.Mutex
-	fs     map[string]p2plab.Downloader
+	root     string
+	settings DownloaderSettings
+	mu       sync.Mutex
+	fs       map[string]p2plab.Downloader
 }
 
 func New(root string, settings DownloaderSettings) *Downloaders {
 	return &Downloaders{
-		root:   root,
-		client: settings.Client,
-		fs:     make(map[string]p2plab.Downloader),
+		root:     root,
+		settings: settings,
+		fs:       make(map[string]p2plab.Downloader),
 	}
 }
 
@@ -63,9 +65,9 @@ func (f *Downloaders) newDownloader(downloaderType string) (p2plab.Downloader, e
 	// root := filepath.Join(f.root, downloaderType)
 	switch downloaderType {
 	case "s3":
-		return s3downloader.New(f.client.HTTPClient)
+		return s3downloader.New(f.settings.Client.HTTPClient, f.settings.S3)
 	case "http", "https":
-		return httpdownloader.New(f.client), nil
+		return httpdownloader.New(f.settings.Client), nil
 	default:
 		return nil, errors.Errorf("unrecognized downloader type: %q", downloaderType)
 	}

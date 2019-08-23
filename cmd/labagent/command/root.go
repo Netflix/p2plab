@@ -18,6 +18,8 @@ import (
 	"context"
 	"os"
 
+	"github.com/Netflix/p2plab/downloaders"
+	"github.com/Netflix/p2plab/downloaders/s3downloader"
 	"github.com/Netflix/p2plab/labagent"
 	"github.com/Netflix/p2plab/pkg/cliutil"
 	"github.com/Netflix/p2plab/version"
@@ -31,34 +33,39 @@ func App(ctx context.Context) *cli.App {
 	app.Version = version.Version
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "root",
-			Usage: "path to state directory",
-			Value: "./tmp/labagent",
+			Name:   "root",
+			Usage:  "path to state directory",
+			Value:  "./tmp/labagent",
 			EnvVar: "LABAGENT_ROOT",
 		},
 		cli.StringFlag{
-			Name:  "address,a",
-			Usage: "address for labd's HTTP server",
-			Value: ":7002",
+			Name:   "address,a",
+			Usage:  "address for labd's HTTP server",
+			Value:  ":7002",
 			EnvVar: "LABAGENT_ADDRESS",
 		},
 		cli.StringFlag{
-			Name:  "app-root",
-			Usage: "path to labapp's state directory",
-			Value: "./tmp/labapp",
+			Name:   "app-root",
+			Usage:  "path to labapp's state directory",
+			Value:  "./tmp/labapp",
 			EnvVar: "LABAGENT_APP_ROOT",
 		},
 		cli.StringFlag{
-			Name:  "app-address",
-			Usage: "address for labapp's HTTP server",
-			Value: "http://localhost:7003",
+			Name:   "app-address",
+			Usage:  "address for labapp's HTTP server",
+			Value:  "http://localhost:7003",
 			EnvVar: "LABAGENT_APP_ADDRESS",
 		},
 		cli.StringFlag{
-			Name:  "log-level,l",
-			Usage: "set the logging level [debug, info, warn, error, fatal, panic]",
-			Value: "debug",
+			Name:   "log-level,l",
+			Usage:  "set the logging level [debug, info, warn, error, fatal, panic]",
+			Value:  "debug",
 			EnvVar: "LABAGENT_LOG_LEVEL",
+		},
+		cli.StringFlag{
+			Name:   "downloader.s3.region",
+			Usage:  "region for s3 downloader",
+			EnvVar: "LABAGENT_DOWNLOADER_S3_REGION",
 		},
 	}
 	app.Action = agentAction
@@ -77,7 +84,13 @@ func agentAction(c *cli.Context) error {
 	}
 
 	ctx := cliutil.CommandContext(c)
-	agent, err := labagent.New(root, c.String("address"), c.String("app-root"), c.String("app-address"), zerolog.Ctx(ctx))
+	agent, err := labagent.New(root, c.String("address"), c.String("app-root"), c.String("app-address"), zerolog.Ctx(ctx),
+		labagent.WithDownloaderSettings(downloaders.DownloaderSettings{
+			S3: s3downloader.S3DownloaderSettings{
+				Region: c.String("downloader.s3.region"),
+			},
+		}),
+	)
 	if err != nil {
 		return err
 	}

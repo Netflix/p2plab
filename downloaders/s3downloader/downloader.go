@@ -27,7 +27,6 @@ import (
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/pkg/logutil"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/s3manager"
@@ -35,16 +34,20 @@ import (
 	"github.com/rs/zerolog"
 )
 
+type S3DownloaderSettings struct {
+	Region string
+}
+
 type downloader struct {
 	downloadManager *s3manager.Downloader
 }
 
-func New(client *http.Client) (p2plab.Downloader, error) {
+func New(client *http.Client, settings S3DownloaderSettings) (p2plab.Downloader, error) {
 	cfg, err := external.LoadDefaultAWSConfig()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load aws config")
 	}
-	cfg.Region = endpoints.UsWest2RegionID
+	cfg.Region = settings.Region
 	cfg.HTTPClient = client
 
 	return &downloader{
