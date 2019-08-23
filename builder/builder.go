@@ -154,7 +154,8 @@ func (b *builder) buildCommit(ctx context.Context, commit string) (f *os.File, d
 		return nil, dir, err
 	}
 
-	err = b.git(ctx, b.bareRepoPath, "fetch", "origin")
+	// git fetch -q origin master:master
+	err = b.git(ctx, b.bareRepoPath, "fetch", "origin", "master:master")
 	if err != nil {
 		return nil, dir, err
 	}
