@@ -107,7 +107,7 @@ var clusterCommand = cli.Command{
 
 func createClusterAction(c *cli.Context) error {
 	if c.NArg() != 1 {
-		return errors.New("cluster name must be provnameed")
+		return errors.New("cluster name must be provided")
 	}
 
 	p, err := CommandPrinter(c, printer.OutputID)

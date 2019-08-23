@@ -33,7 +33,7 @@ var benchmarkCommand = cli.Command{
 		{
 			Name:      "start",
 			Aliases:   []string{"s"},
-			Usage:     "Start benchmark for a benchmark.",
+			Usage:     "Benchmark a scenario on a cluster.",
 			ArgsUsage: "<cluster> <scenario>",
 			Action:    startBenchmarkAction,
 			Flags: []cli.Flag{
