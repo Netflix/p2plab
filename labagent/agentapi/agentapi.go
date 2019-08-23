@@ -56,9 +56,9 @@ func (a *api) Healthcheck(ctx context.Context) bool {
 	return true
 }
 
-func (a *api) Update(ctx context.Context, url string) error {
+func (a *api) Update(ctx context.Context, link string) error {
 	req := a.client.NewRequest("PUT", a.url("/update")).
-		Option("url", url)
+		Option("link", link)
 
 	resp, err := req.Send(ctx)
 	if err != nil {

@@ -34,7 +34,7 @@ import (
 )
 
 type Supervisor interface {
-	Supervise(ctx context.Context, ref string) error
+	Supervise(ctx context.Context, link string) error
 }
 
 type supervisor struct {
@@ -67,14 +67,14 @@ func New(root, appRoot, appAddr string, client *httputil.Client, fs *downloaders
 	}, nil
 }
 
-func (s *supervisor) Supervise(ctx context.Context, ref string) error {
+func (s *supervisor) Supervise(ctx context.Context, link string) error {
 	err := s.kill(ctx)
 	if err != nil {
 		return err
 	}
 
-	if ref != "" {
-		err = s.atomicReplaceBinary(ctx, ref)
+	if link != "" {
+		err = s.atomicReplaceBinary(ctx, link)
 		if err != nil {
 			return err
 		}
@@ -152,14 +152,14 @@ func (s *supervisor) clear(ctx context.Context) error {
 	return nil
 }
 
-func (s *supervisor) atomicReplaceBinary(ctx context.Context, ref string) error {
+func (s *supervisor) atomicReplaceBinary(ctx context.Context, link string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "updating binary")
 	defer span.Finish()
-	span.SetTag("ref", ref)
+	span.SetTag("link", link)
 
 	zerolog.Ctx(ctx).Info().Msg("Atomically replacing binary")
 
-	u, err := url.Parse(ref)
+	u, err := url.Parse(link)
 	if err != nil {
 		return err
 	}
@@ -169,7 +169,7 @@ func (s *supervisor) atomicReplaceBinary(ctx context.Context, ref string) error 
 		return err
 	}
 
-	rc, err := downloader.Download(ctx, ref)
+	rc, err := downloader.Download(ctx, link)
 	if err != nil {
 		return err
 	}

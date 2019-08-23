@@ -42,13 +42,13 @@ func (s *router) Routes() []daemon.Route {
 }
 
 func (s *router) putUpdate(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
-	url := r.FormValue("url")
+	link := r.FormValue("link")
 	ctx, logger := logutil.WithResponseLogger(ctx, w)
 	logger.UpdateContext(func(c zerolog.Context) zerolog.Context {
-		return c.Str("url", url)
+		return c.Str("link", link)
 	})
 
-	err := s.supervisor.Supervise(ctx, url)
+	err := s.supervisor.Supervise(ctx, link)
 	if err != nil {
 		return err
 	}

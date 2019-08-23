@@ -3,10 +3,13 @@ module github.com/Netflix/p2plab
 go 1.12
 
 require (
+	github.com/Microsoft/go-winio v0.4.13-0.20190408173621-84b4ab48a507 // indirect
 	github.com/Microsoft/hcsshim v0.8.6 // indirect
-	github.com/alibaba/pouch v0.0.0-20190805080148-17ba8c3784a3
 	github.com/aws/aws-sdk-go-v2 v0.11.0
+	github.com/codahale/hdrhistogram v0.0.0-20160425231609-f8ad88b59a58 // indirect
 	github.com/containerd/containerd v1.3.0-0.20190507210959-7c1e88399ec0
+	github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc // indirect
+	github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible // indirect
 	github.com/gobwas/glob v0.2.3
 	github.com/gorilla/mux v1.7.3
 	github.com/hako/durafmt v0.0.0-20190612201238-650ed9f29a84
@@ -41,11 +44,11 @@ require (
 	github.com/libp2p/go-stream-muxer v0.1.0 // indirect
 	github.com/libp2p/go-tcp-transport v0.1.0
 	github.com/libp2p/go-ws-transport v0.1.0
-	github.com/moby/buildkit v0.6.1 // indirect
 	github.com/multiformats/go-multiaddr v0.0.4
 	github.com/multiformats/go-multihash v0.0.5
 	github.com/opencontainers/go-digest v1.0.0-rc1
 	github.com/opencontainers/image-spec v1.0.1
+	github.com/opencontainers/runc v1.0.0-rc8 // indirect
 	github.com/opentracing-contrib/go-stdlib v0.0.0-20190519235532-cf7a6c988dc9
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.8.1
@@ -59,4 +62,6 @@ require (
 	go.etcd.io/bbolt v1.3.3
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	google.golang.org/appengine v1.4.0 // indirect
+	google.golang.org/grpc v1.20.1 // indirect
+	gotest.tools v2.2.0+incompatible // indirect
 )

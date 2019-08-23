@@ -15,7 +15,6 @@
 package s3uploader
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -26,8 +25,10 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/pkg/logutil"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/s3manager"
 	cid "github.com/ipfs/go-cid"
 	multihash "github.com/multiformats/go-multihash"
@@ -45,6 +46,7 @@ type uploader struct {
 	prefix        string
 	uploadManager *s3manager.Uploader
 	cidBuilder    cid.Builder
+	svc           *s3.Client
 }
 
 func New(client *http.Client, settings S3UploaderSettings) (p2plab.Uploader, error) {
@@ -61,6 +63,8 @@ func New(client *http.Client, settings S3UploaderSettings) (p2plab.Uploader, err
 		prefix:        settings.Prefix,
 		uploadManager: uploadManager,
 		cidBuilder:    cid.V1Builder{MhType: multihash.SHA2_256},
+		// TODO: remove when multi part upload is allowed on IAMProfile.
+		svc: s3.New(cfg),
 	}, nil
 }
 
@@ -76,22 +80,34 @@ func (u *uploader) Upload(ctx context.Context, r io.Reader) (link string, err er
 	}
 
 	key := path.Join(u.prefix, c.String())
-	upParams := &s3manager.UploadInput{
-		Bucket: &u.bucket,
-		Key:    &key,
-		Body:   bytes.NewReader(content),
-	}
-
 	logger := zerolog.Ctx(ctx).With().Str("bucket", u.bucket).Str("key", key).Logger()
 	ectx, cancel := context.WithCancel(logger.WithContext(ctx))
 	defer cancel()
 
 	go logutil.Elapsed(ectx, 20*time.Second, "Uploading S3 object")
 
-	_, err = u.uploadManager.UploadWithContext(ctx, upParams)
-	if err != nil {
-		return "", err
+	input := &s3.PutObjectInput{
+		Body:   aws.ReadSeekCloser(r),
+		Bucket: aws.String(u.bucket),
+		Key:    aws.String(key),
 	}
+
+	req := u.svc.PutObjectRequest(input)
+	_, err = req.Send(ctx)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to put object to s3")
+	}
+
+	// upParams := &s3manager.UploadInput{
+	// 	Bucket: aws.String(u.bucket),
+	// 	Key:    aws.String(key),
+	// 	Body:   bytes.NewReader(content),
+	// }
+
+	// _, err = u.uploadManager.UploadWithContext(ctx, upParams)
+	// if err != nil {
+	// 	return "", err
+	// }
 
 	return fmt.Sprintf("s3://%s/%s/%s", u.bucket, u.prefix, c), nil
 }
