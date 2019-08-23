@@ -48,6 +48,11 @@ type supervisor struct {
 }
 
 func New(root, appRoot, appAddr string, client *httputil.Client, fs *downloaders.Downloaders) (Supervisor, error) {
+	err := os.MkdirAll(root, 0711)
+	if err != nil {
+		return nil, err
+	}
+
 	u, err := url.Parse(appAddr)
 	if err != nil {
 		return nil, err
@@ -157,8 +162,7 @@ func (s *supervisor) atomicReplaceBinary(ctx context.Context, link string) error
 	defer span.Finish()
 	span.SetTag("link", link)
 
-	zerolog.Ctx(ctx).Info().Msg("Atomically replacing binary")
-
+	zerolog.Ctx(ctx).Debug().Msg("Atomically replacing binary")
 	u, err := url.Parse(link)
 	if err != nil {
 		return err
@@ -175,7 +179,7 @@ func (s *supervisor) atomicReplaceBinary(ctx context.Context, link string) error
 	}
 	defer rc.Close()
 
-	f, err := ioutil.TempFile(filepath.Join(s.root, "tmp"), "labapp")
+	f, err := ioutil.TempFile(s.root, "labapp")
 	if err != nil {
 		return err
 	}

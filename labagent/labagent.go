@@ -50,7 +50,7 @@ func New(root, addr, appRoot, appAddr string, logger *zerolog.Logger, opts ...La
 	settings.DownloaderSettings.Client = client
 	fs := downloaders.New(filepath.Join(root, "downloaders"), settings.DownloaderSettings)
 
-	s, err := supervisor.New(root, appRoot, appAddr, client, fs)
+	s, err := supervisor.New(filepath.Join(root, "supervisor"), appRoot, appAddr, client, fs)
 	if err != nil {
 		return nil, err
 	}

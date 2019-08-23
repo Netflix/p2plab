@@ -50,6 +50,7 @@ func (s *router) Routes() []daemon.Route {
 	return []daemon.Route{
 		// GET
 		daemon.NewGetRoute("/peerInfo", s.getPeerInfo),
+		daemon.NewGetRoute("/stat", s.getPeerInfo),
 		// POST
 		daemon.NewPostRoute("/run", s.postRunTask),
 	}
