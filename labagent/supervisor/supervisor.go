@@ -187,6 +187,11 @@ func (s *supervisor) atomicReplaceBinary(ctx context.Context, link string) error
 		return err
 	}
 
+	err = os.Chmod(f.Name(), 0775)
+	if err != nil {
+		return err
+	}
+
 	// Atomically replace the binary.
 	binaryPath := filepath.Join(s.root, "labapp")
 	err = os.Rename(f.Name(), binaryPath)
