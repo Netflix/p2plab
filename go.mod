@@ -72,3 +72,5 @@ require (
 	google.golang.org/grpc v1.20.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 )
+
+replace github.com/ipfs/go-bitswap => github.com/hinshun/go-bitswap v0.1.7-0.20190820204142-cbb8d35c4dbb
