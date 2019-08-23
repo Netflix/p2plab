@@ -76,6 +76,12 @@ func (b *builder) Init(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+
+		// Allows `git fetch origin` to fetch all upstream changes to all branches.
+		err = b.git(ctx, bareRepoPath, "config", "--add", "remote.origin.fetch", "refs/heads/*:refs/heads/*")
+		if err != nil {
+			return err
+		}
 	}
 
 	b.bareRepoPath, err = filepath.Abs(bareRepoPath)
@@ -154,8 +160,7 @@ func (b *builder) buildCommit(ctx context.Context, commit string) (f *os.File, d
 		return nil, dir, err
 	}
 
-	// git fetch -q origin master:master
-	err = b.git(ctx, b.bareRepoPath, "fetch", "origin", "master:master")
+	err = b.git(ctx, b.bareRepoPath, "fetch", "origin")
 	if err != nil {
 		return nil, dir, err
 	}
