@@ -31,10 +31,11 @@ var scenarioCommand = cli.Command{
 	Usage:   "Manage scenarios.",
 	Subcommands: []cli.Command{
 		{
-			Name:    "create",
-			Aliases: []string{"c"},
-			Usage:   "Creates a new scenario.",
-			Action:  createScenarioAction,
+			Name:      "create",
+			Aliases:   []string{"c"},
+			Usage:     "Creates a new scenario from a definition file.",
+			ArgsUsage: "<filename>",
+			Action:    createScenarioAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "name",
@@ -43,16 +44,18 @@ var scenarioCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "inspect",
-			Aliases: []string{"i"},
-			Usage:   "Displays detailed information on a scenario.",
-			Action:  inspectScenarioAction,
+			Name:      "inspect",
+			Aliases:   []string{"i"},
+			Usage:     "Displays detailed information on a scenario.",
+			ArgsUsage: "<name>",
+			Action:    inspectScenarioAction,
 		},
 		{
-			Name:    "label",
-			Aliases: []string{"l"},
-			Usage:   "Add or remove labels from scenarios.",
-			Action:  labelScenariosAction,
+			Name:      "label",
+			Aliases:   []string{"l"},
+			Usage:     "Add or remove labels from scenarios.",
+			ArgsUsage: " ",
+			Action:    labelScenariosAction,
 			Flags: []cli.Flag{
 				&cli.StringSliceFlag{
 					Name:  "add",
@@ -65,10 +68,11 @@ var scenarioCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "list",
-			Aliases: []string{"ls"},
-			Usage:   "List scenarios.",
-			Action:  listScenarioAction,
+			Name:      "list",
+			Aliases:   []string{"ls"},
+			Usage:     "List scenarios.",
+			ArgsUsage: " ",
+			Action:    listScenarioAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "query,q",
@@ -77,10 +81,11 @@ var scenarioCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "remove",
-			Aliases: []string{"rm"},
-			Usage:   "Remove scenarios.",
-			Action:  removeScenariosAction,
+			Name:      "remove",
+			Aliases:   []string{"rm"},
+			Usage:     "Remove scenarios.",
+			ArgsUsage: "[<name> ...]",
+			Action:    removeScenariosAction,
 		},
 	},
 }

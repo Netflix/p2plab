@@ -29,10 +29,11 @@ var benchmarkCommand = cli.Command{
 	Usage:   "Manage benchmarks.",
 	Subcommands: []cli.Command{
 		{
-			Name:    "start",
-			Aliases: []string{"s"},
-			Usage:   "Start benchmark for a benchmark.",
-			Action:  startBenchmarkAction,
+			Name:      "start",
+			Aliases:   []string{"s"},
+			Usage:     "Start benchmark for a benchmark.",
+			ArgsUsage: "<cluster> <scenario>",
+			Action:    startBenchmarkAction,
 			Flags: []cli.Flag{
 				&cli.BoolFlag{
 					Name:  "no-reset",
@@ -41,16 +42,18 @@ var benchmarkCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "inspect",
-			Aliases: []string{"i"},
-			Usage:   "Displays detailed information on a benchmark.",
-			Action:  inspectBenchmarkAction,
+			Name:      "inspect",
+			Aliases:   []string{"i"},
+			Usage:     "Displays detailed information on a benchmark.",
+			ArgsUsage: "<id>",
+			Action:    inspectBenchmarkAction,
 		},
 		{
-			Name:    "label",
-			Aliases: []string{"l"},
-			Usage:   "Add or remove labels from benchmarks.",
-			Action:  labelBenchmarksAction,
+			Name:      "label",
+			Aliases:   []string{"l"},
+			Usage:     "Add or remove labels from benchmarks.",
+			ArgsUsage: " ",
+			Action:    labelBenchmarksAction,
 			Flags: []cli.Flag{
 				&cli.StringSliceFlag{
 					Name:  "add",
@@ -63,10 +66,11 @@ var benchmarkCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "list",
-			Aliases: []string{"ls"},
-			Usage:   "List benchmarks",
-			Action:  listBenchmarkAction,
+			Name:      "list",
+			Aliases:   []string{"ls"},
+			Usage:     "List benchmarks",
+			ArgsUsage: " ",
+			Action:    listBenchmarkAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "query,q",
@@ -75,10 +79,11 @@ var benchmarkCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "remove",
-			Aliases: []string{"rm"},
-			Usage:   "Remove benchmarks.",
-			Action:  removeBenchmarksAction,
+			Name:      "remove",
+			Aliases:   []string{"rm"},
+			Usage:     "Remove benchmarks.",
+			ArgsUsage: "[<id> ...]",
+			Action:    removeBenchmarksAction,
 		},
 	},
 }

@@ -31,10 +31,11 @@ var debugCommand = cli.Command{
 	Hidden:  true,
 	Subcommands: []cli.Command{
 		{
-			Name:    "update",
-			Aliases: []string{"u"},
-			Usage:   "Updates a labagent to a binary retrievable by an url",
-			Action:  updateAgentAction,
+			Name:      "update",
+			Aliases:   []string{"u"},
+			Usage:     "Updates a labagent to a binary retrievable by an url",
+			ArgsUsage: "<link>",
+			Action:    updateAgentAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "agent-addr",
@@ -49,10 +50,11 @@ var debugCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "peer",
-			Aliases: []string{"p"},
-			Usage:   "Retrieves the peer info from a labapp",
-			Action:  peerInfoAction,
+			Name:      "peer",
+			Aliases:   []string{"p"},
+			Usage:     "Retrieves the peer info from a labapp",
+			ArgsUsage: " ",
+			Action:    peerInfoAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "app-addr",
@@ -62,10 +64,11 @@ var debugCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "run",
-			Aliases: []string{"r"},
-			Usage:   "Runs a task on a labapp.",
-			Action:  runTaskAction,
+			Name:      "run",
+			Aliases:   []string{"r"},
+			Usage:     "Runs a task on a labapp.",
+			ArgsUsage: "<task> <subject>",
+			Action:    runTaskAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "app-addr",
@@ -78,9 +81,9 @@ var debugCommand = cli.Command{
 }
 
 func updateAgentAction(c *cli.Context) error {
-	var url string
+	link := "HEAD"
 	if c.NArg() > 0 {
-		url = c.Args().First()
+		link = c.Args().First()
 	}
 
 	agent, err := ResolveAgent(c, c.String("agent-addr"))
@@ -89,7 +92,7 @@ func updateAgentAction(c *cli.Context) error {
 	}
 
 	ctx := cliutil.CommandContext(c)
-	err = agent.Update(ctx, url)
+	err = agent.Update(ctx, link)
 	if err != nil {
 		return err
 	}

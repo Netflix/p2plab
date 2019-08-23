@@ -31,10 +31,11 @@ var experimentCommand = cli.Command{
 	Usage:   "Manage experiments.",
 	Subcommands: []cli.Command{
 		{
-			Name:    "start",
-			Aliases: []string{"s"},
-			Usage:   "Starts an experiment",
-			Action:  startExperimentAction,
+			Name:      "start",
+			Aliases:   []string{"s"},
+			Usage:     "Starts an experiment from a definition file",
+			ArgsUsage: "<filename>",
+			Action:    startExperimentAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "name",
@@ -43,16 +44,18 @@ var experimentCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "inspect",
-			Aliases: []string{"i"},
-			Usage:   "Displays detailed information on a experiment.",
-			Action:  inspectExperimentAction,
+			Name:      "inspect",
+			Aliases:   []string{"i"},
+			Usage:     "Displays detailed information on a experiment.",
+			ArgsUsage: "<id>",
+			Action:    inspectExperimentAction,
 		},
 		{
-			Name:    "label",
-			Aliases: []string{"l"},
-			Usage:   "Add or remove labels from experiments.",
-			Action:  labelExperimentsAction,
+			Name:      "label",
+			Aliases:   []string{"l"},
+			Usage:     "Add or remove labels from experiments.",
+			ArgsUsage: " ",
+			Action:    labelExperimentsAction,
 			Flags: []cli.Flag{
 				&cli.StringSliceFlag{
 					Name:  "add",
@@ -65,10 +68,11 @@ var experimentCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "list",
-			Aliases: []string{"ls"},
-			Usage:   "List experiments.",
-			Action:  listExperimentAction,
+			Name:      "list",
+			Aliases:   []string{"ls"},
+			Usage:     "List experiments.",
+			ArgsUsage: " ",
+			Action:    listExperimentAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "query,q",
@@ -77,10 +81,11 @@ var experimentCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "remove",
-			Aliases: []string{"rm"},
-			Usage:   "Remove experiments.",
-			Action:  removeExperimentsAction,
+			Name:      "remove",
+			Aliases:   []string{"rm"},
+			Usage:     "Remove experiments.",
+			ArgsUsage: "[<id> ...]",
+			Action:    removeExperimentsAction,
 		},
 	},
 }

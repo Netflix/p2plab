@@ -29,10 +29,11 @@ var clusterCommand = cli.Command{
 	Usage:   "Manage clusters.",
 	Subcommands: []cli.Command{
 		{
-			Name:    "create",
-			Aliases: []string{"c"},
-			Usage:   "Creates a new cluster.",
-			Action:  createClusterAction,
+			Name:      "create",
+			Aliases:   []string{"c"},
+			Usage:     "Creates a new cluster.",
+			ArgsUsage: "<name>",
+			Action:    createClusterAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "definition,d",
@@ -56,16 +57,18 @@ var clusterCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "inspect",
-			Aliases: []string{"inspect"},
-			Usage:   "Displays detailed information on a cluster.",
-			Action:  inspectClusterAction,
+			Name:      "inspect",
+			Aliases:   []string{"inspect"},
+			Usage:     "Displays detailed information on a cluster.",
+			ArgsUsage: "<name>",
+			Action:    inspectClusterAction,
 		},
 		{
-			Name:    "label",
-			Aliases: []string{"l"},
-			Usage:   "Add or remove labels from clusters.",
-			Action:  labelClustersAction,
+			Name:      "label",
+			Aliases:   []string{"l"},
+			Usage:     "Add or remove labels from clusters.",
+			ArgsUsage: " ",
+			Action:    labelClustersAction,
 			Flags: []cli.Flag{
 				&cli.StringSliceFlag{
 					Name:  "add",
@@ -78,10 +81,11 @@ var clusterCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "list",
-			Aliases: []string{"ls"},
-			Usage:   "List clusters.",
-			Action:  listClusterAction,
+			Name:      "list",
+			Aliases:   []string{"ls"},
+			Usage:     "List clusters.",
+			ArgsUsage: " ",
+			Action:    listClusterAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "query,q",
@@ -90,10 +94,11 @@ var clusterCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "remove",
-			Aliases: []string{"rm"},
-			Usage:   "Remove clusters.",
-			Action:  removeClustersAction,
+			Name:      "remove",
+			ArgsUsage: "[<name> ...]",
+			Aliases:   []string{"rm"},
+			Usage:     "Remove clusters.",
+			Action:    removeClustersAction,
 		},
 	},
 }

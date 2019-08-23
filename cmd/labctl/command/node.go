@@ -28,16 +28,18 @@ var nodeCommand = cli.Command{
 	Usage:   "Manage nodes.",
 	Subcommands: []cli.Command{
 		{
-			Name:    "inspect",
-			Aliases: []string{"i"},
-			Usage:   "Displays detailed information on a node.",
-			Action:  inspectNodeAction,
+			Name:      "inspect",
+			Aliases:   []string{"i"},
+			Usage:     "Displays detailed information on a node.",
+			ArgsUsage: "<cluster> <id>",
+			Action:    inspectNodeAction,
 		},
 		{
-			Name:    "label",
-			Aliases: []string{"l"},
-			Usage:   "Add or remove labels from nodes.",
-			Action:  labelNodesAction,
+			Name:      "label",
+			Aliases:   []string{"l"},
+			Usage:     "Add or remove labels from nodes.",
+			ArgsUsage: "<cluster>",
+			Action:    labelNodesAction,
 			Flags: []cli.Flag{
 				&cli.StringSliceFlag{
 					Name:  "add",
@@ -50,10 +52,11 @@ var nodeCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "list",
-			Aliases: []string{"ls"},
-			Usage:   "List nodes.",
-			Action:  listNodeAction,
+			Name:      "list",
+			Aliases:   []string{"ls"},
+			Usage:     "List nodes.",
+			ArgsUsage: "<cluster>",
+			Action:    listNodeAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "query,q",
@@ -62,10 +65,11 @@ var nodeCommand = cli.Command{
 			},
 		},
 		{
-			Name:    "update",
-			Aliases: []string{"u"},
-			Usage:   "Updates nodes to a given p2plab git reference",
-			Action:  updateNodesAction,
+			Name:      "update",
+			Aliases:   []string{"u"},
+			ArgsUsage: "<cluster> <git-ref>",
+			Usage:     "Updates nodes to a given p2plab git reference",
+			Action:    updateNodesAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "query,q",
@@ -74,9 +78,10 @@ var nodeCommand = cli.Command{
 			},
 		},
 		{
-			Name:   "ssh",
-			Usage:  "SSH into a node.",
-			Action: sshNodeAction,
+			Name:      "ssh",
+			Usage:     "SSH into a node.",
+			ArgsUsage: "<cluster> <id>",
+			Action:    sshNodeAction,
 		},
 	},
 }
