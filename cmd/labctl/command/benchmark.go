@@ -102,7 +102,7 @@ func createBenchmarkAction(c *cli.Context) error {
 		return errors.New("cluster and scenario name must be provided")
 	}
 
-	p, err := CommandPrinter(c, printer.OutputID)
+	p, err := CommandPrinter(c, printer.OutputTable)
 	if err != nil {
 		return err
 	}

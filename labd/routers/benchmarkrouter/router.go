@@ -191,7 +191,7 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 
 	report := metadata.Report{
 		Summary: metadata.ReportSummary{
-			TotalTime: execution.Start.Sub(execution.End),
+			TotalTime: execution.End.Sub(execution.Start),
 		},
 		Nodes: reportByNodeID,
 	}
