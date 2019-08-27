@@ -154,7 +154,7 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 	}
 
 	zerolog.Ctx(ctx).Info().Msg("Creating scenario plan")
-	plan, err := scenarios.Plan(ctx, scenario.Definition, s.ts, s.seeder, lset)
+	plan, queries, err := scenarios.Plan(ctx, scenario.Definition, s.ts, s.seeder, lset)
 	if err != nil {
 		return errors.Wrap(err, "failed to create scenario plan")
 	}
@@ -194,7 +194,8 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 		Summary: metadata.ReportSummary{
 			TotalTime: execution.End.Sub(execution.Start),
 		},
-		Nodes: reportByNodeID,
+		Nodes:   reportByNodeID,
+		Queries: queries,
 	}
 	report.Aggregates = reports.ComputeAggregates(report.Nodes)
 

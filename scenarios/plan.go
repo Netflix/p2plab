@@ -28,8 +28,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformers.Transformers, peer p2plab.Peer, lset p2plab.LabeledSet) (metadata.ScenarioPlan, error) {
-	plan := metadata.ScenarioPlan{
+func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformers.Transformers, peer p2plab.Peer, lset p2plab.LabeledSet) (plan metadata.ScenarioPlan, queries map[string][]string, err error) {
+	plan = metadata.ScenarioPlan{
 		Objects:   make(map[string]cid.Cid),
 		Seed:      make(map[string]metadata.Task),
 		Benchmark: make(map[string]metadata.Task),
@@ -60,21 +60,21 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 		})
 	}
 
-	err := objects.Wait()
+	err = objects.Wait()
 	if err != nil {
-		return plan, nil
+		return plan, nil, err
 	}
 
 	zerolog.Ctx(ctx).Info().Msg("Planning scenario seed")
 	for q, a := range sdef.Seed {
 		qry, err := query.Parse(ctx, q)
 		if err != nil {
-			return plan, err
+			return plan, nil, err
 		}
 
 		mset, err := qry.Match(ctx, lset)
 		if err != nil {
-			return plan, err
+			return plan, nil, err
 		}
 
 		var ids []string
@@ -85,7 +85,7 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 
 		action, err := actions.Parse(plan.Objects, a)
 		if err != nil {
-			return plan, err
+			return plan, nil, err
 		}
 
 		var ns []p2plab.Node
@@ -95,34 +95,36 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 
 		taskMap, err := action.Tasks(ctx, ns)
 		if err != nil {
-			return plan, err
+			return plan, nil, err
 		}
 
 		plan.Seed = taskMap
 	}
 
-	// TODO: Refactor `Seed` and `Benchmark` into arbitrary `Stages`.
 	zerolog.Ctx(ctx).Info().Msg("Planning scenario benchmark")
+	queries = make(map[string][]string)
 	for q, a := range sdef.Benchmark {
 		qry, err := query.Parse(ctx, q)
 		if err != nil {
-			return plan, err
+			return plan, nil, err
 		}
 
 		mset, err := qry.Match(ctx, lset)
 		if err != nil {
-			return plan, err
+			return plan, nil, err
 		}
 
 		var ids []string
 		for _, l := range mset.Slice() {
 			ids = append(ids, l.ID())
 		}
+
 		zerolog.Ctx(ctx).Debug().Str("query", qry.String()).Strs("ids", ids).Msg("Matched query")
+		queries[qry.String()] = ids
 
 		action, err := actions.Parse(plan.Objects, a)
 		if err != nil {
-			return plan, err
+			return plan, nil, err
 		}
 
 		var ns []p2plab.Node
@@ -132,11 +134,11 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 
 		taskMap, err := action.Tasks(ctx, ns)
 		if err != nil {
-			return plan, err
+			return plan, nil, err
 		}
 
 		plan.Benchmark = taskMap
 	}
 
-	return plan, nil
+	return plan, queries, nil
 }

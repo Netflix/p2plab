@@ -33,6 +33,8 @@ type Report struct {
 	Aggregates ReportAggregates
 
 	Nodes map[string]ReportNode
+
+	Queries map[string][]string
 }
 
 type ReportSummary struct {
