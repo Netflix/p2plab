@@ -25,16 +25,15 @@ func ComputeAggregates(reportByNodeId map[string]metadata.ReportNode) metadata.R
 	var aggregates metadata.ReportAggregates
 	for _, reportNode := range reportByNodeId {
 		singleBitswap := reportNode.Bitswap
-		aggregatesBitswap := aggregates.Totals.Bitswap
 
 		for _, pair := range []bitswapPair{
-			{singleBitswap.BlocksReceived, &aggregatesBitswap.BlocksReceived},
-			{singleBitswap.DataReceived, &aggregatesBitswap.DataReceived},
-			{singleBitswap.BlocksSent, &aggregatesBitswap.BlocksSent},
-			{singleBitswap.DataSent, &aggregatesBitswap.DataSent},
-			{singleBitswap.DupBlksReceived, &aggregatesBitswap.DupBlksReceived},
-			{singleBitswap.DupDataReceived, &aggregatesBitswap.DupDataReceived},
-			{singleBitswap.MessagesReceived, &aggregatesBitswap.MessagesReceived},
+			{singleBitswap.BlocksReceived, &aggregates.Totals.Bitswap.BlocksReceived},
+			{singleBitswap.DataReceived, &aggregates.Totals.Bitswap.DataReceived},
+			{singleBitswap.BlocksSent, &aggregates.Totals.Bitswap.BlocksSent},
+			{singleBitswap.DataSent, &aggregates.Totals.Bitswap.DataSent},
+			{singleBitswap.DupBlksReceived, &aggregates.Totals.Bitswap.DupBlksReceived},
+			{singleBitswap.DupDataReceived, &aggregates.Totals.Bitswap.DupDataReceived},
+			{singleBitswap.MessagesReceived, &aggregates.Totals.Bitswap.MessagesReceived},
 		} {
 			*pair.aggregate += pair.single
 		}
