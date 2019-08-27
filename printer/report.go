@@ -71,6 +71,7 @@ func printReportBandwidth(report metadata.Report) string {
 	table.SetAlignment(tablewriter.ALIGN_CENTER)
 	table.SetHeader([]string{"Query", "Node", "TotalIn", "TotalOut", "RateIn", "RateOut"})
 	table.SetAutoMergeCells(true)
+	table.SetRowLine(true)
 
 	qryBuckets, nodeIdsByQryBucket := sortQueryBuckets(report)
 	for _, qryBucket := range qryBuckets {
@@ -106,6 +107,7 @@ func printReportBitswap(report metadata.Report) string {
 	table := tablewriter.NewWriter(buf)
 	table.SetAlignment(tablewriter.ALIGN_CENTER)
 	table.SetAutoMergeCells(true)
+	table.SetRowLine(true)
 
 	table.SetHeader([]string{"Query", "Node", "BlocksRecv", "BlocksSent", "DupBlocks", "DataRecv", "DataSent", "DupData"})
 
