@@ -68,4 +68,4 @@ require (
 	gotest.tools v2.2.0+incompatible // indirect
 )
 
-replace github.com/ipfs/go-bitswap => github.com/hinshun/go-bitswap v0.1.7-0.20190823181826-b2f3326eb6cb
+replace github.com/ipfs/go-bitswap => github.com/hinshun/go-bitswap v0.1.7-0.20190827013313-3514b1ab1d4e
