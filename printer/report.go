@@ -70,8 +70,9 @@ func printReportBandwidth(report metadata.Report) string {
 	table := tablewriter.NewWriter(buf)
 	table.SetAlignment(tablewriter.ALIGN_CENTER)
 	table.SetHeader([]string{"Query", "Node", "TotalIn", "TotalOut", "RateIn", "RateOut"})
+	table.SetAutoMergeCells(true)
 
-	qryBuckets, nodeIdsByQryBucket := sortQueryBuckets(report.Queries)
+	qryBuckets, nodeIdsByQryBucket := sortQueryBuckets(report)
 	for _, qryBucket := range qryBuckets {
 		for _, nodeId := range nodeIdsByQryBucket[qryBucket] {
 			totals := report.Nodes[nodeId].Bandwidth.Totals
@@ -104,10 +105,11 @@ func printReportBitswap(report metadata.Report) string {
 	buf := new(bytes.Buffer)
 	table := tablewriter.NewWriter(buf)
 	table.SetAlignment(tablewriter.ALIGN_CENTER)
+	table.SetAutoMergeCells(true)
 
 	table.SetHeader([]string{"Query", "Node", "BlocksRecv", "BlocksSent", "DupBlocks", "DataRecv", "DataSent", "DupData"})
 
-	qryBuckets, nodeIdsByQryBucket := sortQueryBuckets(report.Queries)
+	qryBuckets, nodeIdsByQryBucket := sortQueryBuckets(report)
 	for _, qryBucket := range qryBuckets {
 		for _, nodeId := range nodeIdsByQryBucket[qryBucket] {
 			bswap := report.Nodes[nodeId].Bitswap
@@ -140,27 +142,42 @@ func printReportBitswap(report metadata.Report) string {
 	return buf.String()
 }
 
-func sortQueryBuckets(queries map[string][]string) (qryBuckets []string, nodeIdsByQryBucket map[string][]string) {
+func sortQueryBuckets(report metadata.Report) (qryBuckets []string, nodeIdsByQryBucket map[string][]string) {
 	queriesByNodeId := make(map[string][]string)
-	for qry, ns := range queries {
-		for _, n := range ns {
-			queriesByNodeId[n] = append(queriesByNodeId[n], qry)
+	for qry, nodeIds := range report.Queries {
+		for _, nodeId := range nodeIds {
+			queriesByNodeId[nodeId] = append(queriesByNodeId[nodeId], qry)
 		}
 	}
 
+	nodeIds := sortedNodes(report)
 	nodeIdsByQryBucket = make(map[string][]string)
-	for nodeId, queries := range queriesByNodeId {
+	for _, nodeId := range nodeIds {
 		var qryBucket string
-		if len(queries) == 1 {
+		queries, ok := queriesByNodeId[nodeId]
+		if !ok {
+			qryBucket = "-"
+		} else if len(queries) == 1 {
 			qryBucket = queries[0]
 		} else {
 			sort.Strings(queries)
 			qryBucket = fmt.Sprintf("(and %s)", strings.Join(queries, " "))
 		}
-		qryBuckets = append(qryBuckets, qryBucket)
 		nodeIdsByQryBucket[qryBucket] = append(nodeIdsByQryBucket[qryBucket], nodeId)
 	}
-	sort.Strings(qryBuckets)
 
+	for qryBucket := range nodeIdsByQryBucket {
+		qryBuckets = append(qryBuckets, qryBucket)
+	}
+	sort.Strings(qryBuckets)
 	return qryBuckets, nodeIdsByQryBucket
+}
+
+func sortedNodes(report metadata.Report) []string {
+	var nodeIds []string
+	for nodeId := range report.Nodes {
+		nodeIds = append(nodeIds, nodeId)
+	}
+	sort.Strings(nodeIds)
+	return nodeIds
 }
