@@ -1,14 +1,14 @@
 {
 	"objects": {
-		"ubuntu": {
+		"golang": {
 			"type": "oci",
-			"source": "docker.io/library/ubuntu:latest"
+			"source": "docker.io/library/golang:latest"
 		}
 	},
 	"seed": {
-		"region=us-east-1": "ubuntu"
+		"us-east-1": "golang"
 	},
 	"benchmark": {
-		"region=us-west-2": "ubuntu"
+		"us-west-2": "golang"
 	}
 }
