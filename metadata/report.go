@@ -45,8 +45,6 @@ type ReportSummary struct {
 
 type ReportAggregates struct {
 	Totals ReportNode
-
-	Averages ReportNode
 }
 
 type ReportNode struct {

@@ -32,6 +32,7 @@ import (
 	"github.com/Netflix/p2plab/pkg/logutil"
 	"github.com/Netflix/p2plab/pkg/stringutil"
 	"github.com/Netflix/p2plab/query"
+	"github.com/Netflix/p2plab/reports"
 	"github.com/Netflix/p2plab/scenarios"
 	"github.com/Netflix/p2plab/transformers"
 	"github.com/pkg/errors"
@@ -195,6 +196,7 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 		},
 		Nodes: reportByNodeID,
 	}
+	report.Aggregates = reports.ComputeAggregates(report.Nodes)
 
 	sc, ok := execution.Span.Context().(jaeger.SpanContext)
 	if ok {
