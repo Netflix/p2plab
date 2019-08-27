@@ -35,18 +35,14 @@ require (
 	github.com/ipfs/go-unixfs v0.2.1
 	github.com/libp2p/go-libp2p v0.3.0
 	github.com/libp2p/go-libp2p-core v0.2.2
-	github.com/libp2p/go-libp2p-mplex v0.2.1
-	github.com/libp2p/go-libp2p-net v0.0.2 // indirect
 	github.com/libp2p/go-libp2p-peer v0.2.0
 	github.com/libp2p/go-libp2p-peerstore v0.1.3
 	github.com/libp2p/go-libp2p-protocol v0.1.0
 	github.com/libp2p/go-libp2p-secio v0.2.0
 	github.com/libp2p/go-libp2p-swarm v0.2.1
-	github.com/libp2p/go-libp2p-transport v0.0.5 // indirect
+	github.com/libp2p/go-libp2p-yamux v0.2.1
 	github.com/libp2p/go-maddr-filter v0.0.5
-	github.com/libp2p/go-stream-muxer v0.1.0 // indirect
 	github.com/libp2p/go-tcp-transport v0.1.0
-	github.com/libp2p/go-testutil v0.1.0 // indirect
 	github.com/libp2p/go-ws-transport v0.1.0
 	github.com/multiformats/go-multiaddr v0.0.4
 	github.com/multiformats/go-multihash v0.0.7

@@ -49,9 +49,9 @@ import (
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
-	mplex "github.com/libp2p/go-libp2p-mplex"
 	secio "github.com/libp2p/go-libp2p-secio"
 	swarm "github.com/libp2p/go-libp2p-swarm"
+	yamux "github.com/libp2p/go-libp2p-yamux"
 	filter "github.com/libp2p/go-maddr-filter"
 	tcp "github.com/libp2p/go-tcp-transport"
 	ws "github.com/libp2p/go-ws-transport"
@@ -314,7 +314,7 @@ func NewLibp2pPeer(ctx context.Context, addr string, reporter metrics.Reporter) 
 	)
 
 	muxers := libp2p.ChainOptions(
-		libp2p.Muxer("/mplex/6.7.0", mplex.DefaultTransport),
+		libp2p.Muxer("/yamux/1.0.0", yamux.DefaultTransport),
 	)
 
 	security := libp2p.Security(secio.ID, secio.New)
