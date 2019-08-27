@@ -17,38 +17,39 @@ require (
 	github.com/hako/durafmt v0.0.0-20190612201238-650ed9f29a84
 	github.com/hashicorp/go-cleanhttp v0.5.0
 	github.com/hashicorp/go-retryablehttp v0.5.4
-	github.com/ipfs/go-bitswap v0.1.3
-	github.com/ipfs/go-blockservice v0.0.7
-	github.com/ipfs/go-cid v0.0.2
-	github.com/ipfs/go-datastore v0.0.5
+	github.com/ipfs/go-bitswap v0.1.6
+	github.com/ipfs/go-blockservice v0.1.0
+	github.com/ipfs/go-cid v0.0.3
+	github.com/ipfs/go-datastore v0.1.0
 	github.com/ipfs/go-ds-badger v0.0.5
-	github.com/ipfs/go-ipfs v0.4.22
-	github.com/ipfs/go-ipfs-blockstore v0.0.1
+	github.com/ipfs/go-ipfs v0.4.22-0.20190826175208-27c0de7f7ceb
+	github.com/ipfs/go-ipfs-blockstore v0.1.0
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-files v0.0.3
-	github.com/ipfs/go-ipfs-provider v0.1.0
+	github.com/ipfs/go-ipfs-provider v0.2.1
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipfs-util v0.0.1
 	github.com/ipfs/go-ipld-cbor v0.0.2
 	github.com/ipfs/go-ipld-format v0.0.2
-	github.com/ipfs/go-merkledag v0.0.6
-	github.com/ipfs/go-unixfs v0.0.8
-	github.com/libp2p/go-libp2p v0.2.0
-	github.com/libp2p/go-libp2p-core v0.0.6
+	github.com/ipfs/go-merkledag v0.2.3
+	github.com/ipfs/go-unixfs v0.2.1
+	github.com/libp2p/go-libp2p v0.3.0
+	github.com/libp2p/go-libp2p-core v0.2.2
 	github.com/libp2p/go-libp2p-mplex v0.2.1
+	github.com/libp2p/go-libp2p-net v0.0.2 // indirect
 	github.com/libp2p/go-libp2p-peer v0.2.0
-	github.com/libp2p/go-libp2p-peerstore v0.1.1
+	github.com/libp2p/go-libp2p-peerstore v0.1.3
 	github.com/libp2p/go-libp2p-protocol v0.1.0
-	github.com/libp2p/go-libp2p-secio v0.1.0
-	github.com/libp2p/go-libp2p-swarm v0.1.0
+	github.com/libp2p/go-libp2p-secio v0.2.0
+	github.com/libp2p/go-libp2p-swarm v0.2.1
 	github.com/libp2p/go-libp2p-transport v0.0.5 // indirect
-	github.com/libp2p/go-maddr-filter v0.0.4
-	github.com/libp2p/go-msgio v0.0.4 // indirect
+	github.com/libp2p/go-maddr-filter v0.0.5
 	github.com/libp2p/go-stream-muxer v0.1.0 // indirect
 	github.com/libp2p/go-tcp-transport v0.1.0
+	github.com/libp2p/go-testutil v0.1.0 // indirect
 	github.com/libp2p/go-ws-transport v0.1.0
 	github.com/multiformats/go-multiaddr v0.0.4
-	github.com/multiformats/go-multihash v0.0.5
+	github.com/multiformats/go-multihash v0.0.7
 	github.com/olekukonko/tablewriter v0.0.2-0.20190618033246-cc27d85e17ce
 	github.com/opencontainers/go-digest v1.0.0-rc1
 	github.com/opencontainers/image-spec v1.0.1
