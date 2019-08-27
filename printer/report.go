@@ -88,6 +88,7 @@ func printReportBandwidth(report metadata.Report) string {
 
 	totals := report.Aggregates.Totals.Bandwidth.Totals
 	table.SetFooter([]string{
+		"",
 		"TOTAL",
 		humanize.Bytes(uint64(totals.TotalIn)),
 		humanize.Bytes(uint64(totals.TotalOut)),
@@ -125,6 +126,7 @@ func printReportBitswap(report metadata.Report) string {
 
 	bswap := report.Aggregates.Totals.Bitswap
 	table.SetFooter([]string{
+		"",
 		"TOTAL",
 		humanize.Comma(int64(bswap.BlocksReceived)),
 		humanize.Comma(int64(bswap.BlocksSent)),
