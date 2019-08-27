@@ -31,7 +31,7 @@ type experimentAPI struct {
 	url    urlFunc
 }
 
-func (a *experimentAPI) Start(ctx context.Context, id string, edef metadata.ExperimentDefinition) (p2plab.Experiment, error) {
+func (a *experimentAPI) Create(ctx context.Context, id string, edef metadata.ExperimentDefinition) (p2plab.Experiment, error) {
 	content, err := json.MarshalIndent(&edef, "", "    ")
 	if err != nil {
 		return nil, err

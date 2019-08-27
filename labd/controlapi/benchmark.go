@@ -31,7 +31,7 @@ type benchmarkAPI struct {
 	url    urlFunc
 }
 
-func (a *benchmarkAPI) Start(ctx context.Context, cluster, scenario string, opts ...p2plab.StartBenchmarkOption) (id string, err error) {
+func (a *benchmarkAPI) Create(ctx context.Context, cluster, scenario string, opts ...p2plab.StartBenchmarkOption) (id string, err error) {
 	var settings p2plab.StartBenchmarkSettings
 	for _, opt := range opts {
 		err = opt(&settings)

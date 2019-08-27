@@ -32,11 +32,11 @@ var experimentCommand = cli.Command{
 	Usage:   "Manage experiments.",
 	Subcommands: []cli.Command{
 		{
-			Name:      "start",
+			Name:      "create",
 			Aliases:   []string{"s"},
-			Usage:     "Starts an experiment from a definition file",
+			Usage:     "Creates an experiment from a definition file",
 			ArgsUsage: "<filename>",
-			Action:    startExperimentAction,
+			Action:    createExperimentAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "name",
@@ -91,7 +91,7 @@ var experimentCommand = cli.Command{
 	},
 }
 
-func startExperimentAction(c *cli.Context) error {
+func createExperimentAction(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return errors.New("experiment definition must be provided")
 	}
@@ -118,7 +118,7 @@ func startExperimentAction(c *cli.Context) error {
 	}
 
 	ctx := cliutil.CommandContext(c)
-	experiment, err := control.Experiment().Start(ctx, name, edef)
+	experiment, err := control.Experiment().Create(ctx, name, edef)
 	if err != nil {
 		return err
 	}

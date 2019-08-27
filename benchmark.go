@@ -22,8 +22,8 @@ import (
 
 // BenchmarkAPI defines API for benchmark operations.
 type BenchmarkAPI interface {
-	// Create starts benchmarking a scenario on a cluster.
-	Start(ctx context.Context, cluster, scenario string, opts ...StartBenchmarkOption) (id string, err error)
+	// Create creates a benchmark of a scenario on a cluster.
+	Create(ctx context.Context, cluster, scenario string, opts ...StartBenchmarkOption) (id string, err error)
 
 	// Get returns a benchmark.
 	Get(ctx context.Context, id string) (Benchmark, error)

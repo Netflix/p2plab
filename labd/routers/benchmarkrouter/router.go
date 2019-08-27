@@ -34,7 +34,6 @@ import (
 	"github.com/Netflix/p2plab/query"
 	"github.com/Netflix/p2plab/scenarios"
 	"github.com/Netflix/p2plab/transformers"
-	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	jaeger "github.com/uber/jaeger-client-go"
@@ -79,87 +78,20 @@ func (s *router) getBenchmarks(ctx context.Context, w http.ResponseWriter, r *ht
 
 func (s *router) getBenchmarkById(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
 	id := vars["id"]
-	// benchmark, err := s.db.GetBenchmark(ctx, id)
-	// if err != nil {
-	// 	return err
-	// }
-
-	benchmark := metadata.Benchmark{
-		ID: id,
+	benchmark, err := s.db.GetBenchmark(ctx, id)
+	if err != nil {
+		return err
 	}
 
 	return daemon.WriteJSON(w, &benchmark)
 }
 
 func (s *router) getBenchmarkReportById(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
-	report := metadata.Report{
-		Summary: metadata.ReportSummary{
-			TotalTime: 5 * time.Second,
-			Trace:     "http://helloworld.com",
-		},
-		Aggregates: metadata.ReportAggregates{
-			Totals: metadata.ReportNode{
-				Bitswap: metadata.ReportBitswap{
-					DupBlksReceived: 150,
-				},
-				Bandwidth: metadata.ReportBandwidth{
-					Totals: metrics.Stats{
-						TotalIn:  30,
-						TotalOut: 0,
-						RateIn:   31.2,
-						RateOut:  0.0,
-					},
-				},
-			},
-		},
-		Nodes: map[string]metadata.ReportNode{
-			"i-03c36bfa138abe52d": {
-				Bitswap: metadata.ReportBitswap{
-					DupBlksReceived: 50,
-				},
-				Bandwidth: metadata.ReportBandwidth{
-					Totals: metrics.Stats{
-						TotalIn:  10,
-						TotalOut: 0,
-						RateIn:   10.4,
-						RateOut:  0.0,
-					},
-				},
-			},
-			"i-057b8d09317d7845a": {
-				Bitswap: metadata.ReportBitswap{
-					DupBlksReceived: 50,
-				},
-				Bandwidth: metadata.ReportBandwidth{
-					Totals: metrics.Stats{
-						TotalIn:  10,
-						TotalOut: 0,
-						RateIn:   10.4,
-						RateOut:  0.0,
-					},
-				},
-			},
-			"i-073aaad141f19b62e": {
-				Bitswap: metadata.ReportBitswap{
-					DupBlksReceived: 50,
-				},
-				Bandwidth: metadata.ReportBandwidth{
-					Totals: metrics.Stats{
-						TotalIn:  10,
-						TotalOut: 0,
-						RateIn:   10.4,
-						RateOut:  0.0,
-					},
-				},
-			},
-		},
+	id := vars["id"]
+	report, err := s.db.GetReport(ctx, id)
+	if err != nil {
+		return err
 	}
-
-	// id := vars["id"]
-	// report, err := s.db.GetReport(ctx, id)
-	// if err != nil {
-	// 	return err
-	// }
 
 	return daemon.WriteJSON(w, &report)
 }

@@ -31,11 +31,11 @@ var benchmarkCommand = cli.Command{
 	Usage:   "Manage benchmarks.",
 	Subcommands: []cli.Command{
 		{
-			Name:      "start",
+			Name:      "create",
 			Aliases:   []string{"s"},
-			Usage:     "Benchmark a scenario on a cluster.",
+			Usage:     "Benchmarks a scenario on a cluster.",
 			ArgsUsage: "<cluster> <scenario>",
-			Action:    startBenchmarkAction,
+			Action:    createBenchmarkAction,
 			Flags: []cli.Flag{
 				&cli.BoolFlag{
 					Name:  "no-reset",
@@ -97,7 +97,7 @@ var benchmarkCommand = cli.Command{
 	},
 }
 
-func startBenchmarkAction(c *cli.Context) error {
+func createBenchmarkAction(c *cli.Context) error {
 	if c.NArg() != 2 {
 		return errors.New("cluster and scenario name must be provided")
 	}
@@ -120,7 +120,7 @@ func startBenchmarkAction(c *cli.Context) error {
 		opts = append(opts, p2plab.WithBenchmarkNoReset())
 	}
 
-	id, err := control.Benchmark().Start(ctx, cluster, scenario, opts...)
+	id, err := control.Benchmark().Create(ctx, cluster, scenario, opts...)
 	if err != nil {
 		return err
 	}
@@ -129,9 +129,14 @@ func startBenchmarkAction(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
 	zerolog.Ctx(ctx).Info().Msgf("Completed benchmark %q", benchmark.Metadata().ID)
-	return p.Print(benchmark.Metadata())
+
+	report, err := benchmark.Report(ctx)
+	if err != nil {
+		return err
+	}
+
+	return p.Print(report)
 }
 
 func inspectBenchmarkAction(c *cli.Context) error {

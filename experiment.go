@@ -21,7 +21,7 @@ import (
 )
 
 type ExperimentAPI interface {
-	Start(ctx context.Context, id string, edef metadata.ExperimentDefinition) (Experiment, error)
+	Create(ctx context.Context, id string, edef metadata.ExperimentDefinition) (Experiment, error)
 
 	Get(ctx context.Context, id string) (Experiment, error)
 
