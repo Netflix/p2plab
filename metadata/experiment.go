@@ -316,18 +316,10 @@ func writeExperiment(bkt *bolt.Bucket, experiment *Experiment) error {
 }
 
 func writeExperimentDefinition(bkt *bolt.Bucket, edef ExperimentDefinition) error {
-	dbkt := bkt.Bucket(bucketKeyDefinition)
-	if dbkt != nil {
-		err := bkt.DeleteBucket(bucketKeyDefinition)
-		if err != nil {
-			return err
-		}
-	}
-
-	dbkt, err := bkt.CreateBucket(bucketKeyDefinition)
-	if err != nil {
-		return err
-	}
+	// dbkt, err := RecreateBucket(bkt, bucketKeyDefinition)
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

@@ -18,6 +18,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/Netflix/p2plab/metadata"
 	cid "github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -37,6 +38,8 @@ type Peer interface {
 	Add(ctx context.Context, r io.Reader, opts ...AddOption) (ipld.Node, error)
 
 	Get(ctx context.Context, c cid.Cid) (files.Node, error)
+
+	Report(ctx context.Context) (metadata.ReportNode, error)
 }
 
 type AddOption func(*AddSettings) error

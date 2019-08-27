@@ -49,6 +49,7 @@ var (
 	bucketKeyScenario = []byte("scenario")
 	bucketKeyPlan     = []byte("plan")
 	bucketKeySubject  = []byte("subject")
+	bucketKeyReport  = []byte("report")
 
 	// Common buckets.
 	bucketKeyID         = []byte("id")

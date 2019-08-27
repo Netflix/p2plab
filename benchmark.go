@@ -41,6 +41,8 @@ type Benchmark interface {
 	Labeled
 
 	Metadata() metadata.Benchmark
+
+	Report(ctx context.Context) (metadata.Report, error)
 }
 
 type StartBenchmarkOption func(*StartBenchmarkSettings) error

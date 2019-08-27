@@ -37,6 +37,7 @@ type DB interface {
 	NodeStore
 	ScenarioStore
 	BuildStore
+	ReportStore
 	BenchmarkStore
 	ExperimentStore
 
@@ -97,6 +98,12 @@ type BuildStore interface {
 	CreateBuild(ctx context.Context, build Build) (Build, error)
 
 	DeleteBuild(ctx context.Context, id string) error
+}
+
+type ReportStore interface {
+	GetReport(ctx context.Context, id string) (Report, error)
+
+	CreateReport(ctx context.Context, id string, report Report) error
 }
 
 type BenchmarkStore interface {

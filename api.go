@@ -51,6 +51,8 @@ type AgentAPI interface {
 type AppAPI interface {
 	PeerInfo(ctx context.Context) (peerstore.PeerInfo, error)
 
+	Report(ctx context.Context) (metadata.ReportNode, error)
+
 	// Run executes an task on the node.
 	Run(ctx context.Context, task metadata.Task) error
 }

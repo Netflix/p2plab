@@ -73,7 +73,7 @@ func (a *benchmarkAPI) Get(ctx context.Context, id string) (p2plab.Benchmark, er
 	}
 	defer resp.Body.Close()
 
-	b := benchmark{client: a.client}
+	b := benchmark{client: a.client, url: a.url}
 	err = json.NewDecoder(resp.Body).Decode(&b.metadata)
 	if err != nil {
 		return nil, err
@@ -110,6 +110,7 @@ func (a *benchmarkAPI) Label(ctx context.Context, ids, adds, removes []string) (
 		benchmarks = append(benchmarks, &benchmark{
 			client:   a.client,
 			metadata: m,
+			url:      a.url,
 		})
 	}
 
@@ -147,6 +148,7 @@ func (a *benchmarkAPI) List(ctx context.Context, opts ...p2plab.ListOption) ([]p
 		benchmarks = append(benchmarks, &benchmark{
 			client:   a.client,
 			metadata: m,
+			url:      a.url,
 		})
 	}
 
@@ -169,6 +171,7 @@ func (a *benchmarkAPI) Remove(ctx context.Context, ids ...string) error {
 type benchmark struct {
 	client   *httputil.Client
 	metadata metadata.Benchmark
+	url      urlFunc
 }
 
 func (b *benchmark) ID() string {
@@ -181,4 +184,22 @@ func (b *benchmark) Labels() []string {
 
 func (b *benchmark) Metadata() metadata.Benchmark {
 	return b.metadata
+}
+
+func (b *benchmark) Report(ctx context.Context) (metadata.Report, error) {
+	var report metadata.Report
+
+	req := b.client.NewRequest("GET", b.url("/benchmarks/%s/report/json", b.metadata.ID))
+	resp, err := req.Send(ctx)
+	if err != nil {
+		return report, errors.Wrap(err, "failed to get report")
+	}
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(&report)
+	if err != nil {
+		return report, err
+	}
+
+	return report, nil
 }

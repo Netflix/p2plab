@@ -44,13 +44,13 @@ func (p *tablePrinter) Print(v interface{}) error {
 		for _, e := range t {
 			p.addRow(table, e)
 		}
+	case metadata.Report:
+		return printReport(t)
 	default:
 		p.addHeader(table, t)
 		p.addRow(table, t)
 	}
 
-	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
-	table.SetCenterSeparator("|")
 	table.Render()
 	return nil
 }

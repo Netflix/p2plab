@@ -81,6 +81,13 @@ var benchmarkCommand = cli.Command{
 			},
 		},
 		{
+			Name:      "report",
+			Aliases:   []string{"r"},
+			Usage:     "Display a benchmark's report.",
+			ArgsUsage: "<id>",
+			Action:    benchmarkReportAction,
+		},
+		{
 			Name:      "remove",
 			Aliases:   []string{"rm"},
 			Usage:     "Remove benchmarks.",
@@ -215,6 +222,36 @@ func listBenchmarkAction(c *cli.Context) error {
 	}
 
 	return p.Print(l)
+}
+
+func benchmarkReportAction(c *cli.Context) error {
+	if c.NArg() != 1 {
+		return errors.New("benchmark id must be provided")
+	}
+
+	p, err := CommandPrinter(c, printer.OutputTable)
+	if err != nil {
+		return err
+	}
+
+	control, err := ResolveControl(c)
+	if err != nil {
+		return err
+	}
+
+	ctx := cliutil.CommandContext(c)
+	id := c.Args().First()
+	benchmark, err := control.Benchmark().Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	report, err := benchmark.Report(ctx)
+	if err != nil {
+		return err
+	}
+
+	return p.Print(report)
 }
 
 func removeBenchmarksAction(c *cli.Context) error {

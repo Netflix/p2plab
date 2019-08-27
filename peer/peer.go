@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/metadata"
 	bitswap "github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	blockservice "github.com/ipfs/go-blockservice"
@@ -45,6 +46,7 @@ import (
 	"github.com/ipfs/go-unixfs/importer/trickle"
 	libp2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-core/host"
+	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	mplex "github.com/libp2p/go-libp2p-mplex"
@@ -71,14 +73,16 @@ var (
 )
 
 type Peer struct {
-	host   host.Host
-	dserv  ipld.DAGService
-	system provider.System
-	r      routing.ContentRouting
-	bserv  blockservice.BlockService
-	bs     blockstore.Blockstore
-	ds     datastore.Batching
-	swarm  *swarm.Swarm
+	host     host.Host
+	dserv    ipld.DAGService
+	system   provider.System
+	r        routing.ContentRouting
+	bswap    *bitswap.Bitswap
+	bserv    blockservice.BlockService
+	bs       blockstore.Blockstore
+	ds       datastore.Batching
+	swarm    *swarm.Swarm
+	reporter metrics.Reporter
 }
 
 func New(ctx context.Context, root string) (*Peer, error) {
@@ -87,7 +91,8 @@ func New(ctx context.Context, root string) (*Peer, error) {
 		return nil, errors.Wrap(err, "failed to create datastore")
 	}
 
-	h, r, err := NewLibp2pPeer(ctx)
+	reporter := metrics.NewBandwidthCounter()
+	h, r, err := NewLibp2pPeer(ctx, reporter)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create libp2p peer")
 	}
@@ -102,7 +107,15 @@ func New(ctx context.Context, root string) (*Peer, error) {
 		return nil, errors.Wrap(err, "failed to create blockstore")
 	}
 
-	bserv := NewBlockService(ctx, bs, h, r)
+	bswapnet := network.NewFromIpfsHost(h, r)
+	rem := bitswap.New(ctx, bswapnet, bs)
+
+	bswap, ok := rem.(*bitswap.Bitswap)
+	if !ok {
+		return nil, errors.New("expected to be able to cast exchange interface to bitswap")
+	}
+
+	bserv := blockservice.New(bs, rem)
 
 	system, err := NewProviderSystem(ctx, ds, bs, r)
 	if err != nil {
@@ -129,14 +142,16 @@ func New(ctx context.Context, root string) (*Peer, error) {
 
 	dserv := dag.NewDAGService(bserv)
 	return &Peer{
-		host:   h,
-		dserv:  dserv,
-		system: system,
-		r:      r,
-		bserv:  bserv,
-		bs:     bs,
-		ds:     ds,
-		swarm:  swarm,
+		host:     h,
+		dserv:    dserv,
+		system:   system,
+		r:        r,
+		bswap:    bswap,
+		bserv:    bserv,
+		bs:       bs,
+		ds:       ds,
+		swarm:    swarm,
+		reporter: reporter,
 	}, nil
 }
 
@@ -264,11 +279,35 @@ func (p *Peer) Get(ctx context.Context, c cid.Cid) (files.Node, error) {
 	return unixfile.NewUnixfsFile(ctx, p.dserv, nd)
 }
 
+func (p *Peer) Report(ctx context.Context) (metadata.ReportNode, error) {
+	stat, err := p.bswap.Stat()
+	if err != nil {
+		return metadata.ReportNode{}, err
+	}
+
+	return metadata.ReportNode{
+		metadata.ReportBitswap{
+			BlocksReceived:   stat.BlocksReceived,
+			DataReceived:     stat.DataReceived,
+			BlocksSent:       stat.BlocksSent,
+			DataSent:         stat.DataSent,
+			DupBlksReceived:  stat.DupBlksReceived,
+			DupDataReceived:  stat.DupDataReceived,
+			MessagesReceived: stat.MessagesReceived,
+		},
+		metadata.ReportBandwidth{
+			Totals:    p.reporter.GetBandwidthTotals(),
+			Peers:     p.reporter.GetBandwidthByPeer(),
+			Protocols: p.reporter.GetBandwidthByProtocol(),
+		},
+	}, nil
+}
+
 func NewDatastore(path string) (datastore.Batching, error) {
 	return badger.NewDatastore(path, &badger.DefaultOptions)
 }
 
-func NewLibp2pPeer(ctx context.Context) (host.Host, routing.ContentRouting, error) {
+func NewLibp2pPeer(ctx context.Context, reporter metrics.Reporter) (host.Host, routing.ContentRouting, error) {
 	transports := libp2p.ChainOptions(
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(ws.New),
@@ -284,6 +323,8 @@ func NewLibp2pPeer(ctx context.Context) (host.Host, routing.ContentRouting, erro
 		"/ip4/0.0.0.0/tcp/4001",
 	)
 
+	bwReporter := libp2p.BandwidthReporter(reporter)
+
 	// var dht *kaddht.IpfsDHT
 	// newDHT := func(h host.Host) (routing.PeerRouting, error) {
 	// 	var err error
@@ -298,6 +339,7 @@ func NewLibp2pPeer(ctx context.Context) (host.Host, routing.ContentRouting, erro
 		listenAddrs,
 		muxers,
 		security,
+		bwReporter,
 		// routing,
 	)
 	if err != nil {
@@ -320,12 +362,6 @@ func NewBlockstore(ctx context.Context, ds datastore.Batching) (blockstore.Block
 	// }
 
 	return bs, nil
-}
-
-func NewBlockService(ctx context.Context, bs blockstore.Blockstore, h host.Host, r routing.ContentRouting) blockservice.BlockService {
-	bswapnet := network.NewFromIpfsHost(h, r)
-	rem := bitswap.New(ctx, bswapnet, bs)
-	return blockservice.New(bs, rem)
 }
 
 func NewProviderSystem(ctx context.Context, ds datastore.Batching, bs blockstore.Blockstore, r routing.ContentRouting) (provider.System, error) {

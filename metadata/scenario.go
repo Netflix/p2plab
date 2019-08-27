@@ -400,20 +400,7 @@ func readObjects(bkt *bolt.Bucket) (map[string]ObjectDefinition, error) {
 }
 
 func writeObjects(bkt *bolt.Bucket, objects map[string]ObjectDefinition) error {
-	obkt := bkt.Bucket(bucketKeyObjects)
-	if obkt != nil {
-		err := bkt.DeleteBucket(bucketKeyObjects)
-		if err != nil {
-			return err
-		}
-	}
-
-	if len(objects) == 0 {
-		return nil
-	}
-
-	var err error
-	obkt, err = bkt.CreateBucket(bucketKeyObjects)
+	obkt, err := RecreateBucket(bkt, bucketKeyObjects)
 	if err != nil {
 		return err
 	}

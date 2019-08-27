@@ -386,15 +386,7 @@ func writeCluster(bkt *bolt.Bucket, cluster *Cluster) error {
 }
 
 func writeClusterDefinition(bkt *bolt.Bucket, cdef ClusterDefinition) error {
-	dbkt := bkt.Bucket(bucketKeyDefinition)
-	if dbkt != nil {
-		err := bkt.DeleteBucket(bucketKeyDefinition)
-		if err != nil {
-			return err
-		}
-	}
-
-	dbkt, err := bkt.CreateBucket(bucketKeyDefinition)
+	dbkt, err := RecreateBucket(bkt, bucketKeyDefinition)
 	if err != nil {
 		return err
 	}

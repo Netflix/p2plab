@@ -28,18 +28,30 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan, seederAddr string) error {
+type Execution struct {
+	Start time.Time
+	End   time.Time
+	Span  opentracing.Span
+}
+
+func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan, seederAddr string) (*Execution, error) {
 	err := Seed(ctx, lset, plan.Seed, seederAddr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = Benchmark(ctx, lset, plan.Benchmark)
+	start := time.Now()
+	span, err := Benchmark(ctx, lset, plan.Benchmark)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	end := time.Now()
 
-	return nil
+	return &Execution{
+		Start: start,
+		End:   end,
+		Span:  span,
+	}, nil
 }
 
 func Seed(ctx context.Context, lset p2plab.LabeledSet, seed metadata.ScenarioStage, seederAddr string) error {
@@ -101,7 +113,7 @@ func Seed(ctx context.Context, lset p2plab.LabeledSet, seed metadata.ScenarioSta
 	return nil
 }
 
-func Benchmark(ctx context.Context, lset p2plab.LabeledSet, benchmark metadata.ScenarioStage) error {
+func Benchmark(ctx context.Context, lset p2plab.LabeledSet, benchmark metadata.ScenarioStage) (opentracing.Span, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster benchmark")
 	defer span.Finish()
 
@@ -130,9 +142,9 @@ func Benchmark(ctx context.Context, lset p2plab.LabeledSet, benchmark metadata.S
 
 	err := benchmarking.Wait()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	zerolog.Ctx(ctx).Info().Msg("Benchmark completed")
-	return nil
+	return span, nil
 }

@@ -61,6 +61,24 @@ func (a *api) PeerInfo(ctx context.Context) (peerstore.PeerInfo, error) {
 	return peerInfo, nil
 }
 
+func (a *api) Report(ctx context.Context) (metadata.ReportNode, error) {
+	var report metadata.ReportNode
+
+	req := a.client.NewRequest("GET", a.url("/report"))
+	resp, err := req.Send(ctx)
+	if err != nil {
+		return report, err
+	}
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(&report)
+	if err != nil {
+		return report, err
+	}
+
+	return report, nil
+}
+
 func (a *api) Run(ctx context.Context, task metadata.Task) error {
 	content, err := json.MarshalIndent(&task, "", "    ")
 	if err != nil {

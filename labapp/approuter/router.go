@@ -50,20 +50,26 @@ func (s *router) Routes() []daemon.Route {
 	return []daemon.Route{
 		// GET
 		daemon.NewGetRoute("/peerInfo", s.getPeerInfo),
-		daemon.NewGetRoute("/stat", s.getPeerInfo),
+		daemon.NewGetRoute("/report", s.getReport),
 		// POST
 		daemon.NewPostRoute("/run", s.postRunTask),
 	}
 }
 
 func (s *router) getPeerInfo(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
-	zerolog.Ctx(ctx).Info().Msg("get peer info")
-
 	peerInfo := peerstore.PeerInfo{
 		ID:    s.peer.Host().ID(),
 		Addrs: s.peer.Host().Addrs(),
 	}
 	return daemon.WriteJSON(w, &peerInfo)
+}
+
+func (s *router) getReport(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
+	report, err := s.peer.Report(ctx)
+	if err != nil {
+		return err
+	}
+	return daemon.WriteJSON(w, &report)
 }
 
 func (s *router) postRunTask(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {

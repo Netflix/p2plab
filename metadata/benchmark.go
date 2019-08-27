@@ -29,9 +29,11 @@ type Benchmark struct {
 
 	Status BenchmarkStatus
 
-	Cluster  Cluster
+	Cluster Cluster
+
 	Scenario Scenario
-	Plan     ScenarioPlan
+
+	Plan ScenarioPlan
 
 	Labels []string
 
@@ -85,13 +87,13 @@ func (m *db) GetBenchmark(ctx context.Context, id string) (Benchmark, error) {
 			return errors.Wrapf(errdefs.ErrNotFound, "benchmark %q", id)
 		}
 
-		cbkt := bkt.Bucket([]byte(id))
-		if cbkt == nil {
+		bbkt := bkt.Bucket([]byte(id))
+		if bbkt == nil {
 			return errors.Wrapf(errdefs.ErrNotFound, "benchmark %q", id)
 		}
 
 		benchmark.ID = id
-		err := readBenchmark(cbkt, &benchmark)
+		err := readBenchmark(bbkt, &benchmark)
 		if err != nil {
 			return errors.Wrapf(err, "benchmark %q", id)
 		}
@@ -118,10 +120,10 @@ func (m *db) ListBenchmarks(ctx context.Context) ([]Benchmark, error) {
 				benchmark = Benchmark{
 					ID: string(k),
 				}
-				cbkt = bkt.Bucket(k)
+				bbkt = bkt.Bucket(k)
 			)
 
-			err := readBenchmark(cbkt, &benchmark)
+			err := readBenchmark(bbkt, &benchmark)
 			if err != nil {
 				return err
 			}
@@ -144,7 +146,7 @@ func (m *db) CreateBenchmark(ctx context.Context, benchmark Benchmark) (Benchmar
 			return err
 		}
 
-		cbkt, err := bkt.CreateBucket([]byte(benchmark.ID))
+		bbkt, err := bkt.CreateBucket([]byte(benchmark.ID))
 		if err != nil {
 			if err != bolt.ErrBucketExists {
 				return err
@@ -155,7 +157,7 @@ func (m *db) CreateBenchmark(ctx context.Context, benchmark Benchmark) (Benchmar
 
 		benchmark.CreatedAt = time.Now().UTC()
 		benchmark.UpdatedAt = benchmark.CreatedAt
-		return writeBenchmark(cbkt, &benchmark)
+		return writeBenchmark(bbkt, &benchmark)
 	})
 	if err != nil {
 		return Benchmark{}, err
@@ -174,13 +176,13 @@ func (m *db) UpdateBenchmark(ctx context.Context, benchmark Benchmark) (Benchmar
 			return err
 		}
 
-		cbkt := bkt.Bucket([]byte(benchmark.ID))
-		if cbkt == nil {
+		bbkt := bkt.Bucket([]byte(benchmark.ID))
+		if bbkt == nil {
 			return errors.Wrapf(errdefs.ErrNotFound, "benchmark %q", benchmark.ID)
 		}
 
 		benchmark.UpdatedAt = time.Now().UTC()
-		return writeBenchmark(cbkt, &benchmark)
+		return writeBenchmark(bbkt, &benchmark)
 	})
 	if err != nil {
 		return Benchmark{}, err
@@ -484,20 +486,11 @@ func writePlan(bkt *bolt.Bucket, plan *ScenarioPlan) error {
 }
 
 func writeTaskMap(bkt *bolt.Bucket, name []byte, stage map[string]Task) error {
-	mbkt := bkt.Bucket(name)
-	if mbkt != nil {
-		err := bkt.DeleteBucket(name)
-		if err != nil {
-			return err
-		}
-	}
-
 	if len(stage) == 0 {
 		return nil
 	}
 
-	var err error
-	mbkt, err = bkt.CreateBucket(name)
+	mbkt, err := RecreateBucket(bkt, name)
 	if err != nil {
 		return err
 	}

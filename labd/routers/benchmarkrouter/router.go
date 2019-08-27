@@ -34,8 +34,11 @@ import (
 	"github.com/Netflix/p2plab/query"
 	"github.com/Netflix/p2plab/scenarios"
 	"github.com/Netflix/p2plab/transformers"
+	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	jaeger "github.com/uber/jaeger-client-go"
+	bolt "go.etcd.io/bbolt"
 )
 
 type router struct {
@@ -55,6 +58,7 @@ func (s *router) Routes() []daemon.Route {
 		// GET
 		daemon.NewGetRoute("/benchmarks/json", s.getBenchmarks),
 		daemon.NewGetRoute("/benchmarks/{id}/json", s.getBenchmarkById),
+		daemon.NewGetRoute("/benchmarks/{id}/report/json", s.getBenchmarkReportById),
 		// POST
 		daemon.NewPostRoute("/benchmarks/create", s.postBenchmarksCreate),
 		// PUT
@@ -75,12 +79,89 @@ func (s *router) getBenchmarks(ctx context.Context, w http.ResponseWriter, r *ht
 
 func (s *router) getBenchmarkById(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
 	id := vars["id"]
-	benchmark, err := s.db.GetBenchmark(ctx, id)
-	if err != nil {
-		return err
+	// benchmark, err := s.db.GetBenchmark(ctx, id)
+	// if err != nil {
+	// 	return err
+	// }
+
+	benchmark := metadata.Benchmark{
+		ID: id,
 	}
 
 	return daemon.WriteJSON(w, &benchmark)
+}
+
+func (s *router) getBenchmarkReportById(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
+	report := metadata.Report{
+		Summary: metadata.ReportSummary{
+			TotalTime: 5 * time.Second,
+			Trace:     "http://helloworld.com",
+		},
+		Aggregates: metadata.ReportAggregates{
+			Totals: metadata.ReportNode{
+				Bitswap: metadata.ReportBitswap{
+					DupBlksReceived: 150,
+				},
+				Bandwidth: metadata.ReportBandwidth{
+					Totals: metrics.Stats{
+						TotalIn:  30,
+						TotalOut: 0,
+						RateIn:   31.2,
+						RateOut:  0.0,
+					},
+				},
+			},
+		},
+		Nodes: map[string]metadata.ReportNode{
+			"i-03c36bfa138abe52d": {
+				Bitswap: metadata.ReportBitswap{
+					DupBlksReceived: 50,
+				},
+				Bandwidth: metadata.ReportBandwidth{
+					Totals: metrics.Stats{
+						TotalIn:  10,
+						TotalOut: 0,
+						RateIn:   10.4,
+						RateOut:  0.0,
+					},
+				},
+			},
+			"i-057b8d09317d7845a": {
+				Bitswap: metadata.ReportBitswap{
+					DupBlksReceived: 50,
+				},
+				Bandwidth: metadata.ReportBandwidth{
+					Totals: metrics.Stats{
+						TotalIn:  10,
+						TotalOut: 0,
+						RateIn:   10.4,
+						RateOut:  0.0,
+					},
+				},
+			},
+			"i-073aaad141f19b62e": {
+				Bitswap: metadata.ReportBitswap{
+					DupBlksReceived: 50,
+				},
+				Bandwidth: metadata.ReportBandwidth{
+					Totals: metrics.Stats{
+						TotalIn:  10,
+						TotalOut: 0,
+						RateIn:   10.4,
+						RateOut:  0.0,
+					},
+				},
+			},
+		},
+	}
+
+	// id := vars["id"]
+	// report, err := s.db.GetReport(ctx, id)
+	// if err != nil {
+	// 	return err
+	// }
+
+	return daemon.WriteJSON(w, &report)
 }
 
 func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
@@ -105,7 +186,7 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 		return err
 	}
 
-	bid := fmt.Sprintf("%s-%s-%d", sid, cid, time.Now().UnixNano())
+	bid := fmt.Sprintf("%s-%s-%d", cid, sid, time.Now().UnixNano())
 	w.Header().Add(controlapi.ResourceID, bid)
 
 	ctx, logger := logutil.WithResponseLogger(ctx, w)
@@ -166,16 +247,47 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 
 	seederAddr := fmt.Sprintf("%s/p2p/%s", s.seeder.Host().Addrs()[1], s.seeder.Host().ID())
 	zerolog.Ctx(ctx).Info().Msg("Executing scenario plan")
-	err = scenarios.Run(ctx, lset, plan, seederAddr)
+	execution, err := scenarios.Run(ctx, lset, plan, seederAddr)
 	if err != nil {
 		return errors.Wrap(err, "failed to run scenario plan")
 	}
 
-	zerolog.Ctx(ctx).Info().Msg("Updating benchmark metadata")
-	benchmark.Status = metadata.BenchmarkDone
-	_, err = s.db.UpdateBenchmark(ctx, benchmark)
+	reportByNodeID, err := nodes.CollectReports(ctx, ns)
 	if err != nil {
-		return errors.Wrap(err, "failed to update benchmark")
+		return errors.Wrap(err, "failed to collect reports")
+	}
+
+	report := metadata.Report{
+		Summary: metadata.ReportSummary{
+			TotalTime: execution.Start.Sub(execution.End),
+		},
+		Nodes: reportByNodeID,
+	}
+
+	sc, ok := execution.Span.Context().(jaeger.SpanContext)
+	if ok {
+		report.Summary.Trace = fmt.Sprintf("https://p2plab.test.netflix.net:16686/trace/%s?uiFind=%s", sc.TraceID(), sc.SpanID())
+	}
+
+	zerolog.Ctx(ctx).Info().Msg("Updating benchmark metadata")
+	err = s.db.Update(ctx, func(tx *bolt.Tx) error {
+		tctx := metadata.WithTransactionContext(ctx, tx)
+
+		err := s.db.CreateReport(tctx, benchmark.ID, report)
+		if err != nil {
+			return errors.Wrap(err, "failed to create report")
+		}
+
+		benchmark.Status = metadata.BenchmarkDone
+		_, err = s.db.UpdateBenchmark(tctx, benchmark)
+		if err != nil {
+			return errors.Wrap(err, "failed to update benchmark")
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil

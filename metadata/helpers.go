@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"encoding/binary"
 	"sort"
 	"time"
 
@@ -8,6 +9,18 @@ import (
 	"github.com/pkg/errors"
 	bolt "go.etcd.io/bbolt"
 )
+
+func RecreateBucket(bkt *bolt.Bucket, key []byte) (*bolt.Bucket, error) {
+	kbkt := bkt.Bucket(key)
+	if kbkt != nil {
+		err := bkt.DeleteBucket(key)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return bkt.CreateBucket(key)
+}
 
 type bktTimestamp struct {
 	key       []byte
@@ -205,4 +218,26 @@ func writeLabels(bkt *bolt.Bucket, labels []string) error {
 	}
 
 	return nil
+}
+
+func convertInt64ToBytes(num int64) []byte {
+	buf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutVarint(buf, num)
+	return buf[:n]
+}
+
+func convertBytesToInt64(b []byte) int64 {
+	x, _ := binary.Varint(b)
+	return x
+}
+
+func convertUint64ToBytes(num uint64) []byte {
+	buf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutUvarint(buf, num)
+	return buf[:n]
+}
+
+func convertBytesToUint64(b []byte) uint64 {
+	x, _ := binary.Uvarint(b)
+	return x
 }
