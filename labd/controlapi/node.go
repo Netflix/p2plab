@@ -122,8 +122,8 @@ type node struct {
 
 func NewNode(client *httputil.Client, m metadata.Node) p2plab.Node {
 	return &node{
-		AgentAPI: agentapi.New(client, fmt.Sprintf("http://%s:7002", m.Address)),
-		AppAPI:   appapi.New(client, fmt.Sprintf("http://%s:7003", m.Address)),
+		AgentAPI: agentapi.New(client, fmt.Sprintf("http://%s:%d", m.Address, m.AgentPort)),
+		AppAPI:   appapi.New(client, fmt.Sprintf("http://%s:%d", m.Address, m.AppPort)),
 		metadata: m,
 	}
 }

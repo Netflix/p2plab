@@ -16,6 +16,7 @@ package metadata
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/Netflix/p2plab/errdefs"
@@ -27,6 +28,10 @@ type Node struct {
 	ID string
 
 	Address string
+
+	AgentPort int
+
+	AppPort int
 
 	GitReference string
 
@@ -253,6 +258,10 @@ func readNode(bkt *bolt.Bucket, node *Node) error {
 			node.ID = string(v)
 		case string(bucketKeyAddress):
 			node.Address = string(v)
+		case string(bucketKeyAgentPort):
+			node.AgentPort, _ = strconv.Atoi(string(v))
+		case string(bucketKeyAppPort):
+			node.AppPort, _ = strconv.Atoi(string(v))
 		case string(bucketKeyGitReference):
 			node.GitReference = string(v)
 		}
@@ -275,6 +284,8 @@ func writeNode(bkt *bolt.Bucket, node *Node) error {
 	for _, f := range []field{
 		{bucketKeyID, []byte(node.ID)},
 		{bucketKeyAddress, []byte(node.Address)},
+		{bucketKeyAgentPort, []byte(strconv.Itoa(node.AgentPort))},
+		{bucketKeyAppPort, []byte(strconv.Itoa(node.AppPort))},
 		{bucketKeyGitReference, []byte(node.GitReference)},
 	} {
 		err = bkt.Put(f.key, f.value)

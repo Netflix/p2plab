@@ -29,6 +29,11 @@ import (
 	"github.com/rs/zerolog"
 )
 
+var (
+	DefaultAgentPort = 7003
+	DefaultAppPort   = 7004
+)
+
 type provider struct {
 	root          string
 	tfvars        *template.Template
