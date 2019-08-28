@@ -33,6 +33,8 @@ func NewTablePrinter() Printer {
 
 func (p *tablePrinter) Print(v interface{}) error {
 	table := tablewriter.NewWriter(os.Stdout)
+	table.SetAutoFormatHeaders(false)
+
 	switch t := v.(type) {
 	case []interface{}:
 		if len(t) > 0 {
@@ -58,15 +60,15 @@ func (p *tablePrinter) Print(v interface{}) error {
 func (p *tablePrinter) addHeader(table *tablewriter.Table, v interface{}) {
 	switch v.(type) {
 	case metadata.Cluster:
-		table.SetHeader([]string{"ID", "Status", "Size", "Labels", "CreatedAt", "UpdatedAt"})
+		table.SetHeader([]string{"ID", "STATUS", "SIZE", "LABELS", "CREATEDAT", "UPDATEDAT"})
 	case metadata.Node:
-		table.SetHeader([]string{"ID", "Address", "GitReference", "Labels", "CreatedAt", "UpdatedAt"})
+		table.SetHeader([]string{"ID", "ADDRESS", "GITREFERENCE", "LABELS", "CREATEDAT", "UPDATEDAT"})
 	case metadata.Scenario:
-		table.SetHeader([]string{"ID", "Labels", "CreatedAt", "UpdatedAt"})
+		table.SetHeader([]string{"ID", "LABELS", "CREATEDAT", "UPDATEDAT"})
 	case metadata.Benchmark:
-		table.SetHeader([]string{"ID", "Status", "Cluster", "Scenario", "Labels", "CreatedAt", "UpdatedAt"})
+		table.SetHeader([]string{"ID", "STATUS", "CLUSTER", "SCENARIO", "LABELS", "CREATEDAT", "UPDATEDAT"})
 	case metadata.Experiment:
-		table.SetHeader([]string{"ID", "Status", "Labels", "CreatedAt", "UpdatedAt"})
+		table.SetHeader([]string{"ID", "STATUS", "LABELS", "CREATEDAT", "UPDATEDAT"})
 	}
 }
 
