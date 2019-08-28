@@ -30,8 +30,8 @@ func New(client *httputil.Client) p2plab.Downloader {
 	return &downloader{client}
 }
 
-func (f *downloader) Download(ctx context.Context, ref string) (io.ReadCloser, error) {
-	req := f.client.NewRequest("GET", ref)
+func (f *downloader) Download(ctx context.Context, link string) (io.ReadCloser, error) {
+	req := f.client.NewRequest("GET", link)
 	resp, err := req.Send(ctx)
 	if err != nil {
 		return nil, err

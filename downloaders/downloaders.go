@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/downloaders/filedownloader"
 	"github.com/Netflix/p2plab/downloaders/httpdownloader"
 	"github.com/Netflix/p2plab/downloaders/s3downloader"
 	"github.com/Netflix/p2plab/pkg/httputil"
@@ -64,10 +65,12 @@ func (f *Downloaders) Get(downloaderType string) (p2plab.Downloader, error) {
 func (f *Downloaders) newDownloader(downloaderType string) (p2plab.Downloader, error) {
 	// root := filepath.Join(f.root, downloaderType)
 	switch downloaderType {
-	case "s3":
-		return s3downloader.New(f.settings.Client.HTTPClient, f.settings.S3)
+	case "file":
+		return filedownloader.New(), nil
 	case "http", "https":
 		return httpdownloader.New(f.settings.Client), nil
+	case "s3":
+		return s3downloader.New(f.settings.Client.HTTPClient, f.settings.S3)
 	default:
 		return nil, errors.Errorf("unrecognized downloader type: %q", downloaderType)
 	}

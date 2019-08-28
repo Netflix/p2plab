@@ -30,10 +30,10 @@ type LabApp struct {
 	closers []io.Closer
 }
 
-func New(root, addr string, logger *zerolog.Logger) (*LabApp, error) {
+func New(root, addr, libp2pAddr string, logger *zerolog.Logger) (*LabApp, error) {
 	var closers []io.Closer
 	pctx, cancel := context.WithCancel(context.Background())
-	p, err := peer.New(pctx, root)
+	p, err := peer.New(pctx, root, libp2pAddr)
 	if err != nil {
 		return nil, err
 	}

@@ -56,8 +56,9 @@ require (
 	github.com/opencontainers/runc v1.0.0-rc8 // indirect
 	github.com/opentracing-contrib/go-stdlib v0.0.0-20190519235532-cf7a6c988dc9
 	github.com/opentracing/opentracing-go v1.1.0
-	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2 // indirect
+	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/pkg/errors v0.8.1
+	github.com/rs/xid v1.2.1
 	github.com/rs/zerolog v1.14.4-0.20190719171043-b806a5ecbe53
 	github.com/sirupsen/logrus v1.4.0 // indirect
 	github.com/stretchr/testify v1.3.0

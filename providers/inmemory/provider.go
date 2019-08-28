@@ -23,6 +23,8 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/labagent"
 	"github.com/Netflix/p2plab/metadata"
+	"github.com/phayes/freeport"
+	"github.com/rs/xid"
 	"github.com/rs/zerolog"
 )
 
@@ -33,41 +35,73 @@ type provider struct {
 	agentOpts []labagent.LabagentOption
 }
 
-func New(root string, logger *zerolog.Logger, agentOpts ...labagent.LabagentOption) (p2plab.NodeProvider, error) {
+func New(root string, db metadata.DB, logger *zerolog.Logger, agentOpts ...labagent.LabagentOption) (p2plab.NodeProvider, error) {
 	err := os.MkdirAll(root, 0711)
 	if err != nil {
 		return nil, err
 	}
 
-	return &provider{
+	p := &provider{
 		root:      root,
 		nodes:     make(map[string][]*node),
 		logger:    logger,
 		agentOpts: agentOpts,
-	}, nil
+	}
+
+	ctx := context.Background()
+	clusters, err := db.ListClusters(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, cluster := range clusters {
+		nodes, err := db.ListNodes(ctx, cluster.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, node := range nodes {
+			n, err := p.newNode(node.ID, node.AgentPort, node.AppPort)
+			if err != nil {
+				return nil, err
+			}
+			p.nodes[node.ID] = append(p.nodes[node.ID], n)
+		}
+	}
+
+	return p, nil
 }
 
 func (p *provider) CreateNodeGroup(ctx context.Context, id string, cdef metadata.ClusterDefinition) (*p2plab.NodeGroup, error) {
 	var ns []metadata.Node
 	for _, group := range cdef.Groups {
-		n, err := newNode()
-		if err != nil {
-			return nil, err
-		}
-		p.nodes[id] = append(p.nodes[id], n)
+		for i := 0; i < group.Size; i++ {
+			freePorts, err := freeport.GetFreePorts(2)
+			if err != nil {
+				return nil, err
+			}
+			agentPort, appPort := freePorts[0], freePorts[1]
 
-		ns = append(ns, metadata.Node{
-			ID:           n.ID,
-			Address:      "127.0.0.1",
-			AgentPort:    n.AgentPort,
-			AppPort:      n.AppPort,
-			GitReference: group.GitReference,
-			Labels: []string{
-				n.ID,
-				group.InstanceType,
-				group.Region,
-			},
-		})
+			id := xid.New().String()
+			n, err := p.newNode(id, agentPort, appPort)
+			if err != nil {
+				return nil, err
+			}
+			p.nodes[id] = append(p.nodes[id], n)
+
+			ns = append(ns, metadata.Node{
+				ID:           n.ID,
+				Address:      "127.0.0.1",
+				AgentPort:    n.AgentPort,
+				AppPort:      n.AppPort,
+				GitReference: group.GitReference,
+				Labels: []string{
+					n.ID,
+					group.InstanceType,
+					group.Region,
+				},
+			})
+		}
 	}
 
 	return &p2plab.NodeGroup{
@@ -77,6 +111,14 @@ func (p *provider) CreateNodeGroup(ctx context.Context, id string, cdef metadata
 }
 
 func (p *provider) DestroyNodeGroup(ctx context.Context, ng *p2plab.NodeGroup) error {
+	for _, n := range p.nodes[ng.ID] {
+		err := n.Close()
+		if err != nil {
+			return err
+		}
+	}
+
+	delete(p.nodes, ng.ID)
 	return nil
 }
 
@@ -85,17 +127,10 @@ type node struct {
 	AgentPort int
 	AppPort   int
 	LabAgent  *labagent.LabAgent
+	cancel    context.CancelFunc
 }
 
-func (p *provider) newNode() (*node, error) {
-	freePorts, err := freeport.GetFreePorts(2)
-	if err != nil {
-		return nil, err
-	}
-	agentPort, appPort := freePorts[0], freePorts[1]
-
-	id := xid.New()
-
+func (p *provider) newNode(id string, agentPort, appPort int) (*node, error) {
 	agentRoot := filepath.Join(p.root, id, "labagent")
 	agentAddr := fmt.Sprintf(":%d", agentPort)
 
@@ -107,14 +142,24 @@ func (p *provider) newNode() (*node, error) {
 		return nil, err
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		err := la.Serve(ctx)
+		if err != nil {
+			p.logger.Error().Err(err).Str("id", id).Msg("serve exited with error")
+		}
+	}()
+
 	return &node{
 		ID:        id,
 		AgentPort: agentPort,
 		AppPort:   appPort,
 		LabAgent:  la,
+		cancel:    cancel,
 	}, nil
 }
 
 func (n *node) Close() error {
+	n.cancel()
 	return n.LabAgent.Close()
 }

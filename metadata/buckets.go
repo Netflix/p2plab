@@ -39,7 +39,9 @@ var (
 	bucketKeySource    = []byte("source")
 
 	// Node buckets.
-	bucketKeyAddress = []byte("address")
+	bucketKeyAddress   = []byte("address")
+	bucketKeyAgentPort = []byte("agentPort")
+	bucketKeyAppPort   = []byte("appPort")
 
 	// Build buckets
 	bucketKeyLink = []byte("link")
@@ -49,15 +51,15 @@ var (
 	bucketKeyScenario = []byte("scenario")
 	bucketKeyPlan     = []byte("plan")
 	bucketKeySubject  = []byte("subject")
-	bucketKeyReport  = []byte("report")
+	bucketKeyReport   = []byte("report")
 
 	// Common buckets.
-	bucketKeyID         = []byte("id")
-	bucketKeyStatus     = []byte("status")
-	bucketKeyLabels     = []byte("labels")
-	bucketKeyCreatedAt  = []byte("createdAt")
-	bucketKeyUpdatedAt  = []byte("updatedAt")
-	bucketKeyDefinition = []byte("definition")
+	bucketKeyID           = []byte("id")
+	bucketKeyStatus       = []byte("status")
+	bucketKeyLabels       = []byte("labels")
+	bucketKeyCreatedAt    = []byte("createdAt")
+	bucketKeyUpdatedAt    = []byte("updatedAt")
+	bucketKeyDefinition   = []byte("definition")
 	bucketKeyGitReference = []byte("gitReference")
 )
 

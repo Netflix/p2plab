@@ -36,11 +36,12 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 
 	collectPeerAddrs, gctx := errgroup.WithContext(ctx)
 
-	peerAddrs := make([]string, len(ns))
 	zerolog.Ctx(ctx).Info().Msg("Retrieving peer infos")
 	go logutil.Elapsed(gctx, 20*time.Second, "Retrieving peer infos")
-	for i, n := range ns {
-		i, n := i, n
+
+	var peerAddrs []string
+	for _, n := range ns {
+		n := n
 		collectPeerAddrs.Go(func() error {
 			peerInfo, err := n.PeerInfo(gctx)
 			if err != nil {
@@ -51,7 +52,11 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 				return errors.Errorf("peer %q has zero addresses", n.Metadata().Address)
 			}
 
-			peerAddrs[i] = fmt.Sprintf("/ip4/%s/tcp/4001/p2p/%s", n.Metadata().Address, peerInfo.ID)
+			for _, ma := range peerInfo.Addrs {
+				peerAddrs = append(peerAddrs, fmt.Sprintf("%s/p2p/%s", ma, peerInfo.ID))
+				zerolog.Ctx(gctx).Debug().Str("addr", ma.String()).Msg("Retrieved peer address")
+			}
+
 			return nil
 		})
 	}

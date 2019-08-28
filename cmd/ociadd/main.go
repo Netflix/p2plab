@@ -54,7 +54,7 @@ func run(ref string) error {
 	defer cancel()
 
 	root := "./tmp/ociadd"
-	p, err := peer.New(ctx, filepath.Join(root, "peer"))
+	p, err := peer.New(ctx, filepath.Join(root, "peer"), "/ip4/0.0.0.0/tcp/0")
 	if err != nil {
 		return err
 	}
