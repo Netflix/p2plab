@@ -85,14 +85,14 @@ type Peer struct {
 	reporter metrics.Reporter
 }
 
-func New(ctx context.Context, root string) (*Peer, error) {
+func New(ctx context.Context, root, addr string) (*Peer, error) {
 	ds, err := NewDatastore(root)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create datastore")
 	}
 
 	reporter := metrics.NewBandwidthCounter()
-	h, r, err := NewLibp2pPeer(ctx, reporter)
+	h, r, err := NewLibp2pPeer(ctx, addr, reporter)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create libp2p peer")
 	}
@@ -307,7 +307,7 @@ func NewDatastore(path string) (datastore.Batching, error) {
 	return badger.NewDatastore(path, &badger.DefaultOptions)
 }
 
-func NewLibp2pPeer(ctx context.Context, reporter metrics.Reporter) (host.Host, routing.ContentRouting, error) {
+func NewLibp2pPeer(ctx context.Context, addr string, reporter metrics.Reporter) (host.Host, routing.ContentRouting, error) {
 	transports := libp2p.ChainOptions(
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(ws.New),
@@ -319,9 +319,7 @@ func NewLibp2pPeer(ctx context.Context, reporter metrics.Reporter) (host.Host, r
 
 	security := libp2p.Security(secio.ID, secio.New)
 
-	listenAddrs := libp2p.ListenAddrStrings(
-		"/ip4/0.0.0.0/tcp/4001",
-	)
+	listenAddrs := libp2p.ListenAddrStrings(addr)
 
 	bwReporter := libp2p.BandwidthReporter(reporter)
 

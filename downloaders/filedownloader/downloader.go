@@ -12,27 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package p2plab
+package filedownloader
 
 import (
 	"context"
 	"io"
+	"net/url"
+	"os"
+	"path/filepath"
+
+	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/errdefs"
+	"github.com/pkg/errors"
 )
 
-type Builder interface {
-	Init(ctx context.Context) error
-
-	Resolve(ctx context.Context, ref string)  (commit string, err error)
-
-	Build(ctx context.Context, commit string) (link string, err error)
+type downloader struct {
 }
 
-type Uploader interface {
-	Upload(ctx context.Context, r io.Reader) (link string, err error)
-
-	Close() error
+func New() p2plab.Downloader {
+	return &downloader{}
 }
 
-type Downloader interface {
-	Download(ctx context.Context, link string) (io.ReadCloser, error)
+func (f *downloader) Download(ctx context.Context, link string) (io.ReadCloser, error) {
+	u, err := url.Parse(link)
+	if err != nil {
+		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "invalid url %q", link)
+	}
+
+	downloadPath := filepath.Join(u.Host, u.Path)
+	return os.Open(downloadPath)
 }

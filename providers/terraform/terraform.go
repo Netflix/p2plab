@@ -87,6 +87,8 @@ func (t *Terraform) Apply(ctx context.Context, id string, cdef metadata.ClusterD
 			ns = append(ns, metadata.Node{
 				ID:           instance.InstanceId,
 				Address:      instance.PrivateIp,
+				AgentPort:    DefaultAgentPort,
+				AppPort:      DefaultAppPort,
 				GitReference: cg.GitReference,
 				Labels: append([]string{
 					instance.InstanceId,

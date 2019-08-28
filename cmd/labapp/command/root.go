@@ -43,6 +43,12 @@ func App(ctx context.Context) *cli.App {
 			EnvVar: "LABAPP_ADDRESS",
 		},
 		cli.StringFlag{
+			Name:  "libp2p-address",
+			Usage: "address for libp2p",
+			Value: "/ip4/0.0.0.0/tcp/0",
+			EnvVar: "LABAPP_LIBP2P_ADDRESS",
+		},
+		cli.StringFlag{
 			Name:  "log-level,l",
 			Usage: "set the logging level [debug, info, warn, error, fatal, panic, none]",
 			Value: "debug",
@@ -65,7 +71,7 @@ func appAction(c *cli.Context) error {
 	}
 
 	ctx := cliutil.CommandContext(c)
-	app, err := labapp.New(root, c.GlobalString("address"), zerolog.Ctx(ctx))
+	app, err := labapp.New(root, c.GlobalString("address"), c.GlobalString("libp2p-address"), zerolog.Ctx(ctx))
 	if err != nil {
 		return err
 	}

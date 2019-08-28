@@ -20,18 +20,24 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/Netflix/p2plab/uploaders/fileuploader"
 	"github.com/Netflix/p2plab/uploaders/s3uploader"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 type UploaderSettings struct {
 	Client *httputil.Client
+	Logger *zerolog.Logger
 	S3     s3uploader.S3UploaderSettings
+	File   fileuploader.FileUploaderSettings
 }
 
 func GetUploader(root, uploaderType string, settings UploaderSettings) (p2plab.Uploader, error) {
 	root = filepath.Join(root, uploaderType)
 	switch uploaderType {
+	case "file":
+		return fileuploader.New(root, settings.Logger, settings.File)
 	case "s3":
 		return s3uploader.New(settings.Client.HTTPClient, settings.S3)
 	default:

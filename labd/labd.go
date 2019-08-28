@@ -66,16 +66,20 @@ func New(root, addr string, logger *zerolog.Logger, opts ...LabdOption) (*Labd, 
 		return nil, err
 	}
 
+	settings.ProviderSettings.DB = db
+	settings.ProviderSettings.Logger = logger
 	provider, err := providers.GetNodeProvider(filepath.Join(root, "providers"), settings.Provider, settings.ProviderSettings)
 	if err != nil {
 		return nil, err
 	}
 
 	settings.UploaderSettings.Client = client
+	settings.UploaderSettings.Logger = logger
 	uploader, err := uploaders.GetUploader(filepath.Join(root, "uploaders"), settings.Uploader, settings.UploaderSettings)
 	if err != nil {
 		return nil, err
 	}
+	closers = append(closers, uploader)
 
 	builder, err := builder.New(filepath.Join(root, "builder"), db, uploader)
 	if err != nil {
@@ -83,7 +87,7 @@ func New(root, addr string, logger *zerolog.Logger, opts ...LabdOption) (*Labd, 
 	}
 
 	sctx, cancel := context.WithCancel(context.Background())
-	seeder, err := peer.New(sctx, filepath.Join(root, "seeder"))
+	seeder, err := peer.New(sctx, filepath.Join(root, "seeder"), settings.Libp2pAddress)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create seeder peer")
 	}

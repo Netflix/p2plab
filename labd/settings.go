@@ -22,10 +22,18 @@ import (
 type LabdOption func(*LabdSettings) error
 
 type LabdSettings struct {
+	Libp2pAddress    string
 	Provider         string
 	ProviderSettings providers.ProviderSettings
 	Uploader         string
 	UploaderSettings uploaders.UploaderSettings
+}
+
+func WithLibp2pAddress(addr string) LabdOption {
+	return func(s *LabdSettings) error {
+		s.Libp2pAddress = addr
+		return nil
+	}
 }
 
 func WithProvider(provider string) LabdOption {

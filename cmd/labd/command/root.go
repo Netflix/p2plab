@@ -21,6 +21,7 @@ import (
 	"github.com/Netflix/p2plab/labd"
 	"github.com/Netflix/p2plab/pkg/cliutil"
 	"github.com/Netflix/p2plab/uploaders"
+	"github.com/Netflix/p2plab/uploaders/fileuploader"
 	"github.com/Netflix/p2plab/uploaders/s3uploader"
 	"github.com/Netflix/p2plab/version"
 	"github.com/rs/zerolog"
@@ -45,6 +46,12 @@ func App(ctx context.Context) *cli.App {
 			EnvVar: "LABD_ADDRESS",
 		},
 		cli.StringFlag{
+			Name:   "libp2p-address",
+			Usage:  "address for libp2p",
+			Value:  "/ip4/0.0.0.0/tcp/0",
+			EnvVar: "LABD_LIBP2P_ADDRESS",
+		},
+		cli.StringFlag{
 			Name:   "log-level,l",
 			Usage:  "set the logging level [debug, info, warn, error, fatal, panic]",
 			Value:  "debug",
@@ -52,14 +59,14 @@ func App(ctx context.Context) *cli.App {
 		},
 		cli.StringFlag{
 			Name:   "provider,p",
-			Usage:  "set the provider to create node groups [terraform]",
-			Value:  "terraform",
+			Usage:  "set the provider to create node groups [inmemory, terraform]",
+			Value:  "inmemory",
 			EnvVar: "LABD_PROVIDER",
 		},
 		cli.StringFlag{
 			Name:   "uploader,u",
-			Usage:  "set the uploader to use to distribute p2p app binaries [s3]",
-			Value:  "s3",
+			Usage:  "set the uploader to use to distribute p2p app binaries [file, s3]",
+			Value:  "file",
 			EnvVar: "LABD_UPLOADER",
 		},
 		cli.StringFlag{
@@ -76,6 +83,12 @@ func App(ctx context.Context) *cli.App {
 			Name:   "uploader.s3.region",
 			Usage:  "region for s3 uploader",
 			EnvVar: "LABD_UPLOADER_S3_REGION",
+		},
+		cli.StringFlag{
+			Name:   "uploader.file.address",
+			Usage:  "address for file uploader",
+			Value:  ":7000",
+			EnvVar: "LABD_UPLOADER_FILE_ADDRESS",
 		},
 	}
 	app.Action = daemonAction
@@ -94,14 +107,18 @@ func daemonAction(c *cli.Context) error {
 	}
 
 	ctx := cliutil.CommandContext(c)
-	daemon, err := labd.New(root, c.String("address"), zerolog.Ctx(ctx),
-		labd.WithProvider(c.String("provider")),
-		labd.WithUploader(c.String("uploader")),
+	daemon, err := labd.New(root, c.GlobalString("address"), zerolog.Ctx(ctx),
+		labd.WithLibp2pAddress(c.GlobalString("libp2p-address")),
+		labd.WithProvider(c.GlobalString("provider")),
+		labd.WithUploader(c.GlobalString("uploader")),
 		labd.WithUploaderSettings(uploaders.UploaderSettings{
 			S3: s3uploader.S3UploaderSettings{
-				Bucket: c.String("uploader.s3.bucket"),
-				Prefix: c.String("uploader.s3.prefix"),
-				Region: c.String("uploader.s3.region"),
+				Bucket: c.GlobalString("uploader.s3.bucket"),
+				Prefix: c.GlobalString("uploader.s3.prefix"),
+				Region: c.GlobalString("uploader.s3.region"),
+			},
+			File: fileuploader.FileUploaderSettings{
+				Address: c.GlobalString("uploader.file.address"),
 			},
 		}),
 	)
