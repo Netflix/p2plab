@@ -38,6 +38,7 @@ import (
 	multihash "github.com/multiformats/go-multihash"
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -128,7 +129,10 @@ func Convert(ctx context.Context, peer p2plab.Peer, fetcher remotes.Fetcher, sto
 	// Get all the children for a descriptor from a provider.
 	childrenHandler := images.ChildrenHandler(store)
 	// Filter manifests by platform.
-	childrenHandler = images.FilterPlatforms(childrenHandler, platforms.Default())
+	childrenHandler = images.FilterPlatforms(childrenHandler, platforms.Only(specs.Platform{
+		OS:           "linux",
+		Architecture: "amd64",
+	}))
 	// Convert each child into a IPLD merkle tree.
 	childrenHandler = DispatchConvertHandler(childrenHandler, peer, fetcher, store)
 	// Build manifest from converted children.
