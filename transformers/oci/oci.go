@@ -294,7 +294,10 @@ func AddBlob(ctx context.Context, peer p2plab.Peer, r io.Reader) (digest.Digest,
 
 func ConstructDAGFromManifest(ctx context.Context, p p2plab.Peer, image ocispec.Descriptor) (ipld.Node, error) {
 	provider := NewProvider(p)
-	manifest, err := images.Manifest(ctx, provider, image, platforms.Default())
+	manifest, err := images.Manifest(ctx, provider, image, platforms.Only(specs.Platform{
+		OS:           "linux",
+		Architecture: "amd64",
+	}))
 	if err != nil {
 		return nil, err
 	}
