@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime/pprof"
 	"strings"
 
 	"github.com/Netflix/p2plab/daemon"
@@ -105,6 +106,14 @@ func (s *router) getFile(ctx context.Context, target string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "get")
 	defer span.Finish()
 	span.SetTag("cid", target)
+
+	f, err := ioutil.TempFile("./tmp", fmt.Sprintf("get-%s", target))
+	if err != nil {
+		return err
+	}
+
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
 
 	c, err := cid.Parse(target)
 	if err != nil {
