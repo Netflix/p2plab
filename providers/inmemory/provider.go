@@ -95,11 +95,11 @@ func (p *provider) CreateNodeGroup(ctx context.Context, id string, cdef metadata
 				AgentPort:    n.AgentPort,
 				AppPort:      n.AppPort,
 				GitReference: group.GitReference,
-				Labels: []string{
+				Labels: append([]string{
 					n.ID,
 					group.InstanceType,
 					group.Region,
-				},
+				}, group.Labels...),
 			})
 		}
 	}
