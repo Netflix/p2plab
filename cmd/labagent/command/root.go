@@ -16,12 +16,14 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/Netflix/p2plab/downloaders"
 	"github.com/Netflix/p2plab/downloaders/s3downloader"
 	"github.com/Netflix/p2plab/labagent"
 	"github.com/Netflix/p2plab/pkg/cliutil"
+	"github.com/Netflix/p2plab/providers/terraform"
 	"github.com/Netflix/p2plab/version"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
@@ -41,7 +43,7 @@ func App(ctx context.Context) *cli.App {
 		cli.StringFlag{
 			Name:   "address,a",
 			Usage:  "address for labd's HTTP server",
-			Value:  ":7002",
+			Value:  fmt.Sprintf(":%d", terraform.DefaultAgentPort),
 			EnvVar: "LABAGENT_ADDRESS",
 		},
 		cli.StringFlag{
@@ -53,7 +55,7 @@ func App(ctx context.Context) *cli.App {
 		cli.StringFlag{
 			Name:   "app-address",
 			Usage:  "address for labapp's HTTP server",
-			Value:  "http://localhost:7003",
+			Value:  fmt.Sprintf("http://localhost:%d", terraform.DefaultAppPort),
 			EnvVar: "LABAGENT_APP_ADDRESS",
 		},
 		cli.StringFlag{

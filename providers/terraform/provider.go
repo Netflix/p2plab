@@ -30,8 +30,8 @@ import (
 )
 
 var (
-	DefaultAgentPort = 7003
-	DefaultAppPort   = 7004
+	DefaultAgentPort = 7002
+	DefaultAppPort   = 7003
 )
 
 type provider struct {
