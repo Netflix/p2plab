@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -199,9 +200,12 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 	}
 	report.Aggregates = reports.ComputeAggregates(report.Nodes)
 
-	sc, ok := execution.Span.Context().(jaeger.SpanContext)
-	if ok {
-		report.Summary.Trace = fmt.Sprintf("https://p2plab.test.netflix.net:16686/trace/%s?uiFind=%s", sc.TraceID(), sc.SpanID())
+	jaegerUI := os.Getenv("JAEGER_UI")
+	if jaegerUI != "" {
+		sc, ok := execution.Span.Context().(jaeger.SpanContext)
+		if ok {
+			report.Summary.Trace = fmt.Sprintf("%s/trace/%s?uiFind=%s", jaegerUI, sc.TraceID(), sc.SpanID())
+		}
 	}
 
 	zerolog.Ctx(ctx).Info().Msg("Updating benchmark metadata")
