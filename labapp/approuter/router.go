@@ -18,8 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -29,7 +27,7 @@ import (
 	"github.com/Netflix/p2plab/peer"
 	"github.com/Netflix/p2plab/pkg/logutil"
 	cid "github.com/ipfs/go-cid"
-	files "github.com/ipfs/go-ipfs-files"
+	dag "github.com/ipfs/go-merkledag"
 	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	multiaddr "github.com/multiformats/go-multiaddr"
@@ -113,36 +111,12 @@ func (s *router) getFile(ctx context.Context, target string) error {
 		return errors.Wrapf(errdefs.ErrInvalidArgument, "%s", err)
 	}
 
-	nd, err := s.peer.Get(ctx, c)
-	if err != nil {
-		return errors.Wrap(err, "failed to get file")
-	}
-	defer nd.Close()
-
-	piper, pipew := io.Pipe()
-	defer piper.Close()
-
-	w, err := files.NewTarWriter(pipew)
-	if err != nil {
-		return errors.Wrap(err, "failed to create tar writer")
-	}
-
-	go func() {
-		err := w.WriteFile(ctx, nd, c.String())
-		if err != nil {
-			pipew.CloseWithError(err)
-			return
-		}
-		w.Close()
-		pipew.Close()
-	}()
-
-	n, err := io.Copy(ioutil.Discard, piper)
+	err = dag.FetchGraph(ctx, c, s.peer.DAGService())
 	if err != nil {
 		return err
 	}
 
-	zerolog.Ctx(ctx).Debug().Str("cid", c.String()).Int64("bytes", n).Msg("Retrieved file")
+	zerolog.Ctx(ctx).Debug().Str("cid", c.String()).Msg("Retrieved file")
 	return nil
 }
 
