@@ -271,12 +271,13 @@ func (p *Peer) Add(ctx context.Context, r io.Reader, opts ...p2plab.AddOption) (
 }
 
 func (p *Peer) Get(ctx context.Context, c cid.Cid) (files.Node, error) {
-	nd, err := p.dserv.Get(ctx, c)
+	dserv := dag.NewReadOnlyDagService(dag.NewSession(ctx, p.dserv))
+	nd, err := dserv.Get(ctx, c)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get file %q", c)
 	}
 
-	return unixfile.NewUnixfsFile(ctx, p.dserv, nd)
+	return unixfile.NewUnixfsFile(ctx, dserv, nd)
 }
 
 func (p *Peer) Report(ctx context.Context) (metadata.ReportNode, error) {
