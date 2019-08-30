@@ -197,6 +197,8 @@ github.com/hinshun/go-ipfs-files v0.0.4-0.20190830175757-9250f0175042 h1:RvtHquX
 github.com/hinshun/go-ipfs-files v0.0.4-0.20190830175757-9250f0175042/go.mod h1:DpBjZ2uQMleOlPQvV7EC6N7npGPNuiZuTVU08eHZEoA=
 github.com/hinshun/go-merkledag v0.1.1-0.20190830190353-1a2c09a12c2d h1:jU3wS9oVrHyirqAoblOEh8RMxx1EYAEeLclpyPjmIbk=
 github.com/hinshun/go-merkledag v0.1.1-0.20190830190353-1a2c09a12c2d/go.mod h1:xB3CY8vTnk2D4OKAUCjrQpRyW2kkSuLnzh20bqYLpT4=
+github.com/hinshun/go-merkledag v0.1.1-0.20190830190741-63d6a30b660f h1:1KEgvHyEA+w9swpFmpHBKIZ/6EZPmFBo1z2zpSPmQi4=
+github.com/hinshun/go-merkledag v0.1.1-0.20190830190741-63d6a30b660f/go.mod h1:xB3CY8vTnk2D4OKAUCjrQpRyW2kkSuLnzh20bqYLpT4=
 github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/hsanjuan/go-libp2p-gostream v0.0.31/go.mod h1:cWvV5/NQ5XWi0eQZnX/svsAk6NLc4U26pItvj0eDeRk=

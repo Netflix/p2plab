@@ -73,4 +73,4 @@ require (
 	gotest.tools v2.2.0+incompatible // indirect
 )
 
-replace github.com/ipfs/go-merkledag => github.com/hinshun/go-merkledag v0.1.1-0.20190830190353-1a2c09a12c2d
+replace github.com/ipfs/go-merkledag => github.com/hinshun/go-merkledag v0.1.1-0.20190830190741-63d6a30b660f
