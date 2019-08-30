@@ -17,12 +17,12 @@ require (
 	github.com/hako/durafmt v0.0.0-20190612201238-650ed9f29a84
 	github.com/hashicorp/go-cleanhttp v0.5.0
 	github.com/hashicorp/go-retryablehttp v0.5.4
-	github.com/ipfs/go-bitswap v0.1.6
+	github.com/ipfs/go-bitswap v0.1.8
 	github.com/ipfs/go-blockservice v0.1.0
 	github.com/ipfs/go-cid v0.0.3
 	github.com/ipfs/go-datastore v0.1.0
 	github.com/ipfs/go-ds-badger v0.0.5
-	github.com/ipfs/go-ipfs v0.4.22-0.20190826175208-27c0de7f7ceb
+	github.com/ipfs/go-ipfs v0.4.22-0.20190829225759-d778b84ff1c3
 	github.com/ipfs/go-ipfs-blockstore v0.1.0
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-files v0.0.3
