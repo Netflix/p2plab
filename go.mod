@@ -72,3 +72,5 @@ require (
 	google.golang.org/grpc v1.20.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 )
+
+replace github.com/ipfs/go-ipfs-files => github.com/hinshun/go-ipfs-files v0.0.4-0.20190830175757-9250f0175042

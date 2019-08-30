@@ -128,7 +128,7 @@ func (s *router) getFile(ctx context.Context, target string) error {
 	}
 
 	go func() {
-		err := w.WriteFile(nd, c.String())
+		err := w.WriteFile(ctx, nd, c.String())
 		if err != nil {
 			pipew.CloseWithError(err)
 			return
