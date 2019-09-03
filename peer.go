@@ -53,3 +53,31 @@ type AddSettings struct {
 	NoCopy    bool
 	HashFunc  string
 }
+
+func WithLayout(layout string) AddOption {
+	return func(s *AddSettings) error {
+		s.Layout = layout
+		return nil
+	}
+}
+
+func WithChunker(chunker string) AddOption {
+	return func(s *AddSettings) error {
+		s.Chunker = chunker
+		return nil
+	}
+}
+
+func WithRawLeaves(rawLeaves bool) AddOption {
+	return func(s *AddSettings) error {
+		s.RawLeaves = rawLeaves
+		return nil
+	}
+}
+
+func WithHashFunc(hashFunc string) AddOption {
+	return func(s *AddSettings) error {
+		s.HashFunc = hashFunc
+		return nil
+	}
+}

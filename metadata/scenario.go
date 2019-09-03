@@ -16,6 +16,7 @@ package metadata
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/Netflix/p2plab/errdefs"
@@ -56,12 +57,16 @@ type ObjectDefinition struct {
 
 	Source string `json:"source"`
 
+	// Layout specify how the DAG is shaped and constructed over the IPLD blocks.
+	Layout string `json:"layout"`
+
 	// Chunker specify which chunking algorithm to use to chunk the data into IPLD
 	// blocks.
 	Chunker string `json:"chunker"`
 
-	// Layout specify how the DAG is shaped and constructed over the IPLD blocks.
-	Layout string `json:"layout"`
+	RawLeaves bool `json:"rawLeaves"`
+
+	HashFunc string `json:"hashFunc"`
 }
 
 // ObjectType is the type of data retrieved.
@@ -382,6 +387,14 @@ func readObjects(bkt *bolt.Bucket) (map[string]ObjectDefinition, error) {
 				object.Type = string(v)
 			case string(bucketKeySource):
 				object.Source = string(v)
+			case string(bucketKeyLayout):
+				object.Layout = string(v)
+			case string(bucketKeyChunker):
+				object.Chunker = string(v)
+			case string(bucketKeyRawLeaves):
+				object.RawLeaves, _ = strconv.ParseBool(string(v))
+			case string(bucketKeyHashFunc):
+				object.HashFunc = string(v)
 			}
 			return nil
 		})
@@ -414,6 +427,10 @@ func writeObjects(bkt *bolt.Bucket, objects map[string]ObjectDefinition) error {
 		for _, f := range []field{
 			{bucketKeyType, []byte(object.Type)},
 			{bucketKeySource, []byte(object.Source)},
+			{bucketKeyLayout, []byte(object.Layout)},
+			{bucketKeyChunker, []byte(object.Chunker)},
+			{bucketKeyRawLeaves, []byte(strconv.FormatBool(object.RawLeaves))},
+			{bucketKeyHashFunc, []byte(object.HashFunc)},
 		} {
 			err = nbkt.Put(f.key, f.value)
 			if err != nil {

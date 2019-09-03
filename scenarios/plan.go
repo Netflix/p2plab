@@ -47,7 +47,8 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 				return err
 			}
 
-			c, err := t.Transform(gctx, peer, odef.Source, nil)
+			opts := AddOptionsFromDefinition(odef)
+			c, err := t.Transform(gctx, peer, odef.Source, opts...)
 			if err != nil {
 				return err
 			}
@@ -141,4 +142,21 @@ func Plan(ctx context.Context, sdef metadata.ScenarioDefinition, ts *transformer
 	}
 
 	return plan, queries, nil
+}
+
+func AddOptionsFromDefinition(odef metadata.ObjectDefinition) []p2plab.AddOption {
+	var opts []p2plab.AddOption
+	if odef.Layout != "" {
+		opts = append(opts, p2plab.WithLayout(odef.Layout))
+	}
+	if odef.Chunker != "" {
+		opts = append(opts, p2plab.WithChunker(odef.Chunker))
+	}
+	if odef.RawLeaves {
+		opts = append(opts, p2plab.WithRawLeaves(true))
+	}
+	if odef.HashFunc != "" {
+		opts = append(opts, p2plab.WithHashFunc(odef.HashFunc))
+	}
+	return opts
 }
