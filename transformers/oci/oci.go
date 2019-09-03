@@ -80,7 +80,7 @@ func (t *transformer) Close() error {
 	return t.db.Close()
 }
 
-func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source string, options []string) (cid.Cid, error) {
+func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source string, opts ...p2plab.AddOption) (cid.Cid, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "transform oci")
 	defer span.Finish()
 	span.SetTag("peer", p.Host().ID().String())
@@ -105,7 +105,7 @@ func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source strin
 		}
 
 		zerolog.Ctx(ctx).Info().Str("digest", desc.Digest.String()).Msg("Converting manifest recursively to IPLD DAG")
-		target, err = Convert(ctx, p, fetcher, t.store, desc)
+		target, err = Convert(ctx, p, fetcher, t.store, desc, opts...)
 		if err != nil {
 			return cid.Undef, errors.Wrapf(err, "failed to convert %q", name)
 		}
@@ -117,7 +117,7 @@ func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source strin
 	}
 
 	zerolog.Ctx(ctx).Info().Str("target", target.Digest.String()).Msg("Constructing Unixfs directory over manifest blobs")
-	nd, err := ConstructDAGFromManifest(ctx, p, target)
+	nd, err := ConstructDAGFromManifest(ctx, p, target, opts...)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -125,7 +125,7 @@ func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source strin
 	return nd.Cid(), nil
 }
 
-func Convert(ctx context.Context, peer p2plab.Peer, fetcher remotes.Fetcher, store content.Store, desc ocispec.Descriptor) (target ocispec.Descriptor, err error) {
+func Convert(ctx context.Context, peer p2plab.Peer, fetcher remotes.Fetcher, store content.Store, desc ocispec.Descriptor, opts ...p2plab.AddOption) (target ocispec.Descriptor, err error) {
 	// Get all the children for a descriptor from a provider.
 	childrenHandler := images.ChildrenHandler(store)
 	// Filter manifests by platform.
@@ -134,11 +134,11 @@ func Convert(ctx context.Context, peer p2plab.Peer, fetcher remotes.Fetcher, sto
 		Architecture: "amd64",
 	}))
 	// Convert each child into a IPLD merkle tree.
-	childrenHandler = DispatchConvertHandler(childrenHandler, peer, fetcher, store)
+	childrenHandler = DispatchConvertHandler(childrenHandler, peer, fetcher, store, opts...)
 	// Build manifest from converted children.
 	childrenHandler = BuildManifestHandler(childrenHandler, peer, store, func(desc ocispec.Descriptor) {
 		target = desc
-	})
+	}, opts...)
 
 	handler := images.Handlers(
 		remotes.FetchHandler(store, fetcher),
@@ -153,7 +153,7 @@ func Convert(ctx context.Context, peer p2plab.Peer, fetcher remotes.Fetcher, sto
 	return target, nil
 }
 
-func DispatchConvertHandler(f images.HandlerFunc, peer p2plab.Peer, fetcher remotes.Fetcher, store content.Store) images.HandlerFunc {
+func DispatchConvertHandler(f images.HandlerFunc, peer p2plab.Peer, fetcher remotes.Fetcher, store content.Store, opts ...p2plab.AddOption) images.HandlerFunc {
 	return func(ctx context.Context, desc ocispec.Descriptor) (subdescs []ocispec.Descriptor, err error) {
 		children, err := f(ctx, desc)
 		if err != nil {
@@ -161,7 +161,7 @@ func DispatchConvertHandler(f images.HandlerFunc, peer p2plab.Peer, fetcher remo
 		}
 
 		conversions := make(map[digest.Digest]ocispec.Descriptor)
-		handler := ConvertHandler(conversions, peer, fetcher, store)
+		handler := ConvertHandler(conversions, peer, fetcher, store, opts...)
 		err = images.Dispatch(ctx, handler, nil, children...)
 		if err != nil {
 			return children, errors.Wrap(err, "failed to sub-dispatch")
@@ -175,7 +175,7 @@ func DispatchConvertHandler(f images.HandlerFunc, peer p2plab.Peer, fetcher remo
 	}
 }
 
-func ConvertHandler(conversions map[digest.Digest]ocispec.Descriptor, peer p2plab.Peer, fetcher remotes.Fetcher, store content.Store) images.HandlerFunc {
+func ConvertHandler(conversions map[digest.Digest]ocispec.Descriptor, peer p2plab.Peer, fetcher remotes.Fetcher, store content.Store, opts ...p2plab.AddOption) images.HandlerFunc {
 	return func(ctx context.Context, desc ocispec.Descriptor) (subdescs []ocispec.Descriptor, err error) {
 		var (
 			target ocispec.Descriptor
@@ -201,7 +201,7 @@ func ConvertHandler(conversions map[digest.Digest]ocispec.Descriptor, peer p2pla
 			}
 			defer rc.Close()
 
-			target.Digest, err = AddBlob(ctx, peer, rc)
+			target.Digest, err = AddBlob(ctx, peer, rc, opts...)
 		}
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to convert %q [%s]", desc.Digest, desc.MediaType)
@@ -220,7 +220,7 @@ func ConvertHandler(conversions map[digest.Digest]ocispec.Descriptor, peer p2pla
 	}
 }
 
-func BuildManifestHandler(f images.HandlerFunc, peer p2plab.Peer, provider content.Provider, callback func(ocispec.Descriptor)) images.HandlerFunc {
+func BuildManifestHandler(f images.HandlerFunc, peer p2plab.Peer, provider content.Provider, callback func(ocispec.Descriptor), opts ...p2plab.AddOption) images.HandlerFunc {
 	return func(ctx context.Context, desc ocispec.Descriptor) (subdescs []ocispec.Descriptor, err error) {
 		children, err := f(ctx, desc)
 		if err != nil {
@@ -267,7 +267,7 @@ func BuildManifestHandler(f images.HandlerFunc, peer p2plab.Peer, provider conte
 		}
 
 		desc.Size = int64(len(blob))
-		desc.Digest, err = AddBlob(ctx, peer, bytes.NewReader(blob))
+		desc.Digest, err = AddBlob(ctx, peer, bytes.NewReader(blob), opts...)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to write blob")
 		}
@@ -277,8 +277,8 @@ func BuildManifestHandler(f images.HandlerFunc, peer p2plab.Peer, provider conte
 	}
 }
 
-func AddBlob(ctx context.Context, peer p2plab.Peer, r io.Reader) (digest.Digest, error) {
-	n, err := peer.Add(ctx, r)
+func AddBlob(ctx context.Context, peer p2plab.Peer, r io.Reader, opts ...p2plab.AddOption) (digest.Digest, error) {
+	n, err := peer.Add(ctx, r, opts...)
 	if err != nil {
 		return "", err
 	}
@@ -292,7 +292,17 @@ func AddBlob(ctx context.Context, peer p2plab.Peer, r io.Reader) (digest.Digest,
 	return dgst, nil
 }
 
-func ConstructDAGFromManifest(ctx context.Context, p p2plab.Peer, image ocispec.Descriptor) (ipld.Node, error) {
+func ConstructDAGFromManifest(ctx context.Context, p p2plab.Peer, image ocispec.Descriptor, opts ...p2plab.AddOption) (ipld.Node, error) {
+	settings := p2plab.AddSettings{
+		HashFunc: "sha2-256",
+	}
+	for _, opt := range opts {
+		err := opt(&settings)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	provider := NewProvider(p)
 	manifest, err := images.Manifest(ctx, provider, image, platforms.Only(specs.Platform{
 		OS:           "linux",
@@ -303,7 +313,7 @@ func ConstructDAGFromManifest(ctx context.Context, p p2plab.Peer, image ocispec.
 	}
 
 	root := unixfs.EmptyDirNode()
-	root.SetCidBuilder(cid.V1Builder{MhType: multihash.SHA2_256})
+	root.SetCidBuilder(cid.V1Builder{MhType: multihash.Names[settings.HashFunc]})
 
 	dserv := p.DAGService()
 	e := dagutils.NewDagEditor(root, dserv)

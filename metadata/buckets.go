@@ -37,6 +37,10 @@ var (
 	bucketKeyBenchmark = []byte("benchmark")
 	bucketKeyType      = []byte("type")
 	bucketKeySource    = []byte("source")
+	bucketKeyLayout    = []byte("layout")
+	bucketKeyChunker   = []byte("chunker")
+	bucketKeyRawLeaves = []byte("rawLeaves")
+	bucketKeyHashFunc  = []byte("hashFunc")
 
 	// Node buckets.
 	bucketKeyAddress   = []byte("address")
