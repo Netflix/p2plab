@@ -179,8 +179,8 @@ github.com/hashicorp/golang-lru v0.5.3 h1:YPkqC67at8FYaadspW/6uE0COsBxS2656RLEr8
 github.com/hashicorp/golang-lru v0.5.3/go.mod h1:iADmTwqILo4mZ8BN3D2Q6+9jd8WM5uGBxy+E8yxSoD4=
 github.com/hashicorp/hcl v0.0.0-20180404174102-ef8a98b0bbce/go.mod h1:oZtUIOe8dh44I2q6ScRibXws4Ajl+d+nod3AaR9vL5w=
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
-github.com/hinshun/go-merkledag v0.1.1-0.20190903175250-f7198de834ba h1:jy1qiV7703mkk3wvwQcir/bjQEmKt8xtpNcemCVYpBY=
-github.com/hinshun/go-merkledag v0.1.1-0.20190903175250-f7198de834ba/go.mod h1:xB3CY8vTnk2D4OKAUCjrQpRyW2kkSuLnzh20bqYLpT4=
+github.com/hinshun/go-merkledag v0.1.1-0.20190830190741-63d6a30b660f h1:1KEgvHyEA+w9swpFmpHBKIZ/6EZPmFBo1z2zpSPmQi4=
+github.com/hinshun/go-merkledag v0.1.1-0.20190830190741-63d6a30b660f/go.mod h1:xB3CY8vTnk2D4OKAUCjrQpRyW2kkSuLnzh20bqYLpT4=
 github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/huin/goupnp v1.0.0 h1:wg75sLpL6DZqwHQN6E1Cfk6mtfzS45z8OV+ic+DtHRo=
