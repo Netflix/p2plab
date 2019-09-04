@@ -109,7 +109,7 @@ func (s *router) getFile(ctx context.Context, target string) error {
 	defer span.Finish()
 	span.SetTag("cid", target)
 
-	f, err := ioutil.TempFile("/mnt", fmt.Sprintf("%d-get-%s", time.Now().UnixNano(), target))
+	f, err := ioutil.TempFile("./tmp", fmt.Sprintf("%d-get-%s", time.Now().UnixNano(), target))
 	if err != nil {
 		return err
 	}
