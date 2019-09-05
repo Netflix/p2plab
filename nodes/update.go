@@ -61,8 +61,9 @@ func Update(ctx context.Context, builder p2plab.Builder, ns []p2plab.Node) error
 	for _, n := range ns {
 		n := n
 		updatePeers.Go(func() error {
-			link := linkByCommit[commitByRef[n.Metadata().GitReference]]
-			return n.Update(gctx, link)
+			pdef := n.Metadata().Peer
+			link := linkByCommit[commitByRef[pdef.GitReference]]
+			return n.Update(gctx, link, pdef)
 		})
 	}
 
@@ -89,13 +90,13 @@ func ResolveUniqueCommits(ctx context.Context, builder p2plab.Builder, ns []p2pl
 	for _, n := range ns {
 		n := n
 		resolving.Go(func() error {
-			commit, err := builder.Resolve(ctx, n.Metadata().GitReference)
+			commit, err := builder.Resolve(ctx, n.Metadata().Peer.GitReference)
 			if err != nil {
 				return err
 			}
 
 			mu.Lock()
-			commitByRef[n.Metadata().GitReference] = commit
+			commitByRef[n.Metadata().Peer.GitReference] = commit
 			mu.Unlock()
 			return nil
 		})

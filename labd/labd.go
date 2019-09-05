@@ -87,7 +87,12 @@ func New(root, addr string, logger *zerolog.Logger, opts ...LabdOption) (*Labd, 
 	}
 
 	sctx, cancel := context.WithCancel(context.Background())
-	seeder, err := peer.New(sctx, filepath.Join(root, "seeder"), settings.Libp2pAddress)
+	seeder, err := peer.New(sctx, filepath.Join(root, "seeder"), settings.Libp2pPort, metadata.PeerDefinition{
+		Transports:         []string{"tcp", "ws", "quic"},
+		Muxers:             []string{"mplex", "yamux"},
+		SecurityTransports: []string{"secio", "tls"},
+		Routing:            "nil",
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create seeder peer")
 	}

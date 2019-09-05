@@ -16,6 +16,7 @@ package noderouter
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -87,8 +88,13 @@ func (s *router) putNodesLabel(ctx context.Context, w http.ResponseWriter, r *ht
 }
 
 func (s *router) putNodesUpdate(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
+	var pdef metadata.PeerDefinition
+	err := json.NewDecoder(r.Body).Decode(&pdef)
+	if err != nil {
+		return err
+	}
+
 	clusterId := vars["name"]
-	ref := r.FormValue("ref")
 	matchedNodes, err := s.matchNodes(ctx, clusterId, r.FormValue("query"))
 	if err != nil {
 		return err
@@ -99,7 +105,21 @@ func (s *router) putNodesUpdate(ctx context.Context, w http.ResponseWriter, r *h
 		tctx := metadata.WithTransactionContext(ctx, tx)
 
 		for _, n := range matchedNodes {
-			n.GitReference = ref
+			if pdef.GitReference != "" {
+				n.Peer.GitReference = pdef.GitReference
+			}
+			if len(pdef.Transports) > 0 {
+				n.Peer.Transports = pdef.Transports
+			}
+			if len(pdef.Muxers) > 0 {
+				n.Peer.Muxers = pdef.Muxers
+			}
+			if len(pdef.SecurityTransports) > 0 {
+				n.Peer.SecurityTransports = pdef.SecurityTransports
+			}
+			if pdef.Routing != "" {
+				n.Peer.Routing = pdef.Routing
+			}
 
 			var err error
 			n, err = s.db.UpdateNode(tctx, clusterId, n)

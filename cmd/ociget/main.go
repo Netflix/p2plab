@@ -18,10 +18,10 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
+	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/peer"
 	cid "github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
@@ -58,7 +58,17 @@ func run(addr, ref string) error {
 	defer cancel()
 
 	root := "./tmp/ociget"
-	p, err := peer.New(ctx, filepath.Join(root, "peer"), "/ip4/0.0.0.0/tcp/0")
+	err := os.MkdirAll(root, 0711)
+	if err != nil {
+		return err
+	}
+
+	p, err := peer.New(ctx, filepath.Join(root, "peer"), 0, metadata.PeerDefinition{
+		Transports:         []string{"tcp", "ws", "quic"},
+		Muxers:             []string{"mplex", "yamux"},
+		SecurityTransports: []string{"tls", "secio"},
+		Routing:            "nil",
+	})
 	if err != nil {
 		return err
 	}
@@ -95,16 +105,19 @@ func run(addr, ref string) error {
 		return err
 	}
 
-	f, ok := nd.(files.File)
+	f, ok := nd.(files.Directory)
 	if !ok {
-		return errors.Errorf("expected %q to be a file", c)
+		return errors.Errorf("expected %q to be a directory", c)
 	}
 
-	content, err := ioutil.ReadAll(f)
-	if err != nil {
+	iter := f.Entries()
+	for iter.Next() {
+		log.Info().Str("name", iter.Name()).Msg("Found file in unixfs directory")
+	}
+
+	if iter.Err() != nil {
 		return err
 	}
-	log.Info().Msgf("Received content:\n%s", string(content))
 
 	fmt.Print("Press 'Enter' to terminate peer...")
 	_, err = bufio.NewReader(os.Stdin).ReadBytes('\n')

@@ -16,6 +16,7 @@ package scenarios
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/Netflix/p2plab"
@@ -34,8 +35,8 @@ type Execution struct {
 	Span  opentracing.Span
 }
 
-func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan, seederAddr string) (*Execution, error) {
-	err := Seed(ctx, lset, plan.Seed, seederAddr)
+func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan, seederAddrs []string) (*Execution, error) {
+	err := Seed(ctx, lset, plan.Seed, seederAddrs)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +55,7 @@ func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan
 	}, nil
 }
 
-func Seed(ctx context.Context, lset p2plab.LabeledSet, seed metadata.ScenarioStage, seederAddr string) error {
+func Seed(ctx context.Context, lset p2plab.LabeledSet, seed metadata.ScenarioStage, seederAddrs []string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster seed")
 	defer span.Finish()
 
@@ -76,10 +77,10 @@ func Seed(ctx context.Context, lset p2plab.LabeledSet, seed metadata.ScenarioSta
 				return errors.Wrap(errdefs.ErrInvalidArgument, "could not cast labeled to node")
 			}
 
-			logger.Debug().Str("addr", seederAddr).Msg("Connecting to seeding peer")
+			logger.Debug().Strs("addrs", seederAddrs).Msg("Connecting to seeding peer")
 			err := n.Run(gctx, metadata.Task{
 				Type:    metadata.TaskConnect,
-				Subject: seederAddr,
+				Subject: strings.Join(seederAddrs, ","),
 			})
 			if err != nil {
 				return errors.Wrap(err, "failed to connect to seeding peer")
@@ -91,10 +92,10 @@ func Seed(ctx context.Context, lset p2plab.LabeledSet, seed metadata.ScenarioSta
 				return errors.Wrap(err, "failed to run seeding task")
 			}
 
-			logger.Debug().Str("addr", seederAddr).Msg("Disconnecting from seeding peer")
+			logger.Debug().Strs("addrs", seederAddrs).Msg("Disconnecting from seeding peer")
 			err = n.Run(gctx, metadata.Task{
 				Type:    metadata.TaskDisconnect,
-				Subject: seederAddr,
+				Subject: strings.Join(seederAddrs, ","),
 			})
 			if err != nil {
 				return errors.Wrap(err, "failed to disconnect from seeding peer")

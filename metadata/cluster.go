@@ -94,7 +94,7 @@ type ClusterGroup struct {
 	Size         int
 	InstanceType string
 	Region       string
-	GitReference string
+	Peer         *PeerDefinition
 	Labels       []string
 }
 
@@ -326,6 +326,12 @@ func readClusterDefinition(bkt *bolt.Bucket) (ClusterDefinition, error) {
 			return cdef, err
 		}
 
+		pdef, err := readPeerDefinition(gbkt)
+		if err != nil {
+			return cdef, err
+		}
+		group.Peer = &pdef
+
 		err = gbkt.ForEach(func(k, v []byte) error {
 			switch string(k) {
 			case string(bucketKeySize):
@@ -338,8 +344,6 @@ func readClusterDefinition(bkt *bolt.Bucket) (ClusterDefinition, error) {
 				group.InstanceType = string(v)
 			case string(bucketKeyRegion):
 				group.Region = string(v)
-			case string(bucketKeyGitReference):
-				group.GitReference = string(v)
 			}
 			return nil
 		})
@@ -402,11 +406,15 @@ func writeClusterDefinition(bkt *bolt.Bucket, cdef ClusterDefinition) error {
 			return err
 		}
 
+		err = writePeerDefinition(gbkt, *group.Peer)
+		if err != nil {
+			return err
+		}
+
 		for _, f := range []field{
 			{bucketKeySize, []byte(strconv.Itoa(group.Size))},
 			{bucketKeyInstanceType, []byte(group.InstanceType)},
 			{bucketKeyRegion, []byte(group.Region)},
-			{bucketKeyGitReference, []byte(group.GitReference)},
 		} {
 			err = gbkt.Put(f.key, f.value)
 			if err != nil {

@@ -15,7 +15,11 @@
 package command
 
 import (
+	"encoding/json"
+	"os"
+
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/cliutil"
 	"github.com/Netflix/p2plab/printer"
 	"github.com/Netflix/p2plab/query"
@@ -42,11 +46,11 @@ var nodeCommand = cli.Command{
 			ArgsUsage: "<cluster>",
 			Action:    labelNodesAction,
 			Flags: []cli.Flag{
-				&cli.StringSliceFlag{
+				cli.StringSliceFlag{
 					Name:  "add",
 					Usage: "Adds a label.",
 				},
-				&cli.StringSliceFlag{
+				cli.StringSliceFlag{
 					Name:  "remove,rm",
 					Usage: "Removes a label.",
 				},
@@ -59,7 +63,7 @@ var nodeCommand = cli.Command{
 			ArgsUsage: "<cluster>",
 			Action:    listNodeAction,
 			Flags: []cli.Flag{
-				&cli.StringFlag{
+				cli.StringFlag{
 					Name:  "query,q",
 					Usage: "Runs a query to filter the listed nodes.",
 				},
@@ -68,13 +72,37 @@ var nodeCommand = cli.Command{
 		{
 			Name:      "update",
 			Aliases:   []string{"u"},
-			ArgsUsage: "<cluster> <git-ref>",
-			Usage:     "Updates nodes to a given p2plab git reference",
+			ArgsUsage: "<cluster>",
+			Usage:     "Updates nodes with a peer definition",
 			Action:    updateNodesAction,
 			Flags: []cli.Flag{
-				&cli.StringFlag{
+				cli.StringFlag{
+					Name:  "definition,d",
+					Usage: "Update nodes from a peer definition.",
+				},
+				cli.StringFlag{
 					Name:  "query,q",
 					Usage: "Runs a query to update a subset of nodes.",
+				},
+				cli.StringFlag{
+					Name:  "git-reference,ref",
+					Usage: "Git reference of labapp.",
+				},
+				cli.StringSliceFlag{
+					Name:  "transports,t",
+					Usage: "Transports for libp2p [tcp, ws, quic]",
+				},
+				cli.StringSliceFlag{
+					Name:  "muxers,m",
+					Usage: "Muxers for libp2p [mplex, yamux]",
+				},
+				cli.StringSliceFlag{
+					Name:  "security-transports,st",
+					Usage: "Security transports for libp2p [tls, secio]",
+				},
+				cli.StringFlag{
+					Name:  "routing,r",
+					Usage: "Routing for libp2p [nil, kaddht]",
 				},
 			},
 		},
@@ -149,8 +177,8 @@ func labelNodesAction(c *cli.Context) error {
 }
 
 func updateNodesAction(c *cli.Context) error {
-	if c.NArg() != 2 {
-		return errors.New("cluster id and git reference must be provided")
+	if c.NArg() != 1 {
+		return errors.New("cluster id must be provided")
 	}
 
 	p, err := CommandPrinter(c, printer.OutputTable)
@@ -169,6 +197,35 @@ func updateNodesAction(c *cli.Context) error {
 		opts = append(opts, p2plab.WithQuery(q.String()))
 	}
 
+	var pdef metadata.PeerDefinition
+	if c.IsSet("definition") {
+		f, err := os.Open(c.String("definition"))
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		err = json.NewDecoder(f).Decode(&pdef)
+		if err != nil {
+			return err
+		}
+	}
+	if c.IsSet("git-reference") {
+		pdef.GitReference = c.String("git-reference")
+	}
+	if c.IsSet("transports") {
+		pdef.Transports = c.StringSlice("transports")
+	}
+	if c.IsSet("muxers") {
+		pdef.Muxers = c.StringSlice("muxers")
+	}
+	if c.IsSet("security-transports") {
+		pdef.SecurityTransports = c.StringSlice("security-transports")
+	}
+	if c.IsSet("routing") {
+		pdef.Routing = c.String("routing")
+	}
+
 	control, err := ResolveControl(c)
 	if err != nil {
 		return err
@@ -180,8 +237,7 @@ func updateNodesAction(c *cli.Context) error {
 		return err
 	}
 
-	ref := c.Args().Get(1)
-	nodes, err := cluster.Update(ctx, ref, opts...)
+	nodes, err := cluster.Update(ctx, pdef, opts...)
 	if err != nil {
 		return err
 	}

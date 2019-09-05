@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/Netflix/p2plab"
-	"github.com/Netflix/p2plab/builder"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/pkg/logutil"
@@ -62,8 +61,8 @@ func (a *clusterAPI) Create(ctx context.Context, name string, opts ...p2plab.Cre
 		}
 
 		for i, group := range cdef.Groups {
-			if group.GitReference == "" {
-				cdef.Groups[i].GitReference = builder.DefaultReference
+			if group.Peer == nil {
+				cdef.Groups[i].Peer = &metadata.DefaultPeerDefinition
 			}
 		}
 	} else {
@@ -71,7 +70,7 @@ func (a *clusterAPI) Create(ctx context.Context, name string, opts ...p2plab.Cre
 			Size:         settings.Size,
 			InstanceType: settings.InstanceType,
 			Region:       settings.Region,
-			GitReference: builder.DefaultReference,
+			Peer:         &metadata.DefaultPeerDefinition,
 		})
 	}
 
@@ -232,7 +231,7 @@ func (c *cluster) Metadata() metadata.Cluster {
 	return c.metadata
 }
 
-func (c *cluster) Update(ctx context.Context, ref string, opts ...p2plab.ListOption) ([]p2plab.Node, error) {
+func (c *cluster) Update(ctx context.Context, pdef metadata.PeerDefinition, opts ...p2plab.ListOption) ([]p2plab.Node, error) {
 	var settings p2plab.ListSettings
 	for _, opt := range opts {
 		err := opt(&settings)
@@ -241,8 +240,13 @@ func (c *cluster) Update(ctx context.Context, ref string, opts ...p2plab.ListOpt
 		}
 	}
 
+	content, err := json.MarshalIndent(&pdef, "", "    ")
+	if err != nil {
+		return nil, err
+	}
+
 	req := c.client.NewRequest("PUT", c.url("/clusters/%s/nodes/update", c.metadata.ID)).
-		Option("ref", ref)
+		Body(bytes.NewReader(content))
 
 	if settings.Query != "" {
 		req.Option("query", settings.Query)

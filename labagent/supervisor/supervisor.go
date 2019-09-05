@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 
 	"github.com/Netflix/p2plab/downloaders"
+	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -34,7 +35,7 @@ import (
 )
 
 type Supervisor interface {
-	Supervise(ctx context.Context, link string) error
+	Supervise(ctx context.Context, link string, pdef metadata.PeerDefinition) error
 }
 
 type supervisor struct {
@@ -72,7 +73,7 @@ func New(root, appRoot, appAddr string, client *httputil.Client, fs *downloaders
 	}, nil
 }
 
-func (s *supervisor) Supervise(ctx context.Context, link string) error {
+func (s *supervisor) Supervise(ctx context.Context, link string, pdef metadata.PeerDefinition) error {
 	err := s.kill(ctx)
 	if err != nil {
 		return err
@@ -90,16 +91,32 @@ func (s *supervisor) Supervise(ctx context.Context, link string) error {
 		return err
 	}
 
-	return s.start(ctx)
+	return s.start(ctx, pdef)
 }
 
-func (s *supervisor) start(ctx context.Context) error {
+func (s *supervisor) start(ctx context.Context, pdef metadata.PeerDefinition) error {
 	var actx context.Context
 	actx, s.cancel = context.WithCancel(context.Background())
-	s.app = s.cmd(actx,
+
+	flags := []string{
 		fmt.Sprintf("--root=%s", s.appRoot),
 		fmt.Sprintf("--address=:%s", s.appPort),
-	)
+	}
+
+	for _, transportType := range pdef.Transports {
+		flags = append(flags, fmt.Sprintf("--libp2p-transports=%s", transportType))
+	}
+	for _, muxerType := range pdef.Muxers {
+		flags = append(flags, fmt.Sprintf("--libp2p-muxers=%s", muxerType))
+	}
+	for _, securityTransportType := range pdef.SecurityTransports {
+		flags = append(flags, fmt.Sprintf("--libp2p-security-transports=%s", securityTransportType))
+	}
+	if pdef.Routing != "" {
+		flags = append(flags, fmt.Sprintf("--libp2p-routing=%s", pdef.Routing))
+	}
+
+	s.app = s.cmd(actx, flags...)
 	err := s.app.Start()
 	if err != nil {
 		return err

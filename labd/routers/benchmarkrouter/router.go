@@ -179,9 +179,13 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 		return err
 	}
 
-	seederAddr := fmt.Sprintf("%s/p2p/%s", s.seeder.Host().Addrs()[1], s.seeder.Host().ID())
+	var seederAddrs []string
+	for _, addr := range s.seeder.Host().Addrs() {
+		seederAddrs = append(seederAddrs, fmt.Sprintf("%s/p2p/%s", addr, s.seeder.Host().ID()))
+	}
+
 	zerolog.Ctx(ctx).Info().Msg("Executing scenario plan")
-	execution, err := scenarios.Run(ctx, lset, plan, seederAddr)
+	execution, err := scenarios.Run(ctx, lset, plan, seederAddrs)
 	if err != nil {
 		return errors.Wrap(err, "failed to run scenario plan")
 	}

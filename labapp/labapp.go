@@ -20,6 +20,7 @@ import (
 
 	"github.com/Netflix/p2plab/daemon"
 	"github.com/Netflix/p2plab/labapp/approuter"
+	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/peer"
 	"github.com/rs/zerolog"
 )
@@ -30,10 +31,10 @@ type LabApp struct {
 	closers []io.Closer
 }
 
-func New(root, addr, libp2pAddr string, logger *zerolog.Logger) (*LabApp, error) {
+func New(root, addr string, port int, logger *zerolog.Logger, pdef metadata.PeerDefinition) (*LabApp, error) {
 	var closers []io.Closer
 	pctx, cancel := context.WithCancel(context.Background())
-	p, err := peer.New(pctx, root, libp2pAddr)
+	p, err := peer.New(pctx, root, port, pdef)
 	if err != nil {
 		return nil, err
 	}
