@@ -326,8 +326,8 @@ func readClusterDefinition(bkt *bolt.Bucket) (ClusterDefinition, error) {
 			return cdef, err
 		}
 
-		dbkt := gbkt.Bucket(bucketKeyDefinition)
-		if dbkt != nil {
+		pdbkt := gbkt.Bucket(bucketKeyDefinition)
+		if pdbkt != nil {
 			pdef, err := readPeerDefinition(gbkt)
 			if err != nil {
 				return cdef, err
