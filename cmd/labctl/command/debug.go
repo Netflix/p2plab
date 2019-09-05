@@ -31,25 +31,6 @@ var debugCommand = cli.Command{
 	Hidden:  true,
 	Subcommands: []cli.Command{
 		{
-			Name:      "update",
-			Aliases:   []string{"u"},
-			Usage:     "Updates a labagent to a binary retrievable by an url",
-			ArgsUsage: "<link>",
-			Action:    updateAgentAction,
-			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:  "agent-addr",
-					Usage: "address for labagent's HTTP server",
-					Value: "http://localhost:7002",
-				},
-				&cli.StringFlag{
-					Name:  "app-addr",
-					Usage: "address for labapp's HTTP server",
-					Value: "http://localhost:7003",
-				},
-			},
-		},
-		{
 			Name:      "peer",
 			Aliases:   []string{"p"},
 			Usage:     "Retrieves the peer info from a labapp",
@@ -78,26 +59,6 @@ var debugCommand = cli.Command{
 			},
 		},
 	},
-}
-
-func updateAgentAction(c *cli.Context) error {
-	link := "HEAD"
-	if c.NArg() > 0 {
-		link = c.Args().First()
-	}
-
-	agent, err := ResolveAgent(c, c.String("agent-addr"))
-	if err != nil {
-		return err
-	}
-
-	ctx := cliutil.CommandContext(c)
-	err = agent.Update(ctx, link)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func peerInfoAction(c *cli.Context) error {

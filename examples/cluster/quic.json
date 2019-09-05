@@ -1,0 +1,29 @@
+{
+    "groups": [
+    	{
+        	"size": 1,
+        	"instanceType": "t2.micro",
+        	"region": "us-west-2",
+        	"peer": {
+        		"gitReference": "HEAD",
+        		"transports": ["quic"],
+        		"muxers": ["mplex"],
+        		"securityOptions": [],
+        		"routing": "nil"
+        	}
+        },
+    	{
+        	"size": 2,
+        	"instanceType": "t2.micro",
+        	"region": "us-west-2",
+        	"labels": ["neighbors"],
+        	"peer": {
+        		"gitReference": "HEAD",
+        		"transports": ["quic"],
+        		"muxers": ["mplex"],
+        		"securityOptions": [],
+        		"routing": "nil"
+        	}
+        }
+    ]
+}

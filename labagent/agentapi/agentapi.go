@@ -15,11 +15,14 @@
 package agentapi
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/pkg/logutil"
 	"github.com/rs/zerolog"
@@ -56,8 +59,14 @@ func (a *api) Healthcheck(ctx context.Context) bool {
 	return true
 }
 
-func (a *api) Update(ctx context.Context, link string) error {
+func (a *api) Update(ctx context.Context, link string, pdef metadata.PeerDefinition) error {
+	content, err := json.MarshalIndent(&pdef, "", "    ")
+	if err != nil {
+		return err
+	}
+
 	req := a.client.NewRequest("PUT", a.url("/update")).
+		Body(bytes.NewReader(content)).
 		Option("link", link)
 
 	resp, err := req.Send(ctx)

@@ -36,7 +36,6 @@ import (
 	provider "github.com/ipfs/go-ipfs-provider"
 	"github.com/ipfs/go-ipfs-provider/queue"
 	"github.com/ipfs/go-ipfs-provider/simple"
-	nilrouting "github.com/ipfs/go-ipfs-routing/none"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
@@ -44,17 +43,12 @@ import (
 	"github.com/ipfs/go-unixfs/importer/balanced"
 	"github.com/ipfs/go-unixfs/importer/helpers"
 	"github.com/ipfs/go-unixfs/importer/trickle"
-	libp2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-core/host"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
-	mplex "github.com/libp2p/go-libp2p-mplex"
-	secio "github.com/libp2p/go-libp2p-secio"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	filter "github.com/libp2p/go-maddr-filter"
-	tcp "github.com/libp2p/go-tcp-transport"
-	ws "github.com/libp2p/go-ws-transport"
 	multiaddr "github.com/multiformats/go-multiaddr"
 	multihash "github.com/multiformats/go-multihash"
 	"github.com/pkg/errors"
@@ -85,14 +79,14 @@ type Peer struct {
 	reporter metrics.Reporter
 }
 
-func New(ctx context.Context, root, addr string) (*Peer, error) {
+func New(ctx context.Context, root string, port int, pdef metadata.PeerDefinition) (*Peer, error) {
 	ds, err := NewDatastore(root)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create datastore")
 	}
 
 	reporter := metrics.NewBandwidthCounter()
-	h, r, err := NewLibp2pPeer(ctx, addr, reporter)
+	h, r, err := NewLibp2pPeer(ctx, port, pdef, reporter)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create libp2p peer")
 	}
@@ -305,48 +299,6 @@ func (p *Peer) Report(ctx context.Context) (metadata.ReportNode, error) {
 
 func NewDatastore(path string) (datastore.Batching, error) {
 	return badger.NewDatastore(path, &badger.DefaultOptions)
-}
-
-func NewLibp2pPeer(ctx context.Context, addr string, reporter metrics.Reporter) (host.Host, routing.ContentRouting, error) {
-	transports := libp2p.ChainOptions(
-		libp2p.Transport(tcp.NewTCPTransport),
-		libp2p.Transport(ws.New),
-	)
-
-	muxers := libp2p.ChainOptions(
-		libp2p.Muxer("/mplex/6.7.0", mplex.DefaultTransport),
-	)
-
-	security := libp2p.Security(secio.ID, secio.New)
-
-	listenAddrs := libp2p.ListenAddrStrings(addr)
-
-	bwReporter := libp2p.BandwidthReporter(reporter)
-
-	// var dht *kaddht.IpfsDHT
-	// newDHT := func(h host.Host) (routing.PeerRouting, error) {
-	// 	var err error
-	// 	dht, err = kaddht.New(ctx, h)
-	// 	return dht, err
-	// }
-	// routing := libp2p.Routing(libp2p.NilRouterOption)
-
-	host, err := libp2p.New(
-		ctx,
-		transports,
-		listenAddrs,
-		muxers,
-		security,
-		bwReporter,
-		// routing,
-	)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to create libp2p host")
-	}
-
-	r, _ := nilrouting.ConstructNilRouting(nil, nil, nil, nil)
-	return host, r, nil
-	// return host, dht, nil
 }
 
 func NewBlockstore(ctx context.Context, ds datastore.Batching) (blockstore.Blockstore, error) {

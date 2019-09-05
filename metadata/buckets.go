@@ -43,9 +43,14 @@ var (
 	bucketKeyHashFunc  = []byte("hashFunc")
 
 	// Node buckets.
-	bucketKeyAddress   = []byte("address")
-	bucketKeyAgentPort = []byte("agentPort")
-	bucketKeyAppPort   = []byte("appPort")
+	bucketKeyAddress            = []byte("address")
+	bucketKeyAgentPort          = []byte("agentPort")
+	bucketKeyAppPort            = []byte("appPort")
+	bucketKeyPort               = []byte("port")
+	bucketKeyTransports         = []byte("transports")
+	bucketKeyMuxers             = []byte("muxers")
+	bucketKeySecurityTransports = []byte("securityTransports")
+	bucketKeyRouting            = []byte("routing")
 
 	// Build buckets
 	bucketKeyLink = []byte("link")

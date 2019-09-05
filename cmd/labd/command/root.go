@@ -45,11 +45,11 @@ func App(ctx context.Context) *cli.App {
 			Value:  ":7001",
 			EnvVar: "LABD_ADDRESS",
 		},
-		cli.StringFlag{
-			Name:   "libp2p-address",
-			Usage:  "address for libp2p",
-			Value:  "/ip4/0.0.0.0/tcp/0",
-			EnvVar: "LABD_LIBP2P_ADDRESS",
+		cli.IntFlag{
+			Name:   "libp2p-port",
+			Usage:  "port for libp2p",
+			Value:  0,
+			EnvVar: "LABD_LIBP2P_PORT",
 		},
 		cli.StringFlag{
 			Name:   "log-level,l",
@@ -108,7 +108,7 @@ func daemonAction(c *cli.Context) error {
 
 	ctx := cliutil.CommandContext(c)
 	daemon, err := labd.New(root, c.GlobalString("address"), zerolog.Ctx(ctx),
-		labd.WithLibp2pAddress(c.GlobalString("libp2p-address")),
+		labd.WithLibp2pPort(c.GlobalInt("libp2p-port")),
 		labd.WithProvider(c.GlobalString("provider")),
 		labd.WithUploader(c.GlobalString("uploader")),
 		labd.WithUploaderSettings(uploaders.UploaderSettings{

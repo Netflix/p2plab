@@ -90,11 +90,11 @@ func (p *provider) CreateNodeGroup(ctx context.Context, id string, cdef metadata
 			p.nodes[id] = append(p.nodes[id], n)
 
 			ns = append(ns, metadata.Node{
-				ID:           n.ID,
-				Address:      "127.0.0.1",
-				AgentPort:    n.AgentPort,
-				AppPort:      n.AppPort,
-				GitReference: group.GitReference,
+				ID:        n.ID,
+				Address:   "127.0.0.1",
+				AgentPort: n.AgentPort,
+				AppPort:   n.AppPort,
+				Peer:      *group.Peer,
 				Labels: append([]string{
 					n.ID,
 					group.InstanceType,

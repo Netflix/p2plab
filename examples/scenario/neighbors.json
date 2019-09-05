@@ -6,9 +6,9 @@
 		}
 	},
 	"seed": {
-		"(not 'new-peers')": "golang"
+		"neighbors": "golang"
 	},
 	"benchmark": {
-		"new-peers": "golang"
+		"(not 'neighbors')": "golang"
 	}
 }

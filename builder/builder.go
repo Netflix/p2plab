@@ -32,10 +32,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var (
-	DefaultReference = "HEAD"
-)
-
 type builder struct {
 	root         string
 	bareRepoPath string

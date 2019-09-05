@@ -159,19 +159,13 @@ func (s *router) disconnect(ctx context.Context, addrs []string) error {
 }
 
 func parseAddrs(addrs []string) ([]libp2ppeer.AddrInfo, error) {
-	var infos []libp2ppeer.AddrInfo
+	var mas []multiaddr.Multiaddr
 	for _, addr := range addrs {
 		ma, err := multiaddr.NewMultiaddr(addr)
 		if err != nil {
 			return nil, err
 		}
-
-		info, err := libp2ppeer.AddrInfoFromP2pAddr(ma)
-		if err != nil {
-			return nil, err
-		}
-
-		infos = append(infos, *info)
+		mas = append(mas, ma)
 	}
-	return infos, nil
+	return libp2ppeer.AddrInfosFromP2pAddrs(mas...)
 }

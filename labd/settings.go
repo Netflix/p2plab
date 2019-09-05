@@ -22,16 +22,16 @@ import (
 type LabdOption func(*LabdSettings) error
 
 type LabdSettings struct {
-	Libp2pAddress    string
+	Libp2pPort    int
 	Provider         string
 	ProviderSettings providers.ProviderSettings
 	Uploader         string
 	UploaderSettings uploaders.UploaderSettings
 }
 
-func WithLibp2pAddress(addr string) LabdOption {
+func WithLibp2pPort(port int) LabdOption {
 	return func(s *LabdSettings) error {
-		s.Libp2pAddress = addr
+		s.Libp2pPort = port
 		return nil
 	}
 }

@@ -17,11 +17,22 @@ package metadata
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/pkg/errors"
 	bolt "go.etcd.io/bbolt"
+)
+
+var (
+	DefaultPeerDefinition = PeerDefinition{
+		GitReference:       "HEAD",
+		Transports:         []string{"tcp"},
+		Muxers:             []string{"mplex"},
+		SecurityTransports: []string{"secio"},
+		Routing:            "nil",
+	}
 )
 
 type Node struct {
@@ -33,11 +44,23 @@ type Node struct {
 
 	AppPort int
 
-	GitReference string
+	Peer PeerDefinition
 
 	Labels []string
 
 	CreatedAt, UpdatedAt time.Time
+}
+
+type PeerDefinition struct {
+	GitReference string
+
+	Transports []string
+
+	Muxers []string
+
+	SecurityTransports []string
+
+	Routing string
 }
 
 func (m *db) GetNode(ctx context.Context, cluster, id string) (Node, error) {
@@ -248,6 +271,11 @@ func readNode(bkt *bolt.Bucket, node *Node) error {
 		return err
 	}
 
+	node.Peer, err = readPeerDefinition(bkt)
+	if err != nil {
+		return err
+	}
+
 	return bkt.ForEach(func(k, v []byte) error {
 		if v == nil {
 			return nil
@@ -262,12 +290,47 @@ func readNode(bkt *bolt.Bucket, node *Node) error {
 			node.AgentPort, _ = strconv.Atoi(string(v))
 		case string(bucketKeyAppPort):
 			node.AppPort, _ = strconv.Atoi(string(v))
-		case string(bucketKeyGitReference):
-			node.GitReference = string(v)
 		}
 
 		return nil
 	})
+}
+
+func readPeerDefinition(bkt *bolt.Bucket) (PeerDefinition, error) {
+	var pdef PeerDefinition
+
+	dbkt := bkt.Bucket(bucketKeyDefinition)
+	if dbkt == nil {
+		return pdef, nil
+	}
+
+	err := dbkt.ForEach(func(k, v []byte) error {
+		if v == nil {
+			return nil
+		}
+
+		switch string(k) {
+		case string(bucketKeyGitReference):
+			pdef.GitReference = string(v)
+		case string(bucketKeyTransports):
+			if len(v) > 0 {
+				pdef.Transports = strings.Split(string(v), ",")
+			}
+		case string(bucketKeyMuxers):
+			if len(v) > 0 {
+				pdef.Muxers = strings.Split(string(v), ",")
+			}
+		case string(bucketKeySecurityTransports):
+			if len(v) > 0 {
+				pdef.SecurityTransports = strings.Split(string(v), ",")
+			}
+		case string(bucketKeyRouting):
+			pdef.Routing = string(v)
+		}
+
+		return nil
+	})
+	return pdef, err
 }
 
 func writeNode(bkt *bolt.Bucket, node *Node) error {
@@ -281,14 +344,48 @@ func writeNode(bkt *bolt.Bucket, node *Node) error {
 		return err
 	}
 
+	err = writePeerDefinition(bkt, node.Peer)
+	if err != nil {
+		return err
+	}
+
 	for _, f := range []field{
 		{bucketKeyID, []byte(node.ID)},
 		{bucketKeyAddress, []byte(node.Address)},
 		{bucketKeyAgentPort, []byte(strconv.Itoa(node.AgentPort))},
 		{bucketKeyAppPort, []byte(strconv.Itoa(node.AppPort))},
-		{bucketKeyGitReference, []byte(node.GitReference)},
 	} {
 		err = bkt.Put(f.key, f.value)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func writePeerDefinition(bkt *bolt.Bucket, pdef PeerDefinition) error {
+	dbkt := bkt.Bucket(bucketKeyDefinition)
+	if dbkt != nil {
+		err := bkt.DeleteBucket(bucketKeyDefinition)
+		if err != nil {
+			return err
+		}
+	}
+
+	dbkt, err := bkt.CreateBucket(bucketKeyDefinition)
+	if err != nil {
+		return err
+	}
+
+	for _, f := range []field{
+		{bucketKeyGitReference, []byte(pdef.GitReference)},
+		{bucketKeyTransports, []byte(strings.Join(pdef.Transports, ","))},
+		{bucketKeyMuxers, []byte(strings.Join(pdef.Muxers, ","))},
+		{bucketKeySecurityTransports, []byte(strings.Join(pdef.SecurityTransports, ","))},
+		{bucketKeyRouting, []byte(pdef.Routing)},
+	} {
+		err = dbkt.Put(f.key, f.value)
 		if err != nil {
 			return err
 		}

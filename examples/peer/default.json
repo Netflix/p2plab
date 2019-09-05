@@ -1,0 +1,7 @@
+{
+	"gitReference": "HEAD",
+	"transports": ["tcp"],
+	"muxers": ["mplex"],
+	"securityTransports": ["secio"],
+	"routing": "nil"
+}
