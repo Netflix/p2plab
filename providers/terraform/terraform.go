@@ -84,18 +84,21 @@ func (t *Terraform) Apply(ctx context.Context, id string, cdef metadata.ClusterD
 		}
 
 		for _, instance := range instances {
-			ns = append(ns, metadata.Node{
+			n := metadata.Node{
 				ID:        instance.InstanceId,
 				Address:   instance.PrivateIp,
 				AgentPort: DefaultAgentPort,
 				AppPort:   DefaultAppPort,
-				Peer:      *cg.Peer,
 				Labels: append([]string{
 					instance.InstanceId,
 					instance.InstanceType,
 					cg.Region,
 				}, cg.Labels...),
-			})
+			}
+			if cg.Peer != nil {
+				n.Peer = *cg.Peer
+			}
+			ns = append(ns, n)
 		}
 	}
 

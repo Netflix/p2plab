@@ -94,7 +94,7 @@ type ClusterGroup struct {
 	Size         int
 	InstanceType string
 	Region       string
-	Peer         *PeerDefinition
+	Peer         *PeerDefinition `json:"peer,omitempty"`
 	Labels       []string
 }
 
@@ -326,11 +326,14 @@ func readClusterDefinition(bkt *bolt.Bucket) (ClusterDefinition, error) {
 			return cdef, err
 		}
 
-		pdef, err := readPeerDefinition(gbkt)
-		if err != nil {
-			return cdef, err
+		dbkt := gbkt.Bucket(bucketKeyDefinition)
+		if dbkt != nil {
+			pdef, err := readPeerDefinition(gbkt)
+			if err != nil {
+				return cdef, err
+			}
+			group.Peer = &pdef
 		}
-		group.Peer = &pdef
 
 		err = gbkt.ForEach(func(k, v []byte) error {
 			switch string(k) {
@@ -406,9 +409,11 @@ func writeClusterDefinition(bkt *bolt.Bucket, cdef ClusterDefinition) error {
 			return err
 		}
 
-		err = writePeerDefinition(gbkt, *group.Peer)
-		if err != nil {
-			return err
+		if group.Peer != nil {
+			err = writePeerDefinition(gbkt, *group.Peer)
+			if err != nil {
+				return err
+			}
 		}
 
 		for _, f := range []field{
