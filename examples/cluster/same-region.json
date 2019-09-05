@@ -1,0 +1,15 @@
+{
+    "groups": [
+    	{
+        	"size": 1,
+        	"instanceType": "t2.micro",
+        	"region": "us-west-2"
+        },
+    	{
+        	"size": 2,
+        	"instanceType": "t2.micro",
+        	"region": "us-west-2",
+        	"labels": ["neighbors"]
+        }
+    ]
+}

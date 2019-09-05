@@ -1,0 +1,14 @@
+{
+    "groups": [
+    	{
+        	"size": 3,
+        	"instanceType": "t2.micro",
+        	"region": "us-west-2"
+        },
+    	{
+        	"size": 3,
+        	"instanceType": "t2.micro",
+        	"region": "us-east-1"
+        }
+    ]
+}

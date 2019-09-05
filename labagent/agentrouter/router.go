@@ -16,11 +16,13 @@ package agentrouter
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/Netflix/p2plab/daemon"
 	"github.com/Netflix/p2plab/labagent/supervisor"
+	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/logutil"
 	"github.com/rs/zerolog"
 )
@@ -48,7 +50,13 @@ func (s *router) putUpdate(ctx context.Context, w http.ResponseWriter, r *http.R
 		return c.Str("link", link)
 	})
 
-	err := s.supervisor.Supervise(ctx, link)
+	var pdef metadata.PeerDefinition
+	err := json.NewDecoder(r.Body).Decode(&pdef)
+	if err != nil {
+		return err
+	}
+
+	err = s.supervisor.Supervise(ctx, link, pdef)
 	if err != nil {
 		return err
 	}

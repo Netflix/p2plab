@@ -10,10 +10,10 @@
 		}
 	},
 	"seed": {
-		"(not 'new-peers')": "ubuntu-v2",
-		"new-peers": "ubuntu-v1"
+		"neighbors": "ubuntu-v2",
+		"(not 'neighbors')": "ubuntu-v1"
 	},
 	"benchmark": {
-		"new-peers": "ubuntu-v2"
+		"(not 'neighbors')": "ubuntu-v2"
 	}
 }

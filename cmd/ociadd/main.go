@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/peer"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/transformers/oci"
@@ -54,7 +55,17 @@ func run(ref string) error {
 	defer cancel()
 
 	root := "./tmp/ociadd"
-	p, err := peer.New(ctx, filepath.Join(root, "peer"), "/ip4/0.0.0.0/tcp/0")
+	err := os.MkdirAll(root, 0711)
+	if err != nil {
+		return err
+	}
+
+	p, err := peer.New(ctx, filepath.Join(root, "peer"), 0, metadata.PeerDefinition{
+		Transports:         []string{"quic"},
+		Muxers:             []string{"mplex"},
+		SecurityTransports: []string{"secio"},
+		Routing:            "nil",
+	})
 	if err != nil {
 		return err
 	}
@@ -70,7 +81,7 @@ func run(ref string) error {
 		return err
 	}
 
-	c, err := transformer.Transform(ctx, p, ref, nil)
+	c, err := transformer.Transform(ctx, p, ref)
 	if err != nil {
 		return err
 	}

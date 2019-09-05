@@ -40,7 +40,6 @@ func main() {
 
 	app := command.App(ctx)
 	if err := app.Run(os.Args); err != nil {
-		fmt.Printf("problemo: %s", err)
 		fmt.Fprintf(os.Stderr, "labapp: %s\n", err)
 		os.Exit(1)
 	}

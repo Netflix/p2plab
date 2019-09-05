@@ -87,7 +87,7 @@ func (p *tablePrinter) addRow(table *tablewriter.Table, v interface{}) {
 		table.Append([]string{
 			t.ID,
 			t.Address,
-			t.GitReference,
+			t.Peer.GitReference,
 			strings.Join(t.Labels, ","),
 			humanize.Time(t.CreatedAt),
 			humanize.Time(t.UpdatedAt),
