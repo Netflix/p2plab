@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/Netflix/p2plab/daemon"
+	"github.com/Netflix/p2plab/dag"
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/peer"
