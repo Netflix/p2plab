@@ -23,14 +23,14 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/logutil"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/Netflix/p2plab/pkg/traceutil"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 )
 
 func Connect(ctx context.Context, ns []p2plab.Node) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster connect")
+	span, ctx := traceutil.StartSpanFromContext(ctx, "nodes.Connect")
 	defer span.Finish()
 	span.SetTag("nodes", len(ns))
 

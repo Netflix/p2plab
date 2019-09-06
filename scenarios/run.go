@@ -24,6 +24,7 @@ import (
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/nodes"
 	"github.com/Netflix/p2plab/pkg/logutil"
+	"github.com/Netflix/p2plab/pkg/traceutil"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -38,7 +39,7 @@ type Execution struct {
 }
 
 func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan, seederAddrs []string) (*Execution, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "scenario run")
+	span, ctx := traceutil.StartSpanFromContext(ctx, "scenarios.Run")
 	defer span.Finish()
 
 	err := Seed(ctx, lset, plan.Seed, seederAddrs)
@@ -46,7 +47,7 @@ func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan
 		return nil, err
 	}
 
-	return Benchmark(ctx, lset, plan.Benchmark)
+	return Session(ctx, lset, plan.Benchmark)
 }
 
 func LabeledSetToNodes(lset p2plab.LabeledSet) ([]p2plab.Node, error) {
@@ -117,25 +118,21 @@ func Seed(ctx context.Context, lset p2plab.LabeledSet, seed metadata.ScenarioSta
 	return nil
 }
 
-func Benchmark(ctx context.Context, lset p2plab.LabeledSet, benchmark metadata.ScenarioStage) (*Execution, error) {
-	span := opentracing.StartSpan("scenarios.Benchmark")
-	defer span.Finish()
-	tctx := opentracing.ContextWithSpan(ctx, span)
-
+func Session(ctx context.Context, lset p2plab.LabeledSet, benchmark metadata.ScenarioStage) (*Execution, error) {
 	ns, err := LabeledSetToNodes(lset)
 	if err != nil {
 		return nil, err
 	}
 
-	execution := Execution{Span: span}
-	err = nodes.Session(ctx, ns, func(ctx context.Context) error {
+	var execution Execution
+	execution.Span, err = nodes.Session(ctx, ns, func(sctx context.Context) error {
 		err := nodes.Connect(ctx, ns)
 		if err != nil {
 			return err
 		}
 
 		execution.Start = time.Now()
-		err = benchmarkStage(tctx, lset, benchmark)
+		err = Benchmark(sctx, lset, benchmark)
 		if err != nil {
 			return err
 		}
@@ -155,7 +152,10 @@ func Benchmark(ctx context.Context, lset p2plab.LabeledSet, benchmark metadata.S
 	return &execution, nil
 }
 
-func benchmarkStage(ctx context.Context, lset p2plab.LabeledSet, benchmark metadata.ScenarioStage) error {
+func Benchmark(ctx context.Context, lset p2plab.LabeledSet, benchmark metadata.ScenarioStage) error {
+	span, ctx := traceutil.StartSpanFromContext(ctx, "scenarios.Benchmark")
+	defer span.Finish()
+
 	benchmarking, gctx := errgroup.WithContext(ctx)
 
 	zerolog.Ctx(ctx).Info().Msg("Benchmarking cluster")

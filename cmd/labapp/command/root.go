@@ -18,12 +18,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"io"
 	"os"
 
-	"github.com/Netflix/p2plab/daemon"
 	"github.com/Netflix/p2plab/labapp"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/cliutil"
+	"github.com/Netflix/p2plab/pkg/traceutil"
 	"github.com/Netflix/p2plab/version"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -105,7 +106,11 @@ func appAction(c *cli.Context) error {
 	ctx := cliutil.CommandContext(c)
 
 	if c.IsSet("trace") {
-		tracer, closer := daemon.NewTracer("labapp", nil)
+		var (
+			tracer opentracing.Tracer
+			closer io.Closer
+		)
+		ctx, tracer, closer = traceutil.New(ctx, "labapp", nil)
 		defer closer.Close()
 
 		trace, err := base64.StdEncoding.DecodeString(c.GlobalString("trace"))
@@ -123,7 +128,7 @@ func appAction(c *cli.Context) error {
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
 
-	app, err := labapp.New(root, c.GlobalString("address"), c.GlobalInt("libp2p-port"), zerolog.Ctx(ctx), metadata.PeerDefinition{
+	app, err := labapp.New(ctx, root, c.GlobalString("address"), c.GlobalInt("libp2p-port"), zerolog.Ctx(ctx), metadata.PeerDefinition{
 		Transports:         c.GlobalStringSlice("libp2p-transports"),
 		Muxers:             c.GlobalStringSlice("libp2p-muxers"),
 		SecurityTransports: c.GlobalStringSlice("libp2p-security-transports"),

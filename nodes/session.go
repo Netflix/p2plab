@@ -19,14 +19,20 @@ import (
 	"time"
 
 	"github.com/Netflix/p2plab"
-	"github.com/Netflix/p2plab/pkg/logutil"
 	"github.com/Netflix/p2plab/errdefs"
+	"github.com/Netflix/p2plab/pkg/logutil"
+	"github.com/Netflix/p2plab/pkg/traceutil"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 )
 
-func Session(ctx context.Context, ns []p2plab.Node, fn func(context.Context) error) error {
+func Session(ctx context.Context, ns []p2plab.Node, fn func(context.Context) error) (opentracing.Span, error) {
+	span := traceutil.Tracer(ctx).StartSpan("scenarios.Session")
+	defer span.Finish()
+	sctx := opentracing.ContextWithSpan(ctx, span)
+
 	eg, gctx := errgroup.WithContext(ctx)
 
 	zerolog.Ctx(ctx).Info().Msg("Starting a session for benchmarking")
@@ -51,12 +57,12 @@ func Session(ctx context.Context, ns []p2plab.Node, fn func(context.Context) err
 
 	err := WaitHealthy(ctx, ns)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = fn(ctx)
+	err = fn(sctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	zerolog.Ctx(ctx).Info().Msg("Ending the session")
@@ -66,8 +72,8 @@ func Session(ctx context.Context, ns []p2plab.Node, fn func(context.Context) err
 
 	err = eg.Wait()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return span, nil
 }

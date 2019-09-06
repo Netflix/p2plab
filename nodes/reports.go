@@ -22,13 +22,13 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/logutil"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/Netflix/p2plab/pkg/traceutil"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 )
 
 func CollectReports(ctx context.Context, ns []p2plab.Node) (map[string]metadata.ReportNode, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster collect reports")
+	span, ctx := traceutil.StartSpanFromContext(ctx, "nodes.CollectReports")
 	defer span.Finish()
 	span.SetTag("nodes", len(ns))
 

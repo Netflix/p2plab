@@ -72,3 +72,9 @@ require (
 	google.golang.org/grpc v1.20.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 )
+
+replace github.com/ipfs/go-merkledag => github.com/hinshun/go-merkledag v0.1.1-0.20190906215342-bd347129454f
+
+replace github.com/ipfs/go-blockservice => github.com/hinshun/go-blockservice v0.1.3-0.20190906224057-ac48d5e10ef6
+
+replace github.com/ipfs/go-bitswap => github.com/hinshun/go-bitswap v0.1.7-0.20190907000142-fc47e6d4ea89

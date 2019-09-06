@@ -41,6 +41,7 @@ var (
 	bucketKeyChunker   = []byte("chunker")
 	bucketKeyRawLeaves = []byte("rawLeaves")
 	bucketKeyHashFunc  = []byte("hashFunc")
+	bucketKeyMaxLinks  = []byte("maxLinks")
 
 	// Node buckets.
 	bucketKeyAddress            = []byte("address")

@@ -21,11 +21,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Netflix/p2plab/daemon"
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/pkg/cliutil"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/pkg/logutil"
+	"github.com/Netflix/p2plab/pkg/traceutil"
 	"github.com/Netflix/p2plab/printer"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -56,7 +56,7 @@ func AttachAppContext(ctx context.Context, app *cli.App) {
 			return err
 		}
 
-		tracer, closer = daemon.NewTracer("labctl", nil)
+		ctx, tracer, closer = traceutil.New(ctx, "labctl", nil)
 		return nil
 	}
 

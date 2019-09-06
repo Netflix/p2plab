@@ -31,9 +31,9 @@ type LabApp struct {
 	closers []io.Closer
 }
 
-func New(root, addr string, port int, logger *zerolog.Logger, pdef metadata.PeerDefinition) (*LabApp, error) {
+func New(ctx context.Context, root, addr string, port int, logger *zerolog.Logger, pdef metadata.PeerDefinition) (*LabApp, error) {
 	var closers []io.Closer
-	pctx, cancel := context.WithCancel(context.Background())
+	pctx, cancel := context.WithCancel(ctx)
 	p, err := peer.New(pctx, root, port, pdef)
 	if err != nil {
 		return nil, err
