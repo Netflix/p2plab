@@ -36,13 +36,16 @@ type Execution struct {
 }
 
 func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan, seederAddrs []string) (*Execution, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "scenario run")
+	defer span.Finish()
+
 	err := Seed(ctx, lset, plan.Seed, seederAddrs)
 	if err != nil {
 		return nil, err
 	}
 
 	start := time.Now()
-	span, err := Benchmark(ctx, lset, plan.Benchmark)
+	benchmarkSpan, err := Benchmark(ctx, lset, plan.Benchmark)
 	if err != nil {
 		return nil, err
 	}
@@ -51,14 +54,11 @@ func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan
 	return &Execution{
 		Start: start,
 		End:   end,
-		Span:  span,
+		Span:  benchmarkSpan,
 	}, nil
 }
 
 func Seed(ctx context.Context, lset p2plab.LabeledSet, seed metadata.ScenarioStage, seederAddrs []string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster seed")
-	defer span.Finish()
-
 	seeding, gctx := errgroup.WithContext(ctx)
 
 	zerolog.Ctx(ctx).Info().Msg("Seeding cluster")
@@ -115,8 +115,9 @@ func Seed(ctx context.Context, lset p2plab.LabeledSet, seed metadata.ScenarioSta
 }
 
 func Benchmark(ctx context.Context, lset p2plab.LabeledSet, benchmark metadata.ScenarioStage) (opentracing.Span, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster benchmark")
+	span := opentracing.StartSpan("cluster benchmark")
 	defer span.Finish()
+	ctx = opentracing.ContextWithSpan(ctx, span)
 
 	benchmarking, gctx := errgroup.WithContext(ctx)
 

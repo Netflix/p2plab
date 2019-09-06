@@ -27,7 +27,6 @@ import (
 	"github.com/Netflix/p2plab/peer"
 	"github.com/Netflix/p2plab/pkg/logutil"
 	cid "github.com/ipfs/go-cid"
-	dag "github.com/ipfs/go-merkledag"
 	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	multiaddr "github.com/multiformats/go-multiaddr"
@@ -111,7 +110,7 @@ func (s *router) getFile(ctx context.Context, target string) error {
 		return errors.Wrapf(errdefs.ErrInvalidArgument, "%s", err)
 	}
 
-	err = dag.FetchGraph(ctx, c, s.peer.DAGService())
+	err = dag.Walk(ctx, c, s.peer.DAGService())
 	if err != nil {
 		return err
 	}
