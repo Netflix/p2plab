@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package daemon
+package traceutil
 
 import (
+	"context"
 	"io"
 	"log"
 	"os"
@@ -25,7 +26,21 @@ import (
 	"github.com/uber/jaeger-client-go/config"
 )
 
-func NewTracer(service string, logger jaeger.Logger) (opentracing.Tracer, io.Closer) {
+type tracerKey struct{}
+
+func WithTracer(ctx context.Context, tracer opentracing.Tracer) context.Context {
+	return context.WithValue(ctx, tracerKey{}, tracer)
+}
+
+func Tracer(ctx context.Context) opentracing.Tracer {
+	return ctx.Value(tracerKey{}).(opentracing.Tracer)
+}
+
+func StartSpanFromContext(ctx context.Context, operationName string, opts ...opentracing.StartSpanOption) (opentracing.Span, context.Context) {
+	return opentracing.StartSpanFromContextWithTracer(ctx, Tracer(ctx), operationName, opts...)
+}
+
+func New(ctx context.Context, service string, logger jaeger.Logger) (context.Context, opentracing.Tracer, io.Closer) {
 	tracerAddr := os.Getenv("JAEGER_TRACE")
 	if tracerAddr != "" {
 		cfg := config.Configuration{
@@ -34,7 +49,6 @@ func NewTracer(service string, logger jaeger.Logger) (opentracing.Tracer, io.Clo
 				Param: 1,
 			},
 			Reporter: &config.ReporterConfig{
-				LogSpans:            true,
 				BufferFlushInterval: time.Second,
 				LocalAgentHostPort:  tracerAddr,
 			},
@@ -47,11 +61,11 @@ func NewTracer(service string, logger jaeger.Logger) (opentracing.Tracer, io.Clo
 			log.Fatal(err)
 		}
 
-		opentracing.SetGlobalTracer(tracer)
-		return tracer, closer
+		ctx = WithTracer(ctx, tracer)
+		return ctx, tracer, closer
 	}
 
-	return opentracing.NoopTracer{}, &nopCloser{}
+	return ctx, opentracing.NoopTracer{}, &nopCloser{}
 }
 
 type nopCloser struct{}

@@ -25,6 +25,7 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/pkg/digestconv"
+	"github.com/Netflix/p2plab/pkg/traceutil"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/content/local"
 	"github.com/containerd/containerd/images"
@@ -39,7 +40,6 @@ import (
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	bolt "go.etcd.io/bbolt"
@@ -81,7 +81,7 @@ func (t *transformer) Close() error {
 }
 
 func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source string, opts ...p2plab.AddOption) (cid.Cid, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "transform oci")
+	span, ctx := traceutil.StartSpanFromContext(ctx, "transformer.Transform")
 	defer span.Finish()
 	span.SetTag("peer", p.Host().ID().String())
 	span.SetTag("source", source)

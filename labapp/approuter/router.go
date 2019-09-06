@@ -17,21 +17,19 @@ package approuter
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/Netflix/p2plab/daemon"
-	"github.com/Netflix/p2plab/dag"
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/peer"
 	"github.com/Netflix/p2plab/pkg/logutil"
+	"github.com/Netflix/p2plab/pkg/traceutil"
 	cid "github.com/ipfs/go-cid"
 	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	multiaddr "github.com/multiformats/go-multiaddr"
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
@@ -102,7 +100,7 @@ func (s *router) postRunTask(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func (s *router) getFile(ctx context.Context, target string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "get")
+	span, ctx := traceutil.StartSpanFromContext(ctx, "approuter.getFile")
 	defer span.Finish()
 	span.SetTag("cid", target)
 
@@ -111,7 +109,7 @@ func (s *router) getFile(ctx context.Context, target string) error {
 		return errors.Wrapf(errdefs.ErrInvalidArgument, "%s", err)
 	}
 
-	err = dag.Walk(ctx, c, s.peer.DAGService())
+	err = s.peer.FetchGraph(ctx, c)
 	if err != nil {
 		return err
 	}
@@ -121,9 +119,9 @@ func (s *router) getFile(ctx context.Context, target string) error {
 }
 
 func (s *router) connect(ctx context.Context, addrs []string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "connect")
+	span, ctx := traceutil.StartSpanFromContext(ctx, "approuter.connect")
 	defer span.Finish()
-	span.SetTag("addrs", fmt.Sprintf("%s", addrs))
+	span.SetTag("addrs", len(addrs))
 
 	infos, err := parseAddrs(addrs)
 	if err != nil {
@@ -140,9 +138,9 @@ func (s *router) connect(ctx context.Context, addrs []string) error {
 }
 
 func (s *router) disconnect(ctx context.Context, addrs []string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "disconnect")
+	span, ctx := traceutil.StartSpanFromContext(ctx, "approuter.disconnect")
 	defer span.Finish()
-	span.SetTag("addrs", fmt.Sprintf("%s", addrs))
+	span.SetTag("addrs", len(addrs))
 
 	infos, err := parseAddrs(addrs)
 	if err != nil {

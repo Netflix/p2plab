@@ -24,7 +24,7 @@ import (
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/logutil"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/Netflix/p2plab/pkg/traceutil"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
@@ -60,7 +60,7 @@ func (t *Terraform) Apply(ctx context.Context, id string, cdef metadata.ClusterD
 		t.leaseCh <- struct{}{}
 	}()
 
-	span, ctx := opentracing.StartSpanFromContext(ctx, "terraform apply")
+	span, ctx := traceutil.StartSpanFromContext(ctx, "terraform.Apply")
 	defer span.Finish()
 	span.SetTag("cluster", id)
 
@@ -114,7 +114,7 @@ func (t *Terraform) Destroy(ctx context.Context, id string) error {
 		t.leaseCh <- struct{}{}
 	}()
 
-	span, ctx := opentracing.StartSpanFromContext(ctx, "terraform destroy")
+	span, ctx := traceutil.StartSpanFromContext(ctx, "terraform.Destroy")
 	defer span.Finish()
 	span.SetTag("cluster", id)
 

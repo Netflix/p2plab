@@ -39,6 +39,8 @@ type Peer interface {
 
 	Get(ctx context.Context, c cid.Cid) (files.Node, error)
 
+	FetchGraph(ctx context.Context, c cid.Cid) error
+
 	Report(ctx context.Context) (metadata.ReportNode, error)
 }
 
@@ -52,6 +54,7 @@ type AddSettings struct {
 	Shard     bool
 	NoCopy    bool
 	HashFunc  string
+	MaxLinks  int
 }
 
 func WithLayout(layout string) AddOption {
@@ -78,6 +81,13 @@ func WithRawLeaves(rawLeaves bool) AddOption {
 func WithHashFunc(hashFunc string) AddOption {
 	return func(s *AddSettings) error {
 		s.HashFunc = hashFunc
+		return nil
+	}
+}
+
+func WithMaxLinks(maxLinks int) AddOption {
+	return func(s *AddSettings) error {
+		s.MaxLinks = maxLinks
 		return nil
 	}
 }

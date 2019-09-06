@@ -67,6 +67,8 @@ type ObjectDefinition struct {
 	RawLeaves bool `json:"rawLeaves"`
 
 	HashFunc string `json:"hashFunc"`
+
+	MaxLinks int `json:"maxLinks"`
 }
 
 // ObjectType is the type of data retrieved.
@@ -395,6 +397,8 @@ func readObjects(bkt *bolt.Bucket) (map[string]ObjectDefinition, error) {
 				object.RawLeaves, _ = strconv.ParseBool(string(v))
 			case string(bucketKeyHashFunc):
 				object.HashFunc = string(v)
+			case string(bucketKeyMaxLinks):
+				object.MaxLinks, _ = strconv.Atoi(string(v))
 			}
 			return nil
 		})
@@ -431,6 +435,7 @@ func writeObjects(bkt *bolt.Bucket, objects map[string]ObjectDefinition) error {
 			{bucketKeyChunker, []byte(object.Chunker)},
 			{bucketKeyRawLeaves, []byte(strconv.FormatBool(object.RawLeaves))},
 			{bucketKeyHashFunc, []byte(object.HashFunc)},
+			{bucketKeyMaxLinks, []byte(strconv.Itoa(object.MaxLinks))},
 		} {
 			err = nbkt.Put(f.key, f.value)
 			if err != nil {
