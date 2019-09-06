@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package approuter
+package dag
 
 import (
 	"context"
 
 	cid "github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
+	"golang.org/x/sync/errgroup"
 )
 
 func Walk(ctx context.Context, c cid.Cid, dserv ipld.DAGService) error {
@@ -41,8 +42,8 @@ func Walk(ctx context.Context, c cid.Cid, dserv ipld.DAGService) error {
 		}
 
 		child := ndOpt.Node.Cid()
-		eg.Go(func() {
-			return Walk(ctx, child, dserv)
+		eg.Go(func() error {
+			return Walk(gctx, child, dserv)
 		})
 	}
 
