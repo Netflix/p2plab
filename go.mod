@@ -3,6 +3,7 @@ module github.com/Netflix/p2plab
 go 1.12
 
 require (
+	github.com/ChainSafe/go-libp2p-noise v0.0.0-20190827074707-1d6cd715b817
 	github.com/Microsoft/go-winio v0.4.13-0.20190408173621-84b4ab48a507 // indirect
 	github.com/Microsoft/hcsshim v0.8.6 // indirect
 	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc
@@ -33,8 +34,9 @@ require (
 	github.com/ipfs/go-ipld-format v0.0.2
 	github.com/ipfs/go-merkledag v0.2.3
 	github.com/ipfs/go-unixfs v0.2.1
-	github.com/libp2p/go-libp2p v0.3.0
+	github.com/libp2p/go-libp2p v0.3.1
 	github.com/libp2p/go-libp2p-core v0.2.2
+	github.com/libp2p/go-libp2p-crypto v0.1.0
 	github.com/libp2p/go-libp2p-kad-dht v0.2.0
 	github.com/libp2p/go-libp2p-mplex v0.2.1
 	github.com/libp2p/go-libp2p-peer v0.2.0
@@ -68,7 +70,6 @@ require (
 	github.com/urfave/cli v1.20.0
 	go.etcd.io/bbolt v1.3.3
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
-	google.golang.org/appengine v1.4.0 // indirect
 	google.golang.org/grpc v1.20.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 )
