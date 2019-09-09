@@ -22,6 +22,7 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
+	"github.com/Netflix/p2plab/nodes"
 	"github.com/Netflix/p2plab/pkg/logutil"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -44,6 +45,23 @@ func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan
 		return nil, err
 	}
 
+	ns, err := LabeledSetToNodes(lset)
+	if err != nil {
+		return nil, err
+	}
+
+	err = nodes.Reset(ctx, ns)
+	if err != nil {
+		return nil, err
+	}
+
+	err = nodes.Connect(ctx, ns)
+	if err != nil {
+		return nil, err
+	}
+
+	time.Sleep(time.Second)
+
 	start := time.Now()
 	benchmarkSpan, err := Benchmark(ctx, lset, plan.Benchmark)
 	if err != nil {
@@ -56,6 +74,18 @@ func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan
 		End:   end,
 		Span:  benchmarkSpan,
 	}, nil
+}
+
+func LabeledSetToNodes(lset p2plab.LabeledSet) ([]p2plab.Node, error) {
+	var ns []p2plab.Node
+	for _, l := range lset.Slice() {
+		n, ok := l.(p2plab.Node)
+		if !ok {
+			return nil, errors.Wrap(errdefs.ErrInvalidArgument, "lset contains elements not p2plab.Node")
+		}
+		ns = append(ns, n)
+	}
+	return ns, nil
 }
 
 func Seed(ctx context.Context, lset p2plab.LabeledSet, seed metadata.ScenarioStage, seederAddrs []string) error {
