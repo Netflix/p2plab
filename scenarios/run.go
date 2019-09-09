@@ -50,30 +50,27 @@ func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan
 		return nil, err
 	}
 
-	err = nodes.Reset(ctx, ns)
+	var execution Execution
+	err = nodes.Session(ctx, ns, func(ctx context.Context) error {
+		err := nodes.Connect(ctx, ns)
+		if err != nil {
+			return err
+		}
+
+		execution.Start = time.Now()
+		execution.Span, err = Benchmark(ctx, lset, plan.Benchmark)
+		if err != nil {
+			return err
+		}
+		execution.End = time.Now()
+
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	err = nodes.Connect(ctx, ns)
-	if err != nil {
-		return nil, err
-	}
-
-	time.Sleep(time.Second)
-
-	start := time.Now()
-	benchmarkSpan, err := Benchmark(ctx, lset, plan.Benchmark)
-	if err != nil {
-		return nil, err
-	}
-	end := time.Now()
-
-	return &Execution{
-		Start: start,
-		End:   end,
-		Span:  benchmarkSpan,
-	}, nil
+	return &execution, nil
 }
 
 func LabeledSetToNodes(lset p2plab.LabeledSet) ([]p2plab.Node, error) {
