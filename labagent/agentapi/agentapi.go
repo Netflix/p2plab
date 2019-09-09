@@ -59,7 +59,7 @@ func (a *api) Healthcheck(ctx context.Context) bool {
 	return true
 }
 
-func (a *api) Update(ctx context.Context, link string, pdef metadata.PeerDefinition) error {
+func (a *api) Update(ctx context.Context, id, link string, pdef metadata.PeerDefinition) error {
 	content, err := json.MarshalIndent(&pdef, "", "    ")
 	if err != nil {
 		return err
@@ -67,6 +67,7 @@ func (a *api) Update(ctx context.Context, link string, pdef metadata.PeerDefinit
 
 	req := a.client.NewRequest("PUT", a.url("/update")).
 		Body(bytes.NewReader(content)).
+		Option("id", id).
 		Option("link", link)
 
 	resp, err := req.Send(ctx)

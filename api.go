@@ -42,7 +42,7 @@ type ControlAPI interface {
 type AgentAPI interface {
 	Healthcheck(ctx context.Context) bool
 
-	Update(ctx context.Context, link string, pdef metadata.PeerDefinition) error
+	Update(ctx context.Context, id, link string, pdef metadata.PeerDefinition) error
 
 	// SSH creates a SSH connection to the node.
 	SSH(ctx context.Context, opts ...SSHOption) error

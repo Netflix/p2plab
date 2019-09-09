@@ -63,7 +63,7 @@ func Update(ctx context.Context, builder p2plab.Builder, ns []p2plab.Node) error
 		updatePeers.Go(func() error {
 			pdef := n.Metadata().Peer
 			link := linkByCommit[commitByRef[pdef.GitReference]]
-			return n.Update(gctx, link, pdef)
+			return n.Update(gctx, n.ID(), link, pdef)
 		})
 	}
 
