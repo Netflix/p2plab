@@ -84,11 +84,11 @@ func (s *supervisor) Supervise(ctx context.Context, link string, pdef metadata.P
 		if err != nil {
 			return err
 		}
-	}
 
-	err = s.clear(ctx)
-	if err != nil {
-		return err
+		err = s.clear(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	return s.start(ctx, pdef)
