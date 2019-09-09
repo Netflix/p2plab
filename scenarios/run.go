@@ -31,9 +31,10 @@ import (
 )
 
 type Execution struct {
-	Start time.Time
-	End   time.Time
-	Span  opentracing.Span
+	Start  time.Time
+	End    time.Time
+	Report map[string]metadata.ReportNode
+	Span   opentracing.Span
 }
 
 func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan, seederAddrs []string) (*Execution, error) {
@@ -45,32 +46,7 @@ func Run(ctx context.Context, lset p2plab.LabeledSet, plan metadata.ScenarioPlan
 		return nil, err
 	}
 
-	ns, err := LabeledSetToNodes(lset)
-	if err != nil {
-		return nil, err
-	}
-
-	var execution Execution
-	err = nodes.Session(ctx, ns, func(ctx context.Context) error {
-		err := nodes.Connect(ctx, ns)
-		if err != nil {
-			return err
-		}
-
-		execution.Start = time.Now()
-		execution.Span, err = Benchmark(ctx, lset, plan.Benchmark)
-		if err != nil {
-			return err
-		}
-		execution.End = time.Now()
-
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &execution, nil
+	return Benchmark(ctx, lset, plan.Benchmark)
 }
 
 func LabeledSetToNodes(lset p2plab.LabeledSet) ([]p2plab.Node, error) {
@@ -141,11 +117,45 @@ func Seed(ctx context.Context, lset p2plab.LabeledSet, seed metadata.ScenarioSta
 	return nil
 }
 
-func Benchmark(ctx context.Context, lset p2plab.LabeledSet, benchmark metadata.ScenarioStage) (opentracing.Span, error) {
-	span := opentracing.StartSpan("cluster benchmark")
+func Benchmark(ctx context.Context, lset p2plab.LabeledSet, benchmark metadata.ScenarioStage) (*Execution, error) {
+	span := opentracing.StartSpan("scenarios.Benchmark")
 	defer span.Finish()
-	ctx = opentracing.ContextWithSpan(ctx, span)
+	tctx := opentracing.ContextWithSpan(ctx, span)
 
+	ns, err := LabeledSetToNodes(lset)
+	if err != nil {
+		return nil, err
+	}
+
+	execution := Execution{Span: span}
+	err = nodes.Session(ctx, ns, func(ctx context.Context) error {
+		err := nodes.Connect(ctx, ns)
+		if err != nil {
+			return err
+		}
+
+		execution.Start = time.Now()
+		err = benchmarkStage(tctx, lset, benchmark)
+		if err != nil {
+			return err
+		}
+		execution.End = time.Now()
+
+		execution.Report, err = nodes.CollectReports(ctx, ns)
+		if err != nil {
+			return errors.Wrap(err, "failed to collect reports")
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &execution, nil
+}
+
+func benchmarkStage(ctx context.Context, lset p2plab.LabeledSet, benchmark metadata.ScenarioStage) error {
 	benchmarking, gctx := errgroup.WithContext(ctx)
 
 	zerolog.Ctx(ctx).Info().Msg("Benchmarking cluster")
@@ -171,9 +181,9 @@ func Benchmark(ctx context.Context, lset p2plab.LabeledSet, benchmark metadata.S
 
 	err := benchmarking.Wait()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	zerolog.Ctx(ctx).Info().Msg("Benchmark completed")
-	return span, nil
+	return nil
 }

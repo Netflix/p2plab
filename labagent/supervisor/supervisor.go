@@ -148,7 +148,7 @@ func (s *supervisor) wait(ctx context.Context, flags []string) error {
 		err := opentracing.GlobalTracer().Inject(
 			span.Context(),
 			opentracing.Binary,
-			&buf,
+			buf,
 		)
 		if err != nil {
 			return errors.Wrap(err, "failed to inject trace into buffer")

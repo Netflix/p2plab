@@ -14,7 +14,11 @@
 
 package errdefs
 
-import "github.com/pkg/errors"
+import (
+	"context"
+
+	"github.com/pkg/errors"
+)
 
 var (
 	// ErrAlreadyExists is returned when a resource already exists.
@@ -43,4 +47,8 @@ func IsInvalidArgument(err error) bool {
 
 func IsUnavailable(err error) bool {
 	return errors.Cause(err) == ErrUnavailable
+}
+
+func IsCancelled(err error) bool {
+	return errors.Cause(err) == context.Canceled
 }

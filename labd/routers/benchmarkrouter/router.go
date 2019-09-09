@@ -190,16 +190,11 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 		return errors.Wrap(err, "failed to run scenario plan")
 	}
 
-	reportByNodeID, err := nodes.CollectReports(ctx, ns)
-	if err != nil {
-		return errors.Wrap(err, "failed to collect reports")
-	}
-
 	report := metadata.Report{
 		Summary: metadata.ReportSummary{
 			TotalTime: execution.End.Sub(execution.Start),
 		},
-		Nodes:   reportByNodeID,
+		Nodes:   execution.Report,
 		Queries: queries,
 	}
 	report.Aggregates = reports.ComputeAggregates(report.Nodes)
