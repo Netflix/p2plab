@@ -20,6 +20,8 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/pkg/logutil"
+	"github.com/Netflix/p2plab/errdefs"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 )
@@ -35,18 +37,19 @@ func Session(ctx context.Context, ns []p2plab.Node, fn func(context.Context) err
 		i, n := i, n
 		eg.Go(func() error {
 			lctx, cancel := context.WithCancel(gctx)
+			cancels[i] = cancel
+
 			pdef := n.Metadata().Peer
 			err := n.Update(lctx, "", pdef)
-			if err != nil {
-				return err
+			if err != nil && !errdefs.IsCancelled(err) {
+				return errors.Wrapf(err, "failed to update node %q", n.ID())
 			}
 
-			cancels[i] = cancel
 			return nil
 		})
 	}
 
-	err := eg.Wait()
+	err := WaitHealthy(ctx, ns)
 	if err != nil {
 		return err
 	}
@@ -59,6 +62,11 @@ func Session(ctx context.Context, ns []p2plab.Node, fn func(context.Context) err
 	zerolog.Ctx(ctx).Info().Msg("Ending the session")
 	for _, cancel := range cancels {
 		cancel()
+	}
+
+	err = eg.Wait()
+	if err != nil {
+		return err
 	}
 
 	return nil
