@@ -27,6 +27,7 @@ import (
 	"github.com/Netflix/p2plab/metadata"
 	bitswap "github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
+	"github.com/ipfs/go-bitswap/timer"
 	blockservice "github.com/ipfs/go-blockservice"
 	cid "github.com/ipfs/go-cid"
 	datastore "github.com/ipfs/go-datastore"
@@ -102,7 +103,8 @@ func New(ctx context.Context, root string, port int, pdef metadata.PeerDefinitio
 		return nil, errors.Wrap(err, "failed to create blockstore")
 	}
 
-	bswapnet := network.NewFromIpfsHost(h, r)
+	ctx = timer.WithTime(ctx, time.Now())
+	bswapnet := network.NewFromIpfsHost(ctx, h, r)
 	rem := bitswap.New(ctx, bswapnet, bs)
 
 	bswap, ok := rem.(*bitswap.Bitswap)
