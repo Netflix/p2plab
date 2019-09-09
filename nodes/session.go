@@ -27,8 +27,8 @@ import (
 func Session(ctx context.Context, ns []p2plab.Node, fn func(context.Context) error) error {
 	eg, gctx := errgroup.WithContext(ctx)
 
-	zerolog.Ctx(ctx).Info().Msg("Resetting cluster")
-	go logutil.Elapsed(gctx, 20*time.Second, "Resetting cluster")
+	zerolog.Ctx(ctx).Info().Msg("Starting a session for benchmarking")
+	go logutil.Elapsed(gctx, 20*time.Second, "Starting a session for benchmarking")
 
 	cancels := make([]context.CancelFunc, len(ns))
 	for i, n := range ns {
@@ -56,6 +56,7 @@ func Session(ctx context.Context, ns []p2plab.Node, fn func(context.Context) err
 		return err
 	}
 
+	zerolog.Ctx(ctx).Info().Msg("Ending the session")
 	for _, cancel := range cancels {
 		cancel()
 	}

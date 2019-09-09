@@ -26,6 +26,7 @@ import (
 	"github.com/Netflix/p2plab/pkg/cliutil"
 	"github.com/Netflix/p2plab/version"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
 )
@@ -114,7 +115,7 @@ func appAction(c *cli.Context) error {
 
 		spanContext, err := tracer.Extract(opentracing.Binary, bytes.NewReader(trace))
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to extract trace from --trace")
 		}
 
 		span := tracer.StartSpan("peer", opentracing.ChildOf(spanContext))

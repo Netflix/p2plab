@@ -151,7 +151,7 @@ func (s *supervisor) wait(ctx context.Context, flags []string) error {
 			&buf,
 		)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to inject trace into buffer")
 		}
 
 		trace := base64.StdEncoding.EncodeToString(buf.Bytes())
