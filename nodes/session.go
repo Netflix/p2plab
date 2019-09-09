@@ -33,7 +33,7 @@ func Session(ctx context.Context, ns []p2plab.Node, fn func(context.Context) err
 	defer span.Finish()
 	sctx := opentracing.ContextWithSpan(ctx, span)
 
-	eg, gctx := errgroup.WithContext(ctx)
+	eg, gctx := errgroup.WithContext(sctx)
 
 	zerolog.Ctx(ctx).Info().Msg("Starting a session for benchmarking")
 	go logutil.Elapsed(gctx, 20*time.Second, "Starting a session for benchmarking")
@@ -46,7 +46,7 @@ func Session(ctx context.Context, ns []p2plab.Node, fn func(context.Context) err
 			cancels[i] = cancel
 
 			pdef := n.Metadata().Peer
-			err := n.Update(lctx, "", pdef)
+			err := n.Update(lctx, n.ID(), "", pdef)
 			if err != nil && !errdefs.IsCancelled(err) {
 				return errors.Wrapf(err, "failed to update node %q", n.ID())
 			}
