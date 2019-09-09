@@ -24,23 +24,40 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func Reset(ctx context.Context, ns []p2plab.Node) error {
-	resetPeers, gctx := errgroup.WithContext(ctx)
+func Session(ctx context.Context, ns []p2plab.Node, fn func(context.Context) error) error {
+	eg, gctx := errgroup.WithContext(ctx)
 
 	zerolog.Ctx(ctx).Info().Msg("Resetting cluster")
 	go logutil.Elapsed(gctx, 20*time.Second, "Resetting cluster")
 
-	for _, n := range ns {
-		n := n
-		resetPeers.Go(func() error {
+	cancels := make([]context.CancelFunc, len(ns))
+	for i, n := range ns {
+		i, n := i, n
+		eg.Go(func() error {
+			lctx, cancel := context.WithCancel(gctx)
 			pdef := n.Metadata().Peer
-			return n.Update(gctx, "", pdef)
+			err := n.Update(lctx, "", pdef)
+			if err != nil {
+				return err
+			}
+
+			cancels[i] = cancel
+			return nil
 		})
 	}
 
-	err := resetPeers.Wait()
+	err := eg.Wait()
 	if err != nil {
 		return err
+	}
+
+	err = fn(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, cancel := range cancels {
+		cancel()
 	}
 
 	return nil

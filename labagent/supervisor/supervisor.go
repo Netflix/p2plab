@@ -17,6 +17,7 @@ package supervisor
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -79,6 +80,7 @@ func (s *supervisor) Supervise(ctx context.Context, link string, pdef metadata.P
 		return err
 	}
 
+	flags := s.peerDefinitionToFlags(pdef)
 	if link != "" {
 		err = s.atomicReplaceBinary(ctx, link)
 		if err != nil {
@@ -89,15 +91,15 @@ func (s *supervisor) Supervise(ctx context.Context, link string, pdef metadata.P
 		if err != nil {
 			return err
 		}
+
+		return s.start(ctx, flags)
+	} else {
+		return s.wait(ctx, flags)
 	}
 
-	return s.start(ctx, pdef)
 }
 
-func (s *supervisor) start(ctx context.Context, pdef metadata.PeerDefinition) error {
-	var actx context.Context
-	actx, s.cancel = context.WithCancel(context.Background())
-
+func (s *supervisor) peerDefinitionToFlags(pdef metadata.PeerDefinition) []string {
 	flags := []string{
 		fmt.Sprintf("--root=%s", s.appRoot),
 		fmt.Sprintf("--address=:%s", s.appPort),
@@ -116,6 +118,12 @@ func (s *supervisor) start(ctx context.Context, pdef metadata.PeerDefinition) er
 		flags = append(flags, fmt.Sprintf("--libp2p-routing=%s", pdef.Routing))
 	}
 
+	return flags
+}
+
+func (s *supervisor) start(ctx context.Context, flags []string) error {
+	var actx context.Context
+	actx, s.cancel = context.WithCancel(context.Background())
 	s.app = s.cmd(actx, flags...)
 	err := s.app.Start()
 	if err != nil {
@@ -133,17 +141,38 @@ func (s *supervisor) start(ctx context.Context, pdef metadata.PeerDefinition) er
 	return nil
 }
 
-func (s *supervisor) kill(ctx context.Context) error {
-	if s.cancel == nil {
-		return nil
+func (s *supervisor) wait(ctx context.Context, flags []string) error {
+	span := opentracing.SpanFromContext(ctx)
+	if span != nil {
+		buf := new(bytes.Buffer)
+		err := opentracing.GlobalTracer().Inject(
+			span.Context(),
+			opentracing.Binary,
+			&buf,
+		)
+		if err != nil {
+			return err
+		}
+
+		trace := base64.StdEncoding.EncodeToString(buf.Bytes())
+		flags = append(flags, fmt.Sprintf("--trace=%s", trace))
 	}
 
-	s.cancel()
+	s.app = s.cmd(ctx, flags...)
+	return s.app.Run()
+}
+
+func (s *supervisor) kill(ctx context.Context) error {
 	defer func() {
 		s.cancel = nil
 		s.app = nil
 	}()
 
+	if s.cancel == nil {
+		return nil
+	}
+
+	s.cancel()
 	err := s.app.Wait()
 	if err != nil {
 		exitErr, ok := err.(*exec.ExitError)
