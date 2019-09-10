@@ -186,6 +186,8 @@ github.com/hinshun/go-bitswap v0.1.7-0.20190910215907-1370dd5a00ba h1:gaXMhMPFUc
 github.com/hinshun/go-bitswap v0.1.7-0.20190910215907-1370dd5a00ba/go.mod h1:y797ACmLqsFHKa//oLJWVFrIVQ/66z5G0Auci6MXU4s=
 github.com/hinshun/go-bitswap v0.1.7-0.20190910222511-bbb1ac68c262 h1:QbIIg9bW3mvDIeUTBn5TFOvfNOlmUT60b2ZhIlbZ8nA=
 github.com/hinshun/go-bitswap v0.1.7-0.20190910222511-bbb1ac68c262/go.mod h1:y797ACmLqsFHKa//oLJWVFrIVQ/66z5G0Auci6MXU4s=
+github.com/hinshun/go-bitswap v0.1.7-0.20190910222949-487e3470d4f3 h1:QKJgKdpnAaHcLzm42P7OUeZKKDe88WofAKTy7yR7jEM=
+github.com/hinshun/go-bitswap v0.1.7-0.20190910222949-487e3470d4f3/go.mod h1:y797ACmLqsFHKa//oLJWVFrIVQ/66z5G0Auci6MXU4s=
 github.com/hinshun/go-blockservice v0.1.3-0.20190906224057-ac48d5e10ef6 h1:ABxQeBhWnbCZd7oL0+XmHIW5JpGNjh7cwwfQwiu/eHg=
 github.com/hinshun/go-blockservice v0.1.3-0.20190906224057-ac48d5e10ef6/go.mod h1:t+411r7psEUhLueM8C7aPA7cxCclv4O3VsUVxt9kz2I=
 github.com/hinshun/go-merkledag v0.1.1-0.20190906215342-bd347129454f h1:kBN1ElzpE5rUm9tK7bRtv9vFIkb2zOukFp6DI8ShVhQ=
