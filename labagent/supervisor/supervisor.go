@@ -26,17 +26,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 
 	"github.com/Netflix/p2plab/downloaders"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/Netflix/p2plab/pkg/traceutil"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
 
 type Supervisor interface {
-	Supervise(ctx context.Context, link string, pdef metadata.PeerDefinition) error
+	Supervise(ctx context.Context, id, link string, pdef metadata.PeerDefinition) error
 }
 
 type supervisor struct {
@@ -74,13 +76,13 @@ func New(root, appRoot, appAddr string, client *httputil.Client, fs *downloaders
 	}, nil
 }
 
-func (s *supervisor) Supervise(ctx context.Context, link string, pdef metadata.PeerDefinition) error {
+func (s *supervisor) Supervise(ctx context.Context, id, link string, pdef metadata.PeerDefinition) error {
 	err := s.kill(ctx)
 	if err != nil {
 		return err
 	}
 
-	flags := s.peerDefinitionToFlags(pdef)
+	flags := s.peerDefinitionToFlags(id, pdef)
 	if link != "" {
 		err = s.atomicReplaceBinary(ctx, link)
 		if err != nil {
@@ -99,8 +101,9 @@ func (s *supervisor) Supervise(ctx context.Context, link string, pdef metadata.P
 
 }
 
-func (s *supervisor) peerDefinitionToFlags(pdef metadata.PeerDefinition) []string {
+func (s *supervisor) peerDefinitionToFlags(id string, pdef metadata.PeerDefinition) []string {
 	flags := []string{
+		fmt.Sprintf("--node-id=%s", id),
 		fmt.Sprintf("--root=%s", s.appRoot),
 		fmt.Sprintf("--address=:%s", s.appPort),
 	}
@@ -145,7 +148,7 @@ func (s *supervisor) wait(ctx context.Context, flags []string) error {
 	span := opentracing.SpanFromContext(ctx)
 	if span != nil {
 		buf := new(bytes.Buffer)
-		err := opentracing.GlobalTracer().Inject(
+		err := traceutil.Tracer(ctx).Inject(
 			span.Context(),
 			opentracing.Binary,
 			buf,
@@ -158,7 +161,16 @@ func (s *supervisor) wait(ctx context.Context, flags []string) error {
 		flags = append(flags, fmt.Sprintf("--trace=%s", trace))
 	}
 
-	s.app = s.cmd(ctx, flags...)
+	s.app = s.cmd(context.Background(), flags...)
+
+	go func() {
+		<-ctx.Done()
+		err := s.app.Process.Signal(syscall.SIGTERM)
+		if err != nil {
+			zerolog.Ctx(ctx).Error().Err(err).Msg("failed to SIGTERM labapp")
+		}
+	}()
+
 	return s.app.Run()
 }
 
@@ -204,7 +216,7 @@ func (s *supervisor) clear(ctx context.Context) error {
 }
 
 func (s *supervisor) atomicReplaceBinary(ctx context.Context, link string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "updating binary")
+	span, ctx := traceutil.StartSpanFromContext(ctx, "supervisor.atomicReplaceBinary")
 	defer span.Finish()
 	span.SetTag("link", link)
 

@@ -23,9 +23,11 @@ import (
 	"time"
 
 	"github.com/Netflix/p2plab"
+	"github.com/Netflix/p2plab/dag"
 	"github.com/Netflix/p2plab/metadata"
 	bitswap "github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
+	"github.com/ipfs/go-bitswap/timer"
 	blockservice "github.com/ipfs/go-blockservice"
 	cid "github.com/ipfs/go-cid"
 	datastore "github.com/ipfs/go-datastore"
@@ -38,7 +40,7 @@ import (
 	"github.com/ipfs/go-ipfs-provider/simple"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
-	dag "github.com/ipfs/go-merkledag"
+	merkledag "github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/ipfs/go-unixfs/importer/balanced"
 	"github.com/ipfs/go-unixfs/importer/helpers"
@@ -57,8 +59,8 @@ import (
 )
 
 func init() {
-	ipld.Register(cid.DagProtobuf, dag.DecodeProtobufBlock)
-	ipld.Register(cid.Raw, dag.DecodeRawBlock)
+	ipld.Register(cid.DagProtobuf, merkledag.DecodeProtobufBlock)
+	ipld.Register(cid.Raw, merkledag.DecodeRawBlock)
 	ipld.Register(cid.DagCBOR, cbor.DecodeBlock) // need to decode CBOR
 }
 
@@ -101,7 +103,8 @@ func New(ctx context.Context, root string, port int, pdef metadata.PeerDefinitio
 		return nil, errors.Wrap(err, "failed to create blockstore")
 	}
 
-	bswapnet := network.NewFromIpfsHost(h, r)
+	ctx = timer.WithTime(ctx, time.Now())
+	bswapnet := network.NewFromIpfsHost(ctx, h, r)
 	rem := bitswap.New(ctx, bswapnet, bs)
 
 	bswap, ok := rem.(*bitswap.Bitswap)
@@ -134,7 +137,7 @@ func New(ctx context.Context, root string, port int, pdef metadata.PeerDefinitio
 		}
 	}()
 
-	dserv := dag.NewDAGService(bserv)
+	dserv := merkledag.NewDAGService(bserv)
 	return &Peer{
 		host:     h,
 		dserv:    dserv,
@@ -214,6 +217,7 @@ func (p *Peer) Add(ctx context.Context, r io.Reader, opts ...p2plab.AddOption) (
 		Hidden:    false,
 		NoCopy:    false,
 		HashFunc:  "sha2-256",
+		MaxLinks:  helpers.DefaultLinksPerBlock,
 	}
 	for _, opt := range opts {
 		err := opt(&settings)
@@ -222,7 +226,7 @@ func (p *Peer) Add(ctx context.Context, r io.Reader, opts ...p2plab.AddOption) (
 		}
 	}
 
-	prefix, err := dag.PrefixForCidVersion(1)
+	prefix, err := merkledag.PrefixForCidVersion(1)
 	if err != nil {
 		return nil, errors.Wrap(err, "unrecognized CID version")
 	}
@@ -236,7 +240,7 @@ func (p *Peer) Add(ctx context.Context, r io.Reader, opts ...p2plab.AddOption) (
 	dbp := helpers.DagBuilderParams{
 		Dagserv:    p.dserv,
 		RawLeaves:  settings.RawLeaves,
-		Maxlinks:   helpers.DefaultLinksPerBlock,
+		Maxlinks:   settings.MaxLinks,
 		NoCopy:     settings.NoCopy,
 		CidBuilder: &prefix,
 	}
@@ -262,6 +266,11 @@ func (p *Peer) Add(ctx context.Context, r io.Reader, opts ...p2plab.AddOption) (
 	}
 
 	return nd, err
+}
+
+func (p *Peer) FetchGraph(ctx context.Context, c cid.Cid) error {
+	ng := merkledag.NewSession(ctx, p.dserv)
+	return dag.Walk(ctx, c, ng)
 }
 
 func (p *Peer) Get(ctx context.Context, c cid.Cid) (files.Node, error) {

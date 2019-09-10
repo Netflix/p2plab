@@ -203,7 +203,7 @@ func (s *router) postBenchmarksCreate(ctx context.Context, w http.ResponseWriter
 	if jaegerUI != "" {
 		sc, ok := execution.Span.Context().(jaeger.SpanContext)
 		if ok {
-			report.Summary.Trace = fmt.Sprintf("%s/trace/%s?uiFind=%s", jaegerUI, sc.TraceID(), sc.SpanID())
+			report.Summary.Trace = fmt.Sprintf("%s/trace/%s", jaegerUI, sc.TraceID())
 		}
 	}
 

@@ -20,10 +20,10 @@ import (
 	"encoding/base64"
 	"os"
 
-	"github.com/Netflix/p2plab/daemon"
 	"github.com/Netflix/p2plab/labapp"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/cliutil"
+	"github.com/Netflix/p2plab/pkg/traceutil"
 	"github.com/Netflix/p2plab/version"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -48,6 +48,11 @@ func App(ctx context.Context) *cli.App {
 			Usage:  "address for labapp's HTTP server",
 			Value:  ":7003",
 			EnvVar: "LABAPP_ADDRESS",
+		},
+		cli.StringFlag{
+			Name:   "node-id",
+			Usage:  "node id for the trace's service ID",
+			EnvVar: "LABAPP_NODE_ID",
 		},
 		cli.StringFlag{
 			Name:   "trace",
@@ -103,11 +108,10 @@ func appAction(c *cli.Context) error {
 	}
 
 	ctx := cliutil.CommandContext(c)
+	ctx, tracer, closer := traceutil.New(ctx, "labapp", nil)
+	defer closer.Close()
 
 	if c.IsSet("trace") {
-		tracer, closer := daemon.NewTracer("labapp", nil)
-		defer closer.Close()
-
 		trace, err := base64.StdEncoding.DecodeString(c.GlobalString("trace"))
 		if err != nil {
 			return err
@@ -118,12 +122,12 @@ func appAction(c *cli.Context) error {
 			return errors.Wrap(err, "failed to extract trace from --trace")
 		}
 
-		span := tracer.StartSpan("peer", opentracing.ChildOf(spanContext))
+		span := tracer.StartSpan(c.GlobalString("node-id"), opentracing.ChildOf(spanContext))
 		defer span.Finish()
 		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
 
-	app, err := labapp.New(root, c.GlobalString("address"), c.GlobalInt("libp2p-port"), zerolog.Ctx(ctx), metadata.PeerDefinition{
+	app, err := labapp.New(ctx, root, c.GlobalString("address"), c.GlobalInt("libp2p-port"), zerolog.Ctx(ctx), metadata.PeerDefinition{
 		Transports:         c.GlobalStringSlice("libp2p-transports"),
 		Muxers:             c.GlobalStringSlice("libp2p-muxers"),
 		SecurityTransports: c.GlobalStringSlice("libp2p-security-transports"),

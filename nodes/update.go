@@ -22,13 +22,13 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/pkg/logutil"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/Netflix/p2plab/pkg/traceutil"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 )
 
 func Update(ctx context.Context, builder p2plab.Builder, ns []p2plab.Node) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster healthy")
+	span, ctx := traceutil.StartSpanFromContext(ctx, "nodes.Update")
 	defer span.Finish()
 	span.SetTag("nodes", len(ns))
 
@@ -63,7 +63,7 @@ func Update(ctx context.Context, builder p2plab.Builder, ns []p2plab.Node) error
 		updatePeers.Go(func() error {
 			pdef := n.Metadata().Peer
 			link := linkByCommit[commitByRef[pdef.GitReference]]
-			return n.Update(gctx, link, pdef)
+			return n.Update(gctx, n.ID(), link, pdef)
 		})
 	}
 
@@ -76,7 +76,7 @@ func Update(ctx context.Context, builder p2plab.Builder, ns []p2plab.Node) error
 }
 
 func ResolveUniqueCommits(ctx context.Context, builder p2plab.Builder, ns []p2plab.Node) (commitByRef map[string]string, err error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "cluster healthy")
+	span, ctx := traceutil.StartSpanFromContext(ctx, "nodes.ResolveUniqueCommits")
 	defer span.Finish()
 	span.SetTag("nodes", len(ns))
 

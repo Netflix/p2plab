@@ -44,10 +44,11 @@ func (s *router) Routes() []daemon.Route {
 }
 
 func (s *router) putUpdate(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
+	id := r.FormValue("id")
 	link := r.FormValue("link")
 	ctx, logger := logutil.WithResponseLogger(ctx, w)
 	logger.UpdateContext(func(c zerolog.Context) zerolog.Context {
-		return c.Str("link", link)
+		return c.Str("id", id).Str("link", link)
 	})
 
 	var pdef metadata.PeerDefinition
@@ -56,7 +57,7 @@ func (s *router) putUpdate(ctx context.Context, w http.ResponseWriter, r *http.R
 		return err
 	}
 
-	err = s.supervisor.Supervise(ctx, link, pdef)
+	err = s.supervisor.Supervise(ctx, id, link, pdef)
 	if err != nil {
 		return err
 	}

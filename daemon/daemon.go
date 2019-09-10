@@ -23,6 +23,7 @@ import (
 
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/pkg/logutil"
+	"github.com/Netflix/p2plab/pkg/traceutil"
 	"github.com/gorilla/mux"
 	"github.com/opentracing-contrib/go-stdlib/nethttp"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -30,24 +31,21 @@ import (
 )
 
 type Daemon struct {
+	service string
 	addr    string
 	logger  *zerolog.Logger
+	routers []Router
 	tracer  opentracing.Tracer
-	router  *mux.Router
 	closers []io.Closer
 }
 
 func New(service, addr string, logger *zerolog.Logger, routers ...Router) (*Daemon, error) {
-	var closers []io.Closer
-	tracer, traceCloser := NewTracer(service, logutil.NewJaegerLogger(logger))
-	closers = append(closers, traceCloser)
-
 	d := &Daemon{
-		addr:   addr,
-		logger: logger,
-		tracer: tracer,
+		service: service,
+		addr:    addr,
+		logger:  logger,
+		routers: routers,
 	}
-	d.router = d.createMux(routers...)
 	return d, nil
 }
 
@@ -62,8 +60,12 @@ func (d *Daemon) Close() error {
 }
 
 func (d *Daemon) Serve(ctx context.Context) error {
+	var traceCloser io.Closer
+	ctx, d.tracer, traceCloser = traceutil.New(ctx, d.service, logutil.NewJaegerLogger(d.logger))
+	d.closers = append(d.closers, traceCloser)
+
 	s := &http.Server{
-		Handler:           d.router,
+		Handler:           d.createMux(d.routers...),
 		Addr:              d.addr,
 		ReadHeaderTimeout: 20 * time.Second,
 		ReadTimeout:       1 * time.Minute,
@@ -83,7 +85,7 @@ func (d *Daemon) Serve(ctx context.Context) error {
 }
 
 func (d *Daemon) createMux(routers ...Router) *mux.Router {
-	d.router = mux.NewRouter().UseEncodedPath().StrictSlash(true)
+	root := mux.NewRouter().UseEncodedPath().StrictSlash(true)
 	for _, router := range routers {
 		for _, route := range router.Routes() {
 			var h http.Handler
@@ -91,15 +93,16 @@ func (d *Daemon) createMux(routers ...Router) *mux.Router {
 			h = nethttp.Middleware(d.tracer, h)
 
 			d.logger.Debug().Str("path", route.Path()).Str("method", route.Method()).Msg("Registering route")
-			d.router.Path(route.Path()).Methods(route.Method()).Handler(h)
+			root.Path(route.Path()).Methods(route.Method()).Handler(h)
 		}
 	}
-	return d.router
+	return root
 }
 
 func (d *Daemon) createHTTPHandler(handler Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := d.logger.WithContext(r.Context())
+		ctx = traceutil.WithTracer(ctx, d.tracer)
 		r = r.WithContext(ctx)
 
 		vars := mux.Vars(r)
