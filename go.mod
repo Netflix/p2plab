@@ -1,6 +1,6 @@
 module github.com/Netflix/p2plab
 
-go 1.12
+go 1.13
 
 require (
 	github.com/Microsoft/go-winio v0.4.13-0.20190408173621-84b4ab48a507 // indirect
@@ -68,7 +68,6 @@ require (
 	github.com/urfave/cli v1.20.0
 	go.etcd.io/bbolt v1.3.3
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
-	google.golang.org/appengine v1.4.0 // indirect
 	google.golang.org/grpc v1.20.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 )
