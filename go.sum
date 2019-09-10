@@ -204,6 +204,8 @@ github.com/hinshun/go-merkledag v0.1.1-0.20190906215342-bd347129454f h1:kBN1Elzp
 github.com/hinshun/go-merkledag v0.1.1-0.20190906215342-bd347129454f/go.mod h1:xhhfKOeCCC2K0NXp8ZSoJfB2QkUfncAKByhO+2i9Q0Y=
 github.com/hinshun/go-merkledag v0.1.1-0.20190910225722-f519a0fd2661 h1:FiZ1T5Ae7Kf5+HAccZkJsUs6pJ4m1tAQlJ8xRnATtRk=
 github.com/hinshun/go-merkledag v0.1.1-0.20190910225722-f519a0fd2661/go.mod h1:JLxnrfzAVi0AehQQ8G8nxDmAOLpx2CstcGXdUBXuPoM=
+github.com/hinshun/go-merkledag v0.1.1-0.20190910230203-e089ed59ddef h1:NINOP6aPXugbQhhM1iaVceFgfBmBlEGkUqPZRGvmBAg=
+github.com/hinshun/go-merkledag v0.1.1-0.20190910230203-e089ed59ddef/go.mod h1:JLxnrfzAVi0AehQQ8G8nxDmAOLpx2CstcGXdUBXuPoM=
 github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/huin/goupnp v1.0.0 h1:wg75sLpL6DZqwHQN6E1Cfk6mtfzS45z8OV+ic+DtHRo=
