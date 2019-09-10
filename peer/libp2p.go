@@ -18,12 +18,15 @@ import (
 	"context"
 	"fmt"
 
+	noise "github.com/ChainSafe/go-libp2p-noise"
 	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
 	nilrouting "github.com/ipfs/go-ipfs-routing/none"
 	libp2p "github.com/libp2p/go-libp2p"
+	crypto "github.com/libp2p/go-libp2p-core/crypto"
 	host "github.com/libp2p/go-libp2p-core/host"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
+	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	mplex "github.com/libp2p/go-libp2p-mplex"
@@ -119,9 +122,15 @@ func NewSecurityOption(securityType string) (libp2p.Option, error) {
 		return libp2p.Security(tls.ID, tls.New), nil
 	case "secio":
 		return libp2p.Security(secio.ID, secio.New), nil
+	case "noise":
+		return libp2p.Security(noise.ID, NewNoise), nil
 	default:
 		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "security %q", securityType)
 	}
+}
+
+func NewNoise(sk crypto.PrivKey, pid libp2ppeer.ID) (*noise.Transport, error) {
+	return noise.NewTransport(pid, sk, false, nil), nil
 }
 
 func NewRoutingOption(ctx context.Context, routingType string) (libp2p.Option, routing.ContentRouting, error) {

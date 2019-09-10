@@ -66,7 +66,7 @@ func run(addr, ref string) error {
 	p, err := peer.New(ctx, filepath.Join(root, "peer"), 0, metadata.PeerDefinition{
 		Transports:         []string{"tcp", "ws", "quic"},
 		Muxers:             []string{"mplex", "yamux"},
-		SecurityTransports: []string{"tls", "secio"},
+		SecurityTransports: []string{"tls", "secio", "noise"},
 		Routing:            "nil",
 	})
 	if err != nil {

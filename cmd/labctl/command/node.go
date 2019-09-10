@@ -98,7 +98,7 @@ var nodeCommand = cli.Command{
 				},
 				cli.StringSliceFlag{
 					Name:  "security-transports,st",
-					Usage: "Security transports for libp2p [tls, secio]",
+					Usage: "Security transports for libp2p [tls, secio, noise]",
 				},
 				cli.StringFlag{
 					Name:  "routing,r",

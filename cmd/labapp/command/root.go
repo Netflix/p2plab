@@ -77,7 +77,7 @@ func App(ctx context.Context) *cli.App {
 		},
 		cli.StringSliceFlag{
 			Name:   "libp2p-security-transports",
-			Usage:  "security transports for libp2p [tls, secio]",
+			Usage:  "security transports for libp2p [tls, secio, noise]",
 			EnvVar: "LABAPP_LIBP2P_SECURITY_TRANSPORTS",
 		},
 		cli.StringFlag{

@@ -90,7 +90,7 @@ func New(root, addr string, logger *zerolog.Logger, opts ...LabdOption) (*Labd, 
 	seeder, err := peer.New(sctx, filepath.Join(root, "seeder"), settings.Libp2pPort, metadata.PeerDefinition{
 		Transports:         []string{"tcp", "ws", "quic"},
 		Muxers:             []string{"mplex", "yamux"},
-		SecurityTransports: []string{"secio", "tls"},
+		SecurityTransports: []string{"tls", "secio", "noise"},
 		Routing:            "nil",
 	})
 	if err != nil {
