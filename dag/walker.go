@@ -18,8 +18,10 @@ import (
 	"context"
 
 	"github.com/Netflix/p2plab/pkg/traceutil"
+	"github.com/hako/durafmt"
 	cid "github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
+	merkledag "github.com/ipfs/go-merkledag"
 	opentracing "github.com/opentracing/opentracing-go"
 	"golang.org/x/sync/errgroup"
 )
@@ -28,6 +30,11 @@ func Walk(ctx context.Context, c cid.Cid, ng ipld.NodeGetter) error {
 	span, ctx := traceutil.StartSpanFromContext(ctx, "dag.Walk")
 	defer span.Finish()
 	span.SetTag("cid", c.String())
+
+	defer func() {
+		span.SetTag("culmIpldDecodeTime", durafmt.Parse(merkledag.CulmIpldDecodeTime).String())
+		span.SetTag("culmWaitForIpldNodeOut", durafmt.Parse(merkledag.CulmWaitForIpldNodeOut).String())
+	}()
 
 	nd, err := ng.Get(ctx, c)
 	if err != nil {
