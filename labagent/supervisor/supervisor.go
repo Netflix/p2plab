@@ -271,6 +271,11 @@ func (s *supervisor) cmd(ctx context.Context, args ...string) *exec.Cmd {
 func (s *supervisor) cmdWithStdio(ctx context.Context, stdout, stderr io.Writer, args ...string) *exec.Cmd {
 	binaryPath := filepath.Join(s.root, "labapp")
 	app := exec.CommandContext(ctx, binaryPath, args...)
+
+	environ := os.Environ()
+	environ = append(environ, "IPFS_LOGGING=ERROR")
+	app.Env = environ
+
 	app.Stdout = stdout
 	app.Stderr = stderr
 	return app
