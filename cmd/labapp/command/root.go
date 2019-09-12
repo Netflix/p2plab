@@ -26,7 +26,6 @@ import (
 	"github.com/Netflix/p2plab/pkg/traceutil"
 	"github.com/Netflix/p2plab/version"
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli"
 )
@@ -119,12 +118,12 @@ func appAction(c *cli.Context) error {
 
 		spanContext, err := tracer.Extract(opentracing.Binary, bytes.NewReader(trace))
 		if err != nil {
-			return errors.Wrap(err, "failed to extract trace from --trace")
+			zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to extract trace from --trace")
+		} else {
+			span := tracer.StartSpan(c.GlobalString("node-id"), opentracing.ChildOf(spanContext))
+			defer span.Finish()
+			ctx = opentracing.ContextWithSpan(ctx, span)
 		}
-
-		span := tracer.StartSpan(c.GlobalString("node-id"), opentracing.ChildOf(spanContext))
-		defer span.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span)
 	}
 
 	app, err := labapp.New(ctx, root, c.GlobalString("address"), c.GlobalInt("libp2p-port"), zerolog.Ctx(ctx), metadata.PeerDefinition{
