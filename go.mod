@@ -17,7 +17,7 @@ require (
 	github.com/hako/durafmt v0.0.0-20190612201238-650ed9f29a84
 	github.com/hashicorp/go-cleanhttp v0.5.0
 	github.com/hashicorp/go-retryablehttp v0.5.4
-	github.com/ipfs/go-bitswap v0.1.9-0.20190924194302-3451e6fb7453
+	github.com/ipfs/go-bitswap v0.1.9-0.20190925174345-d99206ecdcf4
 	github.com/ipfs/go-blockservice v0.1.0
 	github.com/ipfs/go-cid v0.0.3
 	github.com/ipfs/go-datastore v0.1.0
@@ -78,4 +78,4 @@ replace github.com/ipfs/go-blockservice => github.com/hinshun/go-blockservice v0
 
 replace github.com/ipfs/go-peertaskqueue => github.com/ipfs/go-peertaskqueue v0.1.2-0.20190925141900-440b186d78ff
 
-replace github.com/ipfs/go-bitswap => /Users/dirk/go/src/github.com/ipfs/go-bitswap
+// replace github.com/ipfs/go-bitswap => /Users/dirk/go/src/github.com/ipfs/go-bitswap
