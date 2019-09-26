@@ -146,21 +146,21 @@ func (s *router) connectOne(ctx context.Context, addrs []string) error {
 	span.SetTag("addrs", len(addrs))
 
 	// Try to connect to each address in turn, until one of them works
-	var grperr error
+	var lasterr error
 	for _, addr := range addrs {
 		infos, err := parseAddrs([]string{addr})
 		if err != nil {
-			grperr = err
-		} else {
-			err = s.peer.Connect(ctx, infos)
-			if err == nil {
-				zerolog.Ctx(ctx).Debug().Int("peers", 1).Msg("Connected to peer")
-				return nil
-			}
-			grperr = err
+			return err
 		}
+
+		err = s.peer.Connect(ctx, infos)
+		if err == nil {
+			zerolog.Ctx(ctx).Debug().Int("peers", 1).Msg("Connected to peer")
+			return nil
+		}
+		lasterr = err
 	}
-	return grperr
+	return lasterr
 }
 
 func (s *router) disconnect(ctx context.Context, addrs []string) error {
