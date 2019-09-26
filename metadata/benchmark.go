@@ -75,6 +75,7 @@ var (
 	TaskUpdate     TaskType = "update"
 	TaskGet        TaskType = "get"
 	TaskConnect    TaskType = "connect"
+	TaskConnectOne TaskType = "connect-one"
 	TaskDisconnect TaskType = "disconnect"
 )
 

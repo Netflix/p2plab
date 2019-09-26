@@ -73,33 +73,35 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 	// are in one direction (nodes don't dial a node that dialed them).
 	// This helps avoid a libp2p bug where nodes that simultaneously dial
 	// each other can get random disconnects.
-	conns := make(map[peer.ID][]string)
+	conns := make(map[peer.ID]map[peer.ID][]string)
 	for _, n := range ns {
 		npi, err := n.PeerInfo(ctx)
 		if err != nil {
 			return err
 		}
 
-		var peerAddrs []string
 		for _, pi := range peerInfos {
 			if _, ok := conns[pi.ID]; !ok && pi.ID != npi.ID {
-				// for _, ma := range pi.Addrs {
-				// 	peerAddrs = append(peerAddrs, fmt.Sprintf("%s/p2p/%s", ma, pi.ID))
-				// }
+				conns[npi.ID] = make(map[peer.ID][]string)
+
+				var peerAddrs []string
+				for _, ma := range pi.Addrs {
+					peerAddrs = append(peerAddrs, fmt.Sprintf("%s/p2p/%s", ma, pi.ID))
+				}
+				if len(peerAddrs) > 0 {
+					conns[npi.ID][pi.ID] = peerAddrs
+				}
 				// TODO: for now only adding the node's first address, to avoid
 				// disconnects that appear to occur when we dial more than one address
 				// at the same time
-				peerAddrs = append(peerAddrs, fmt.Sprintf("%s/p2p/%s", pi.Addrs[0], pi.ID))
+				// peerAddrs = append(peerAddrs, fmt.Sprintf("%s/p2p/%s", pi.Addrs[0], pi.ID))
 			}
-		}
-		if len(peerAddrs) > 0 {
-			conns[npi.ID] = peerAddrs
 		}
 	}
 
 	connectPeers, gctx := errgroup.WithContext(ctx)
 
-	zerolog.Ctx(ctx).Info().Msg("Connecting cluanster")
+	zerolog.Ctx(ctx).Info().Msg("Connecting cluster")
 	go logutil.Elapsed(gctx, 20*time.Second, "Connecting cluster")
 
 	for _, n := range ns {
@@ -109,20 +111,23 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 			return err
 		}
 
-		peerAddrs, ok := conns[npi.ID]
-		if ok && len(peerAddrs) > 0 {
-			// fmt.Print(npi.ID)
-			// fmt.Println(":")
-			// for _, pa := range peerAddrs {
-			// 	fmt.Print("  ")
-			// 	fmt.Println(pa)
-			// }
-			connectPeers.Go(func() error {
-				return n.Run(gctx, metadata.Task{
-					Type:    metadata.TaskConnect,
-					Subject: strings.Join(peerAddrs, ","),
-				})
-			})
+		toConns, ok := conns[npi.ID]
+		if ok {
+			for to, peerAddrs := range toConns {
+				if len(peerAddrs) > 0 {
+					fmt.Printf("Dial %s -> %s\n", npi.ID, to)
+					for _, pa := range peerAddrs {
+						fmt.Print("  ")
+						fmt.Println(pa)
+					}
+					connectPeers.Go(func() error {
+						return n.Run(gctx, metadata.Task{
+							Type:    metadata.TaskConnectOne,
+							Subject: strings.Join(peerAddrs, ","),
+						})
+					})
+				}
+			}
 		}
 	}
 
