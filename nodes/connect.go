@@ -41,7 +41,8 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 	zerolog.Ctx(ctx).Info().Msg("Retrieving peer infos")
 	go logutil.Elapsed(gctx, 20*time.Second, "Retrieving peer infos")
 
-	var peerInfos []peerstore.PeerInfo
+	// var peerInfos []peerstore.PeerInfo
+	peerInfoByNodeID := make(map[string]peerstore.PeerInfo)
 	for _, n := range ns {
 		n := n
 		collectPeerAddrs.Go(func() error {
@@ -54,7 +55,7 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 				return errors.Errorf("peer %q has zero addresses", n.Metadata().Address)
 			}
 
-			peerInfos = append(peerInfos, peerInfo)
+			peerInfoByNodeID[n.ID()] = peerInfo
 
 			for _, ma := range peerInfo.Addrs {
 				zerolog.Ctx(gctx).Debug().Str("addr", ma.String()).Msg("Retrieved peer address")
@@ -81,15 +82,18 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 		}
 
 		conns[npi.ID] = make(map[peer.ID][]string)
-		for _, pi := range peerInfos {
-			if _, ok := conns[pi.ID]; !ok && pi.ID != npi.ID {
-				var peerAddrs []string
-				for _, ma := range pi.Addrs {
-					peerAddrs = append(peerAddrs, fmt.Sprintf("%s/p2p/%s", ma, pi.ID))
-				}
-				if len(peerAddrs) > 0 {
-					conns[npi.ID][pi.ID] = peerAddrs
-				}
+		for _, pi := range peerInfoByNodeID {
+			_, ok := conns[pi.ID]
+			if ok || pi.ID == npi.ID {
+				continue
+			}
+
+			var peerAddrs []string
+			for _, ma := range pi.Addrs {
+				peerAddrs = append(peerAddrs, fmt.Sprintf("%s/p2p/%s", ma, pi.ID))
+			}
+			if len(peerAddrs) > 0 {
+				conns[npi.ID][pi.ID] = peerAddrs
 			}
 		}
 	}
@@ -98,24 +102,28 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 	go logutil.Elapsed(gctx, 20*time.Second, "Connecting cluster")
 
 	for _, n := range ns {
-		npi, err := n.PeerInfo(ctx)
-		if err != nil {
-			return err
+		npi, ok := peerInfoByNodeID[n.ID()]
+		if !ok {
+			panic("Should have peer info for every node")
 		}
 
 		toConns, ok := conns[npi.ID]
-		if ok {
-			for _, peerAddrs := range toConns {
-				if len(peerAddrs) > 0 {
-					err := n.Run(ctx, metadata.Task{
-						Type:    metadata.TaskConnectOne,
-						Subject: strings.Join(peerAddrs, ","),
-					})
+		if !ok {
+			continue
+		}
 
-					if err != nil {
-						return err
-					}
-				}
+		for _, peerAddrs := range toConns {
+			if len(peerAddrs) == 0 {
+				continue
+			}
+
+			err := n.Run(ctx, metadata.Task{
+				Type:    metadata.TaskConnectOne,
+				Subject: strings.Join(peerAddrs, ","),
+			})
+
+			if err != nil {
+				return err
 			}
 		}
 	}
