@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Netflix/p2plab"
@@ -41,7 +42,7 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 	zerolog.Ctx(ctx).Info().Msg("Retrieving peer infos")
 	go logutil.Elapsed(gctx, 20*time.Second, "Retrieving peer infos")
 
-	// var peerInfos []peerstore.PeerInfo
+	var lk sync.Mutex
 	peerInfoByNodeID := make(map[string]peerstore.PeerInfo)
 	for _, n := range ns {
 		n := n
@@ -55,7 +56,9 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 				return errors.Errorf("peer %q has zero addresses", n.Metadata().Address)
 			}
 
+			lk.Lock()
 			peerInfoByNodeID[n.ID()] = peerInfo
+			lk.Unlock()
 
 			for _, ma := range peerInfo.Addrs {
 				zerolog.Ctx(gctx).Debug().Str("addr", ma.String()).Msg("Retrieved peer address")
@@ -76,9 +79,9 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 	// each other can get random disconnects.
 	conns := make(map[peer.ID]map[peer.ID][]string)
 	for _, n := range ns {
-		npi, err := n.PeerInfo(ctx)
-		if err != nil {
-			return err
+		npi, ok := peerInfoByNodeID[n.ID()]
+		if !ok {
+			panic("Should have peer info for every node")
 		}
 
 		conns[npi.ID] = make(map[peer.ID][]string)
