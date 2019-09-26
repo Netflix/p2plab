@@ -76,6 +76,7 @@ replace github.com/ipfs/go-merkledag => github.com/hinshun/go-merkledag v0.1.1-0
 
 replace github.com/ipfs/go-blockservice => github.com/hinshun/go-blockservice v0.1.3-0.20190906224057-ac48d5e10ef6
 
-replace github.com/ipfs/go-peertaskqueue => github.com/ipfs/go-peertaskqueue v0.1.2-0.20190926140908-816266cc2c9f
+// replace github.com/ipfs/go-peertaskqueue => github.com/ipfs/go-peertaskqueue v0.1.2-0.20190926140908-816266cc2c9f
+replace github.com/ipfs/go-peertaskqueue => /Users/dirk/go/src/github.com/ipfs/go-peertaskqueue
 
 replace github.com/ipfs/go-bitswap => /Users/dirk/go/src/github.com/ipfs/go-bitswap
