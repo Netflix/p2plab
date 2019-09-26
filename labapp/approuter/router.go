@@ -86,6 +86,9 @@ func (s *router) postRunTask(ctx context.Context, w http.ResponseWriter, r *http
 	case metadata.TaskConnect:
 		addrs := strings.Split(task.Subject, ",")
 		err = s.connect(ctx, addrs)
+	case metadata.TaskConnectOne:
+		addrs := strings.Split(task.Subject, ",")
+		err = s.connectOne(ctx, addrs)
 	case metadata.TaskDisconnect:
 		addrs := strings.Split(task.Subject, ",")
 		err = s.disconnect(ctx, addrs)
@@ -135,6 +138,29 @@ func (s *router) connect(ctx context.Context, addrs []string) error {
 
 	zerolog.Ctx(ctx).Debug().Int("peers", len(addrs)).Msg("Connected to peers")
 	return nil
+}
+
+func (s *router) connectOne(ctx context.Context, addrs []string) error {
+	span, ctx := traceutil.StartSpanFromContext(ctx, "approuter.connectOne")
+	defer span.Finish()
+	span.SetTag("addrs", len(addrs))
+
+	// Try to connect to each address in turn, until one of them works
+	var lasterr error
+	for _, addr := range addrs {
+		infos, err := parseAddrs([]string{addr})
+		if err != nil {
+			return err
+		}
+
+		err = s.peer.Connect(ctx, infos)
+		if err == nil {
+			zerolog.Ctx(ctx).Debug().Int("peers", 1).Msg("Connected to peer")
+			return nil
+		}
+		lasterr = err
+	}
+	return lasterr
 }
 
 func (s *router) disconnect(ctx context.Context, addrs []string) error {

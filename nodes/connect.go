@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Netflix/p2plab"
@@ -27,6 +28,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
+	peer "github.com/libp2p/go-libp2p-peer"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
 )
 
 func Connect(ctx context.Context, ns []p2plab.Node) error {
@@ -39,7 +42,8 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 	zerolog.Ctx(ctx).Info().Msg("Retrieving peer infos")
 	go logutil.Elapsed(gctx, 20*time.Second, "Retrieving peer infos")
 
-	var peerAddrs []string
+	var lk sync.Mutex
+	peerInfoByNodeID := make(map[string]peerstore.PeerInfo)
 	for _, n := range ns {
 		n := n
 		collectPeerAddrs.Go(func() error {
@@ -52,8 +56,11 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 				return errors.Errorf("peer %q has zero addresses", n.Metadata().Address)
 			}
 
+			lk.Lock()
+			peerInfoByNodeID[n.ID()] = peerInfo
+			lk.Unlock()
+
 			for _, ma := range peerInfo.Addrs {
-				peerAddrs = append(peerAddrs, fmt.Sprintf("%s/p2p/%s", ma, peerInfo.ID))
 				zerolog.Ctx(gctx).Debug().Str("addr", ma.String()).Msg("Retrieved peer address")
 			}
 
@@ -66,23 +73,62 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 		return err
 	}
 
-	connectPeers, gctx := errgroup.WithContext(ctx)
+	// Work out which addresses each node should dial, such that all dials
+	// are in one direction (nodes don't dial a node that dialed them).
+	// This helps avoid a libp2p bug where nodes that simultaneously dial
+	// each other can get random disconnects.
+	conns := make(map[peer.ID]map[peer.ID][]string)
+	for _, n := range ns {
+		npi, ok := peerInfoByNodeID[n.ID()]
+		if !ok {
+			panic("Should have peer info for every node")
+		}
+
+		conns[npi.ID] = make(map[peer.ID][]string)
+		for _, pi := range peerInfoByNodeID {
+			_, ok := conns[pi.ID]
+			if ok || pi.ID == npi.ID {
+				continue
+			}
+
+			var peerAddrs []string
+			for _, ma := range pi.Addrs {
+				peerAddrs = append(peerAddrs, fmt.Sprintf("%s/p2p/%s", ma, pi.ID))
+			}
+			if len(peerAddrs) > 0 {
+				conns[npi.ID][pi.ID] = peerAddrs
+			}
+		}
+	}
 
 	zerolog.Ctx(ctx).Info().Msg("Connecting cluster")
 	go logutil.Elapsed(gctx, 20*time.Second, "Connecting cluster")
+
 	for _, n := range ns {
-		n := n
-		connectPeers.Go(func() error {
-			return n.Run(gctx, metadata.Task{
-				Type:    metadata.TaskConnect,
+		npi, ok := peerInfoByNodeID[n.ID()]
+		if !ok {
+			panic("Should have peer info for every node")
+		}
+
+		toConns, ok := conns[npi.ID]
+		if !ok {
+			continue
+		}
+
+		for _, peerAddrs := range toConns {
+			if len(peerAddrs) == 0 {
+				continue
+			}
+
+			err := n.Run(ctx, metadata.Task{
+				Type:    metadata.TaskConnectOne,
 				Subject: strings.Join(peerAddrs, ","),
 			})
-		})
-	}
 
-	err = connectPeers.Wait()
-	if err != nil {
-		return err
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
