@@ -23,45 +23,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func GetLabeled() []p2plab.Labeled {
-	return []p2plab.Labeled{
-		NewLabeled("apple", []string{"everyone", "apple", "slowdisk", "region=us-west-2"}),
-		NewLabeled("banana", []string{"everyone", "banana", "region=us-west-2"}),
-		NewLabeled("cherry", []string{"everyone", "cherry", "region=us-east-1"}),
-	}
+var ls = []p2plab.Labeled{
+	NewLabeled("apple", []string{"everyone", "apple", "slowdisk", "region=us-west-2"}),
+	NewLabeled("banana", []string{"everyone", "banana", "region=us-west-2"}),
+	NewLabeled("cherry", []string{"everyone", "cherry", "region=us-east-1"}),
+}
+
+var executetest = []struct {
+	in  string
+	out []p2plab.Labeled
+}{
+	{"apple", []p2plab.Labeled{ls[0]}},
+	{"(not ‘apple’)", []p2plab.Labeled{ls[1], ls[2]}},
+	{"(and ‘slowdisk’ ‘region=us-west-2’)", []p2plab.Labeled{ls[0]}},
+	{"(or ‘region=us-west-2’ ‘region=us-east-1’)", ls},
+	{"(or (not ‘slowdisk’) ‘banana’)", []p2plab.Labeled{ls[1], ls[2]}},
 }
 
 func TestExecute(t *testing.T) {
-	ctx := context.TODO()
-	ls := GetLabeled()
+	ctx := context.Background()
 
-	labeledSet, error := Execute(ctx, ls, "apple")
-	if error != nil {
-		return
-	}
-	require.Equal(t, []p2plab.Labeled{ls[0]}, labeledSet.Slice(), "Query apple return only apple node")
+	for _, execute := range executetest {
+		labeledSet, err := Execute(ctx, ls, execute.in)
+		if err != nil {
+			return
+		}
 
-	labeledSet, error = Execute(ctx, ls, "(not ‘apple’)")
-	if error != nil {
-		return
+		require.Equal(t, execute.out, labeledSet.Slice())
 	}
-	require.Equal(t, []p2plab.Labeled{ls[1], ls[2]}, labeledSet.Slice(), "Query (not ‘apple’) return banana and cherry node")
-
-	labeledSet, error = Execute(ctx, ls, "(and ‘slowdisk’ ‘region=us-west-2’)")
-	if error != nil {
-		return
-	}
-	require.Equal(t, []p2plab.Labeled{ls[0]}, labeledSet.Slice(), "Query (and ‘slowdisk’ ‘region=us-west-2’) return only apple node")
-
-	labeledSet, error = Execute(ctx, ls, "(or ‘region=us-west-2’ ‘region=us-east-1’)")
-	if error != nil {
-		return
-	}
-	require.Equal(t, ls, labeledSet.Slice(), "Query (or ‘region=us-west-2’ ‘region=us-east-1’) return apple, banana, cherry node")
-
-	labeledSet, error = Execute(ctx, ls, "(or (not ‘slowdisk’) ‘banana’)")
-	if error != nil {
-		return
-	}
-	require.Equal(t, []p2plab.Labeled{ls[1], ls[2]}, labeledSet.Slice(), "Query (or (not ‘slowdisk’) ‘banana’) return banana and cherry node")
 }
