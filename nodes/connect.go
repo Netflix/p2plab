@@ -101,6 +101,8 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 		}
 	}
 
+	connectPeers, gctx := errgroup.WithContext(ctx)
+
 	zerolog.Ctx(ctx).Info().Msg("Connecting cluster")
 	go logutil.Elapsed(gctx, 20*time.Second, "Connecting cluster")
 
@@ -120,16 +122,16 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 				continue
 			}
 
-			err := n.Run(ctx, metadata.Task{
-				Type:    metadata.TaskConnectOne,
-				Subject: strings.Join(peerAddrs, ","),
+			n := n
+			peerAddrs := peerAddrs
+			connectPeers.Go(func() error {
+				return n.Run(ctx, metadata.Task{
+					Type:    metadata.TaskConnectOne,
+					Subject: strings.Join(peerAddrs, ","),
+				})
 			})
-
-			if err != nil {
-				return err
-			}
 		}
 	}
 
-	return nil
+	return connectPeers.Wait()
 }
