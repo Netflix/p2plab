@@ -33,7 +33,11 @@ func WithTracer(ctx context.Context, tracer opentracing.Tracer) context.Context 
 }
 
 func Tracer(ctx context.Context) opentracing.Tracer {
-	return ctx.Value(tracerKey{}).(opentracing.Tracer)
+	tracer, ok := ctx.Value(tracerKey{}).(opentracing.Tracer)
+	if !ok {
+		return opentracing.NoopTracer{}
+	}
+	return tracer
 }
 
 func StartSpanFromContext(ctx context.Context, operationName string, opts ...opentracing.StartSpanOption) (opentracing.Span, context.Context) {
