@@ -8,7 +8,7 @@ require (
 	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc
 	github.com/aws/aws-sdk-go-v2 v0.11.0
 	github.com/codahale/hdrhistogram v0.0.0-20160425231609-f8ad88b59a58 // indirect
-	github.com/containerd/containerd v1.3.0-0.20190507210959-7c1e88399ec0
+	github.com/containerd/containerd v1.3.0
 	github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc // indirect
 	github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible // indirect
 	github.com/dustin/go-humanize v1.0.0
