@@ -33,11 +33,11 @@ var executetest = []struct {
 	in  string
 	out []p2plab.Labeled
 }{
-	{"apple", []p2plab.Labeled{ls[0]}},
-	{"(not ‘apple’)", []p2plab.Labeled{ls[1], ls[2]}},
-	{"(and ‘slowdisk’ ‘region=us-west-2’)", []p2plab.Labeled{ls[0]}},
-	{"(or ‘region=us-west-2’ ‘region=us-east-1’)", ls},
-	{"(or (not ‘slowdisk’) ‘banana’)", []p2plab.Labeled{ls[1], ls[2]}},
+	{"'apple'", []p2plab.Labeled{ls[0]}},
+	{"(not 'apple')", []p2plab.Labeled{ls[1], ls[2]}},
+	{"(and 'slowdisk' 'region=us-west-2')", []p2plab.Labeled{ls[0]}},
+	{"(or 'region=us-west-2' 'region=us-east-1')", ls},
+	{"(or (not 'slowdisk') 'banana')", []p2plab.Labeled{ls[1], ls[2]}},
 }
 
 func TestExecute(t *testing.T) {
@@ -45,10 +45,8 @@ func TestExecute(t *testing.T) {
 
 	for _, execute := range executetest {
 		labeledSet, err := Execute(ctx, ls, execute.in)
-		if err != nil {
-			return
-		}
 
+		require.NoError(t, err)
 		require.Equal(t, execute.out, labeledSet.Slice())
 	}
 }
