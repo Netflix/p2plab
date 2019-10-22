@@ -17,10 +17,10 @@ require (
 	github.com/hako/durafmt v0.0.0-20190612201238-650ed9f29a84
 	github.com/hashicorp/go-cleanhttp v0.5.0
 	github.com/hashicorp/go-retryablehttp v0.5.4
-	github.com/ipfs/go-bitswap v0.1.9-0.20191016160449-7b1f0cd477a9
+	github.com/ipfs/go-bitswap v0.1.9-0.20191022172318-bcf8dc97974d
 	github.com/ipfs/go-blockservice v0.1.0
 	github.com/ipfs/go-cid v0.0.3
-	github.com/ipfs/go-datastore v0.1.0
+	github.com/ipfs/go-datastore v0.1.1
 	github.com/ipfs/go-ds-badger v0.0.5
 	github.com/ipfs/go-ipfs v0.4.22-0.20190829225759-d778b84ff1c3
 	github.com/ipfs/go-ipfs-blockstore v0.1.0
@@ -33,8 +33,8 @@ require (
 	github.com/ipfs/go-ipld-format v0.0.2
 	github.com/ipfs/go-merkledag v0.2.3
 	github.com/ipfs/go-unixfs v0.2.1
-	github.com/libp2p/go-libp2p v0.3.0
-	github.com/libp2p/go-libp2p-core v0.2.2
+	github.com/libp2p/go-libp2p v0.4.0
+	github.com/libp2p/go-libp2p-core v0.2.3
 	github.com/libp2p/go-libp2p-kad-dht v0.2.0
 	github.com/libp2p/go-libp2p-mplex v0.2.1
 	github.com/libp2p/go-libp2p-peer v0.2.0
@@ -42,14 +42,14 @@ require (
 	github.com/libp2p/go-libp2p-protocol v0.1.0
 	github.com/libp2p/go-libp2p-quic-transport v0.1.1
 	github.com/libp2p/go-libp2p-secio v0.2.0
-	github.com/libp2p/go-libp2p-swarm v0.2.1
+	github.com/libp2p/go-libp2p-swarm v0.2.2
 	github.com/libp2p/go-libp2p-tls v0.1.0
 	github.com/libp2p/go-libp2p-yamux v0.2.1
 	github.com/libp2p/go-maddr-filter v0.0.5
-	github.com/libp2p/go-tcp-transport v0.1.0
-	github.com/libp2p/go-ws-transport v0.1.0
-	github.com/multiformats/go-multiaddr v0.0.4
-	github.com/multiformats/go-multihash v0.0.7
+	github.com/libp2p/go-tcp-transport v0.1.1
+	github.com/libp2p/go-ws-transport v0.1.2
+	github.com/multiformats/go-multiaddr v0.1.1
+	github.com/multiformats/go-multihash v0.0.8
 	github.com/olekukonko/tablewriter v0.0.2-0.20190618033246-cc27d85e17ce
 	github.com/opencontainers/go-digest v1.0.0-rc1
 	github.com/opencontainers/image-spec v1.0.1
@@ -68,7 +68,6 @@ require (
 	github.com/urfave/cli v1.20.0
 	go.etcd.io/bbolt v1.3.3
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
-	google.golang.org/grpc v1.20.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 )
 
@@ -76,7 +75,7 @@ replace github.com/ipfs/go-merkledag => github.com/hinshun/go-merkledag v0.1.1-0
 
 replace github.com/ipfs/go-blockservice => github.com/hinshun/go-blockservice v0.1.3-0.20190906224057-ac48d5e10ef6
 
-replace github.com/ipfs/go-peertaskqueue => github.com/ipfs/go-peertaskqueue v0.1.2-0.20190930153442-b012c91d0a09
+// replace github.com/ipfs/go-peertaskqueue => github.com/ipfs/go-peertaskqueue v0.1.2-0.20190930153442-b012c91d0a09
 
 // replace github.com/ipfs/go-peertaskqueue => /Users/dirk/go/src/github.com/ipfs/go-peertaskqueue
 
