@@ -17,7 +17,7 @@ require (
 	github.com/hako/durafmt v0.0.0-20190612201238-650ed9f29a84
 	github.com/hashicorp/go-cleanhttp v0.5.0
 	github.com/hashicorp/go-retryablehttp v0.5.4
-	github.com/ipfs/go-bitswap v0.1.9-0.20191101184305-e398b83bfcd8
+	github.com/ipfs/go-bitswap v0.1.9-0.20191104184432-821b6bde8450
 	github.com/ipfs/go-blockservice v0.1.0
 	github.com/ipfs/go-cid v0.0.3
 	github.com/ipfs/go-datastore v0.1.1
@@ -26,7 +26,6 @@ require (
 	github.com/ipfs/go-ipfs-blockstore v0.1.0
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-files v0.0.3
-	github.com/ipfs/go-ipfs-pq v0.0.1 // indirect
 	github.com/ipfs/go-ipfs-provider v0.2.1
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipfs-util v0.0.1
@@ -76,12 +75,8 @@ replace github.com/ipfs/go-merkledag => github.com/hinshun/go-merkledag v0.1.1-0
 
 replace github.com/ipfs/go-blockservice => github.com/hinshun/go-blockservice v0.1.3-0.20190906224057-ac48d5e10ef6
 
-// replace github.com/ipfs/go-peertaskqueue => github.com/ipfs/go-peertaskqueue v0.1.2-0.20190930153442-b012c91d0a09
+// replace github.com/ipfs/go-peertaskqueue => /Users/dirk/go/src/github.com/ipfs/go-peertaskqueue
 
-replace github.com/ipfs/go-peertaskqueue => /Users/dirk/go/src/github.com/ipfs/go-peertaskqueue
+// replace github.com/ipfs/go-bitswap => /Users/dirk/go/src/github.com/ipfs/go-bitswap
 
-replace github.com/ipfs/go-bitswap => /Users/dirk/go/src/github.com/ipfs/go-bitswap
-
-replace github.com/ipfs/go-ipfs-pq => /Users/dirk/go/src/github.com/ipfs/go-ipfs-pq
-
-// replace github.com/ipfs/go-ipfs-pq => github.com/ipfs/go-ipfs-pq v0.0.0-20191101181110-8122fa6a9529
+// replace github.com/ipfs/go-ipfs-pq => /Users/dirk/go/src/github.com/ipfs/go-ipfs-pq
