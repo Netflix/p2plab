@@ -26,6 +26,7 @@ require (
 	github.com/ipfs/go-ipfs-blockstore v0.1.0
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-files v0.0.3
+	github.com/ipfs/go-ipfs-pq v0.0.1 // indirect
 	github.com/ipfs/go-ipfs-provider v0.2.1
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipfs-util v0.0.1
@@ -80,3 +81,7 @@ replace github.com/ipfs/go-blockservice => github.com/hinshun/go-blockservice v0
 // replace github.com/ipfs/go-bitswap => /Users/dirk/go/src/github.com/ipfs/go-bitswap
 
 // replace github.com/ipfs/go-ipfs-pq => /Users/dirk/go/src/github.com/ipfs/go-ipfs-pq
+
+replace github.com/ipfs/go-ipfs-pq => github.com/ipfs/go-ipfs-pq v0.0.0-20191101181110-8122fa6a9529
+
+replace github.com/ipfs/go-peertaskqueue => github.com/ipfs/go-peertaskqueue v0.1.2-0.20191101184001-142b9715f2d2
