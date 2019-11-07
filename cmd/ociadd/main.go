@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -25,8 +26,18 @@ import (
 	"github.com/Netflix/p2plab/peer"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/transformers/oci"
+	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
+	ipld "github.com/ipld/go-ipld-prime"
+	dagpb "github.com/ipld/go-ipld-prime-proto"
+	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/ipld/go-ipld-prime/traversal"
+	"github.com/ipld/go-ipld-prime/traversal/selector"
+	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	_ "github.com/ipld/go-ipld-prime-proto"
 )
 
 func init() {
@@ -54,6 +65,8 @@ func run(ref string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	ctx = log.Logger.WithContext(ctx)
+
 	root := "./tmp/ociadd"
 	err := os.MkdirAll(root, 0711)
 	if err != nil {
@@ -61,7 +74,7 @@ func run(ref string) error {
 	}
 
 	p, err := peer.New(ctx, filepath.Join(root, "peer"), 0, metadata.PeerDefinition{
-		Transports:         []string{"quic"},
+		Transports:         []string{"tcp"},
 		Muxers:             []string{"mplex"},
 		SecurityTransports: []string{"secio"},
 		Routing:            "nil",
@@ -85,11 +98,67 @@ func run(ref string) error {
 	if err != nil {
 		return err
 	}
+
+	// f, err := os.Open(ref)
+	// if err != nil {
+	// 	return err
+	// }
+	// defer f.Close()
+
+	// lnk, err := p.AddPrime(ctx, f)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// asCidLink, ok := lnk.(cidlink.Link)
+	// if !ok {
+	// 	return errors.New("unsupported link type")
+	// }
+	// c := asCidLink.Cid
+
 	log.Info().Str("ref", ref).Str("cid", c.String()).Msg("Converted OCI image to IPLD DAG")
 
 	log.Info().Msgf("Retrieve manifest from another p2plab/peer by running:\n\ngo run ./cmd/ociget %s/p2p/%s %s\n", p.Host().Addrs()[0], p.Host().ID(), c)
 
-	log.Info().Msgf("Connect to this peer from IPFS daemon:\n\nipfs swarm connect %s/p2p/%s\nipfs cat %s\n", p.Host().Addrs()[0], p.Host().ID(), c)
+	log.Info().Msgf("Connect to this peer from IPFS daemon:\n\nipfs swarm connect %s/p2p/%s\nipfs pin add %s\n", p.Host().Addrs()[0], p.Host().ID(), c)
+
+	loader := gsstoreutil.LoaderForBlockstore(p.Blockstore())
+	nd, err := cidlink.Link{c}.Load(ctx, ipld.LinkContext{}, dagpb.PBNode__NodeBuilder(), loader)
+	if err != nil {
+		return err
+	}
+
+	ssb := builder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
+	ss := ssb.ExploreRecursive(selector.RecursionLimitNone(),
+		ssb.ExploreAll(ssb.ExploreRecursiveEdge()))
+
+	s, err := ss.Selector()
+	if err != nil {
+		return err
+	}
+
+	var defaultChooser traversal.NodeBuilderChooser = dagpb.AddDagPBSupportToChooser(func(ipld.Link, ipld.LinkContext) ipld.NodeBuilder {
+		return ipldfree.NodeBuilder()
+	})
+
+	log.Info().Msg("Traversing")
+	var order int
+	err = traversal.Progress{
+		Cfg: &traversal.Config{
+			LinkLoader: func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
+				// log.Info().Str("link", lnk.String()).Msg("Link loader")
+				return loader(lnk, lnkCtx)
+			},
+			LinkNodeBuilderChooser: defaultChooser,
+		},
+	}.WalkMatching(nd, s, func(prog traversal.Progress, n ipld.Node) error {
+		// log.Info().Str("path", prog.Path.String()).Msg("Walk matching nodes")
+		order++
+		return nil
+	})
+	if err != nil {
+		return err
+	}
 
 	fmt.Print("Press 'Enter' to terminate peer...")
 	_, err = bufio.NewReader(os.Stdin).ReadBytes('\n')

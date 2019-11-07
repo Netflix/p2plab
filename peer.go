@@ -20,8 +20,11 @@ import (
 
 	"github.com/Netflix/p2plab/metadata"
 	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-graphsync/ipldbridge"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	files "github.com/ipfs/go-ipfs-files"
-	ipld "github.com/ipfs/go-ipld-format"
+	format "github.com/ipfs/go-ipld-format"
+	ipld "github.com/ipld/go-ipld-prime"
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
@@ -29,19 +32,31 @@ import (
 type Peer interface {
 	Host() host.Host
 
-	DAGService() ipld.DAGService
+	DAGService() format.DAGService
 
 	Connect(ctx context.Context, infos []peer.AddrInfo) error
 
 	Disconnect(ctx context.Context, infos []peer.AddrInfo) error
 
-	Add(ctx context.Context, r io.Reader, opts ...AddOption) (ipld.Node, error)
+	Add(ctx context.Context, r io.Reader, opts ...AddOption) (format.Node, error)
 
 	Get(ctx context.Context, c cid.Cid) (files.Node, error)
 
 	FetchGraph(ctx context.Context, c cid.Cid) error
 
 	Report(ctx context.Context) (metadata.ReportNode, error)
+
+	// GraphSync
+
+	Blockstore() blockstore.Blockstore
+
+	IPLDStorer() ipldbridge.Storer
+
+	IPLDBridge() ipldbridge.IPLDBridge
+
+	AddPrime(ctx context.Context, r io.Reader, opts ...AddOption) (ipld.Link, error)
+
+	GraphSync(ctx context.Context, c cid.Cid, targetPeer peer.ID) error
 }
 
 type AddOption func(*AddSettings) error

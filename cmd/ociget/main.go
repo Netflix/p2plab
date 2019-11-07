@@ -20,16 +20,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/peer"
+	"github.com/hako/durafmt"
 	cid "github.com/ipfs/go-cid"
-	files "github.com/ipfs/go-ipfs-files"
 	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
 	multiaddr "github.com/multiformats/go-multiaddr"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	_ "github.com/ipld/go-ipld-prime/encoding/dagcbor"
+	_ "github.com/ipld/go-ipld-prime-proto"
 )
 
 func init() {
@@ -100,24 +103,32 @@ func run(addr, ref string) error {
 		return err
 	}
 
-	nd, err := p.Get(ctx, c)
+	start := time.Now()
+	err = p.GraphSync(ctx, c, targetInfo.ID)
 	if err != nil {
 		return err
 	}
+	elapsed := time.Now().Sub(start)
+	log.Info().Str("duration", durafmt.Parse(elapsed).String()).Msg("Successfully fetched graph via graphsync")
 
-	f, ok := nd.(files.Directory)
-	if !ok {
-		return errors.Errorf("expected %q to be a directory", c)
-	}
+	// nd, err := p.Get(ctx, c)
+	// if err != nil {
+	// 	return err
+	// }
 
-	iter := f.Entries()
-	for iter.Next() {
-		log.Info().Str("name", iter.Name()).Msg("Found file in unixfs directory")
-	}
+	// f, ok := nd.(files.Directory)
+	// if !ok {
+	// 	return errors.Errorf("expected %q to be a directory", c)
+	// }
 
-	if iter.Err() != nil {
-		return err
-	}
+	// iter := f.Entries()
+	// for iter.Next() {
+	// 	log.Info().Str("name", iter.Name()).Msg("Found file in unixfs directory")
+	// }
+
+	// if iter.Err() != nil {
+	// 	return err
+	// }
 
 	fmt.Print("Press 'Enter' to terminate peer...")
 	_, err = bufio.NewReader(os.Stdin).ReadBytes('\n')

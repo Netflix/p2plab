@@ -322,11 +322,13 @@ func ConstructDAGFromManifest(ctx context.Context, p p2plab.Peer, image ocispec.
 	descs = append(descs, manifest.Layers...)
 
 	for _, desc := range descs {
+		zerolog.Ctx(ctx).Info().Str("desc", desc.Digest.String()).Msg("Converting digest")
 		c, err := digestconv.DigestToCid(desc.Digest)
 		if err != nil {
 			return nil, err
 		}
 
+		zerolog.Ctx(ctx).Info().Str("cid", c.String()).Msg("Getting ipld node")
 		nd, err := dserv.Get(ctx, c)
 		if err != nil {
 			return nil, err

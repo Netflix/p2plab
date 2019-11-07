@@ -24,6 +24,7 @@ import (
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/dag"
+	"github.com/Netflix/p2plab/errdefs"
 	"github.com/Netflix/p2plab/metadata"
 	bitswap "github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
@@ -31,6 +32,10 @@ import (
 	cid "github.com/ipfs/go-cid"
 	datastore "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
+	graphsync "github.com/ipfs/go-graphsync"
+	"github.com/ipfs/go-graphsync/ipldbridge"
+	gsnet "github.com/ipfs/go-graphsync/network"
+	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	chunker "github.com/ipfs/go-ipfs-chunker"
 	files "github.com/ipfs/go-ipfs-files"
@@ -38,16 +43,22 @@ import (
 	"github.com/ipfs/go-ipfs-provider/queue"
 	"github.com/ipfs/go-ipfs-provider/simple"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	ipld "github.com/ipfs/go-ipld-format"
+	format "github.com/ipfs/go-ipld-format"
 	merkledag "github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/ipfs/go-unixfs/importer/balanced"
 	"github.com/ipfs/go-unixfs/importer/helpers"
 	"github.com/ipfs/go-unixfs/importer/trickle"
+	ipld "github.com/ipld/go-ipld-prime"
+	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/ipld/go-ipld-prime/traversal/selector"
+	selectorbuilder "github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	host "github.com/libp2p/go-libp2p-core/host"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
+	peer "github.com/libp2p/go-libp2p-peer"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	filter "github.com/libp2p/go-maddr-filter"
 	multiaddr "github.com/multiformats/go-multiaddr"
@@ -58,9 +69,9 @@ import (
 )
 
 func init() {
-	ipld.Register(cid.DagProtobuf, merkledag.DecodeProtobufBlock)
-	ipld.Register(cid.Raw, merkledag.DecodeRawBlock)
-	ipld.Register(cid.DagCBOR, cbor.DecodeBlock) // need to decode CBOR
+	format.Register(cid.DagProtobuf, merkledag.DecodeProtobufBlock)
+	format.Register(cid.Raw, merkledag.DecodeRawBlock)
+	format.Register(cid.DagCBOR, cbor.DecodeBlock) // need to decode CBOR
 }
 
 var (
@@ -69,7 +80,7 @@ var (
 
 type Peer struct {
 	host     host.Host
-	dserv    ipld.DAGService
+	dserv    format.DAGService
 	system   provider.System
 	r        routing.ContentRouting
 	bswap    *bitswap.Bitswap
@@ -78,6 +89,12 @@ type Peer struct {
 	ds       datastore.Batching
 	swarm    *swarm.Swarm
 	reporter metrics.Reporter
+
+	// GraphSync
+	ssb    selectorbuilder.SelectorSpecBuilder
+	gsync  *graphsync.GraphSync
+	storer ipldbridge.Storer
+	bridge ipldbridge.IPLDBridge
 }
 
 func New(ctx context.Context, root string, port int, pdef metadata.PeerDefinition) (*Peer, error) {
@@ -111,6 +128,12 @@ func New(ctx context.Context, root string, port int, pdef metadata.PeerDefinitio
 	}
 
 	bserv := blockservice.New(bs, rem)
+
+	graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
+	bridge := dag.NewIPLDBridge()
+	loader := gsstoreutil.LoaderForBlockstore(bs)
+	storer := StorerForBlockstore(ctx, bs)
+	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
 
 	system, err := NewProviderSystem(ctx, ds, bs, r)
 	if err != nil {
@@ -147,14 +170,38 @@ func New(ctx context.Context, root string, port int, pdef metadata.PeerDefinitio
 		ds:       ds,
 		swarm:    swarm,
 		reporter: reporter,
+		ssb:      selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder()),
+		gsync:    gsync,
+		storer:   storer,
+		bridge:   bridge,
 	}, nil
+}
+
+func StorerForBlockstore(ctx context.Context, bs blockstore.Blockstore) ipld.Storer {
+	storer := gsstoreutil.StorerForBlockstore(bs)
+	return func(lnkCtx ipld.LinkContext) (io.Writer, ipld.StoreCommitter, error) {
+		w, committer, err := storer(lnkCtx)
+		if err != nil {
+			return w, committer, err
+		}
+
+		newCommitter := func(lnk ipld.Link) error {
+			// asCidLink, ok := lnk.(cidlink.Link)
+			// if !ok {
+			// 	return fmt.Errorf("Unsupported Link Type")
+			// }
+			// fmt.Printf("Writing block %q\n", asCidLink.Cid)
+			return committer(lnk)
+		}
+		return w, newCommitter, err
+	}
 }
 
 func (p *Peer) Host() host.Host {
 	return p.host
 }
 
-func (p *Peer) DAGService() ipld.DAGService {
+func (p *Peer) DAGService() format.DAGService {
 	return p.dserv
 }
 
@@ -207,7 +254,7 @@ func (p *Peer) Disconnect(ctx context.Context, infos []libp2ppeer.AddrInfo) erro
 	return g.Wait()
 }
 
-func (p *Peer) Add(ctx context.Context, r io.Reader, opts ...p2plab.AddOption) (ipld.Node, error) {
+func (p *Peer) Add(ctx context.Context, r io.Reader, opts ...p2plab.AddOption) (format.Node, error) {
 	settings := p2plab.AddSettings{
 		Layout:    "balanced",
 		Chunker:   "size-262144",
@@ -231,7 +278,7 @@ func (p *Peer) Add(ctx context.Context, r io.Reader, opts ...p2plab.AddOption) (
 
 	hashFuncCode, ok := multihash.Names[strings.ToLower(settings.HashFunc)]
 	if !ok {
-		return nil, errors.Wrapf(err, "unrecognized hash function %q", settings.HashFunc)
+		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "unrecognized hash function %q", settings.HashFunc)
 	}
 	prefix.MhType = hashFuncCode
 
@@ -253,7 +300,7 @@ func (p *Peer) Add(ctx context.Context, r io.Reader, opts ...p2plab.AddOption) (
 		return nil, errors.Wrap(err, "failed to create dag builder")
 	}
 
-	var nd ipld.Node
+	var nd format.Node
 	switch settings.Layout {
 	case "trickle":
 		nd, err = trickle.Layout(dbh)
@@ -266,9 +313,66 @@ func (p *Peer) Add(ctx context.Context, r io.Reader, opts ...p2plab.AddOption) (
 	return nd, err
 }
 
+func (p *Peer) AddPrime(ctx context.Context, r io.Reader, opts ...p2plab.AddOption) (ipld.Link, error) {
+	settings := p2plab.AddSettings{
+		Layout:    "balanced",
+		Chunker:   "size-262144",
+		RawLeaves: false,
+		Hidden:    false,
+		NoCopy:    false,
+		HashFunc:  "sha2-256",
+		MaxLinks:  helpers.DefaultLinksPerBlock,
+	}
+	for _, opt := range opts {
+		err := opt(&settings)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	hashFuncCode, ok := multihash.Names[strings.ToLower(settings.HashFunc)]
+	if !ok {
+		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "unrecognized hash function %q", settings.HashFunc)
+	}
+
+	splitter, err := chunker.FromString(r, settings.Chunker)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create chunker")
+	}
+
+	nb := ipldfree.NodeBuilder()
+	lb := cidlink.LinkBuilder{Prefix: cid.NewPrefixV1(cid.DagCBOR, hashFuncCode)}
+	builder := dag.NewBuilder(nb, lb, p.storer)
+	return builder.Build(ctx, splitter)
+}
+
 func (p *Peer) FetchGraph(ctx context.Context, c cid.Cid) error {
 	ng := merkledag.NewSession(ctx, p.dserv)
 	return dag.Walk(ctx, c, ng)
+}
+
+func (p *Peer) Blockstore() blockstore.Blockstore {
+	return p.bs
+}
+
+func (p *Peer) IPLDStorer() ipldbridge.Storer {
+	return p.storer
+}
+
+func (p *Peer) IPLDBridge() ipldbridge.IPLDBridge {
+	return p.bridge
+}
+
+func (p *Peer) GraphSync(ctx context.Context, c cid.Cid, targetPeer peer.ID) error {
+	s := p.ssb.ExploreRecursive(selector.RecursionLimitNone(),
+		p.ssb.ExploreAll(p.ssb.ExploreRecursiveEdge())).Node()
+
+	_, errChan := p.gsync.Request(ctx, targetPeer, cidlink.Link{Cid: c}, s)
+	for err := range errChan {
+		return err
+	}
+
+	return nil
 }
 
 func (p *Peer) Get(ctx context.Context, c cid.Cid) (files.Node, error) {

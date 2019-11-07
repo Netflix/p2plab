@@ -46,7 +46,7 @@ func (p *provider) ReaderAt(ctx context.Context, desc ocispec.Descriptor) (conte
 
 	nd, err := p.peer.Get(ctx, c)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get file %q", c)
+		return nil, errors.Wrapf(err, "failed to get file from peer %q", c)
 	}
 
 	r := files.ToFile(nd)
