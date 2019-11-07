@@ -116,12 +116,13 @@ func (t *transformer) Transform(ctx context.Context, p p2plab.Peer, source strin
 		}
 	}
 
-	zerolog.Ctx(ctx).Info().Str("target", target.Digest.String()).Msg("Constructing Unixfs directory over manifest blobs")
+	zerolog.Ctx(ctx).Info().Str("target", target.Digest.String()).Msg("Building Unixfs directory over OCI blobs")
 	nd, err := ConstructDAGFromManifest(ctx, p, target, opts...)
 	if err != nil {
 		return cid.Undef, err
 	}
 
+	zerolog.Ctx(ctx).Info().Str("ref", name).Str("cid", nd.Cid().String()).Msg("Transformed OCI image")
 	return nd.Cid(), nil
 }
 
@@ -322,13 +323,12 @@ func ConstructDAGFromManifest(ctx context.Context, p p2plab.Peer, image ocispec.
 	descs = append(descs, manifest.Layers...)
 
 	for _, desc := range descs {
-		zerolog.Ctx(ctx).Info().Str("desc", desc.Digest.String()).Msg("Converting digest")
+		zerolog.Ctx(ctx).Info().Str("digest", desc.Digest.String()).Msg("Adding OCI layer as Unixfs file")
 		c, err := digestconv.DigestToCid(desc.Digest)
 		if err != nil {
 			return nil, err
 		}
 
-		zerolog.Ctx(ctx).Info().Str("cid", c.String()).Msg("Getting ipld node")
 		nd, err := dserv.Get(ctx, c)
 		if err != nil {
 			return nil, err

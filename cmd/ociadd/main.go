@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -141,14 +140,10 @@ func run(ref string) error {
 		return ipldfree.NodeBuilder()
 	})
 
-	log.Info().Msg("Traversing")
 	var order int
 	err = traversal.Progress{
 		Cfg: &traversal.Config{
-			LinkLoader: func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
-				// log.Info().Str("link", lnk.String()).Msg("Link loader")
-				return loader(lnk, lnkCtx)
-			},
+			LinkLoader:             loader,
 			LinkNodeBuilderChooser: defaultChooser,
 		},
 	}.WalkMatching(nd, s, func(prog traversal.Progress, n ipld.Node) error {
