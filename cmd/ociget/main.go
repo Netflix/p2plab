@@ -45,7 +45,7 @@ func init() {
 
 func main() {
 	if len(os.Args) != 3 {
-		fmt.Fprintf(os.Stderr, "ociget: must specify peer addr and cid")
+		fmt.Fprintf(os.Stderr, "ociget: must specify peer addr and cid\n")
 		os.Exit(1)
 	}
 

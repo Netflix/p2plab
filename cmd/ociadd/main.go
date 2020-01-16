@@ -50,7 +50,7 @@ func init() {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintf(os.Stderr, "ociadd: must specify ref")
+		fmt.Fprintf(os.Stderr, "ociadd: must specify ref\n")
 		os.Exit(1)
 	}
 
