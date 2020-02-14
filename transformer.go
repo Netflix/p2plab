@@ -20,8 +20,12 @@ import (
 	cid "github.com/ipfs/go-cid"
 )
 
+// Transformer defines a way to convert an external resource into IPFS DAGs.
 type Transformer interface {
+	// Transform adds a resource defined by source into an IPFS DAG stored in
+	// peer.
 	Transform(ctx context.Context, peer Peer, source string, opts ...AddOption) (cid.Cid, error)
 
+	// Close releases any resources held by the Transformer.
 	Close() error
 }

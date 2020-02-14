@@ -20,6 +20,8 @@ import (
 	"github.com/Netflix/p2plab/metadata"
 )
 
+// ExperimentAPI is an unimplemented layer to run experiments, a collection
+// of benchmarks while varying some aspect.
 type ExperimentAPI interface {
 	Create(ctx context.Context, id string, edef metadata.ExperimentDefinition) (Experiment, error)
 

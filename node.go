@@ -41,12 +41,16 @@ type Node interface {
 	Metadata() metadata.Node
 }
 
+// NodeProvider is a service that can provision nodes.
 type NodeProvider interface {
+	// CreateNodeGroup returns a healthy cluster of nodes.
 	CreateNodeGroup(ctx context.Context, id string, cdef metadata.ClusterDefinition) (*NodeGroup, error)
 
+	// DestroyNodeGroup destroys a cluster of nodes.
 	DestroyNodeGroup(ctx context.Context, ng *NodeGroup) error
 }
 
+// NodeGroup is a cluster of nodes.
 type NodeGroup struct {
 	ID    string
 	Nodes []metadata.Node

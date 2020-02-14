@@ -28,6 +28,7 @@ type ScenarioAPI interface {
 	// Get returns a scenario.
 	Get(ctx context.Context, name string) (Scenario, error)
 
+	// Label adds and removes labels from nodes identified by the list of names.
 	Label(ctx context.Context, names, adds, removes []string) ([]Scenario, error)
 
 	// List returns available scenarios.

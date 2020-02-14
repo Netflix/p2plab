@@ -16,21 +16,31 @@ package p2plab
 
 import "context"
 
+// Labeled defines a resource that has labels.
 type Labeled interface {
+	// ID returns a uniquely identifiable string.
 	ID() string
 
+	// Labels returns a unique list of labels.
 	Labels() []string
 }
 
+// LabeledSet is a set of labeled resources, duplicate resources are detected
+// by the ID of the labeled resource.
 type LabeledSet interface {
+	// Add adds a labeled resource to the set.
 	Add(labeled Labeled)
 
+	// Remove removes a labeled resource from the set.
 	Remove(id string)
 
+	// Get returns a labeled resource from the set.
 	Get(id string) Labeled
 
+	// Contains returns whether a labeled resource with the id exists in the set.
 	Contains(id string) bool
 
+	// Slice returns the labeled resources as a slice.
 	Slice() []Labeled
 }
 
@@ -38,7 +48,9 @@ type LabeledSet interface {
 // Queries are used to group nodes to perform actions in either the seeding or
 // benchmarking stage of a scenario.
 type Query interface {
+	// String returns the original query.
 	String() string
 
+	// Match returns the subset of lset that matches the query.
 	Match(ctx context.Context, lset LabeledSet) (LabeledSet, error)
 }
