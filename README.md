@@ -28,7 +28,7 @@ labd
 In a new terminal, compile `labctl`, the CLI to manage the infrastructure and run benchmarks:
 ```sh
 export GO111MODULE=on
-go get -u github.com/Netflix/p2plab/cmd/labd
+go get -u github.com/Netflix/p2plab/cmd/labctl
 ```
 
 Now you can create your first local cluster using one of the examples:

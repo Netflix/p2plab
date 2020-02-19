@@ -62,13 +62,11 @@ require (
 	github.com/rs/zerolog v1.14.4-0.20190719171043-b806a5ecbe53
 	github.com/sirupsen/logrus v1.4.0 // indirect
 	github.com/stretchr/testify v1.3.0
-	github.com/uber-go/atomic v1.4.0 // indirect
-	github.com/uber/jaeger-client-go v2.16.0+incompatible
+	github.com/uber/jaeger-client-go v2.22.1+incompatible
 	github.com/uber/jaeger-lib v2.0.0+incompatible // indirect
 	github.com/urfave/cli v1.20.0
 	go.etcd.io/bbolt v1.3.3
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
-	google.golang.org/appengine v1.4.0 // indirect
 	google.golang.org/grpc v1.20.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 )
@@ -76,3 +74,7 @@ require (
 replace github.com/ipfs/go-merkledag => github.com/hinshun/go-merkledag v0.1.1-0.20190906215342-bd347129454f
 
 replace github.com/ipfs/go-blockservice => github.com/hinshun/go-blockservice v0.1.3-0.20190906224057-ac48d5e10ef6
+
+replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
+
+replace github.com/go-critic/go-critic v0.0.0-20181204210945-ee9bf5809ead => github.com/go-critic/go-critic v0.3.5-0.20190526074819-1df300866540
