@@ -154,3 +154,88 @@ Trace:
 ```
 
 Well done! You've ran your first benchmark and transferred a container image over IPFS.
+
+## Live updating the cluster
+
+Now you have a control group, we may want to compare it against a different configuration of IPFS. For example, let's compare the TCP vs QUIC transport of libp2p.
+
+First, let's find out what the default configuration of a node is:
+```sh
+labctl node inspect my-cluster bp3ept7ic6vdctur3dag
+{
+    "ID": "bp3ept7ic6vdctur3dag",
+    "Address": "127.0.0.1",
+    "AgentPort": 42509,
+    "AppPort": 37727,
+    "Peer": {
+        "GitReference": "HEAD",
+        "Transports": [
+            "tcp"
+        ],
+        "Muxers": [
+            "mplex"
+        ],
+        "SecurityTransports": [
+            "secio"
+        ],
+        "Routing": "nil"
+    },
+    "Labels": [
+        "bp3ept7ic6vdctur3dag",
+        "t2.micro",
+        "us-west-2"
+    ],
+    "CreatedAt": "2020-02-14T18:59:44.698063252Z",
+    "UpdatedAt": "2020-02-14T18:59:44.698063252Z"
+}
+```
+
+By default, the libp2p hosts are created with `tcp+secio` and muxed using `mplex`. Since QUIC already has TLS, we want to update `tcp` to `quic` and not use `secio`.
+
+```sh
+labctl node update --transports quic --security-transports "" my-cluster
+```
+
+Now, all our nodes are now using `quic`:
+```sh
+labctl --output json node ls my-cluster | jq '.[].Peer'
+{
+  "GitReference": "HEAD",
+  "Transports": [
+    "quic"
+  ],
+  "Muxers": [
+    "mplex"
+  ],
+  "SecurityTransports": null,
+  "Routing": "nil"
+}
+{
+  "GitReference": "HEAD",
+  "Transports": [
+    "quic"
+  ],
+  "Muxers": [
+    "mplex"
+  ],
+  "SecurityTransports": null,
+  "Routing": "nil"
+}
+{
+  "GitReference": "HEAD",
+  "Transports": [
+    "quic"
+  ],
+  "Muxers": [
+    "mplex"
+  ],
+  "SecurityTransports": null,
+  "Routing": "nil"
+}
+```
+
+And then run our benchmark again to see how it compares to `tcp+secio`:
+
+```sh
+labctl benchmark create my-cluster neighbors
+```
