@@ -24,7 +24,7 @@ import (
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
 	"github.com/Netflix/p2plab/pkg/logutil"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 type api struct {
@@ -43,8 +43,8 @@ func (a *api) url(endpoint string, v ...interface{}) string {
 	return fmt.Sprintf("%s%s", a.addr, fmt.Sprintf(endpoint, v...))
 }
 
-func (a *api) PeerInfo(ctx context.Context) (peerstore.PeerInfo, error) {
-	var peerInfo peerstore.PeerInfo
+func (a *api) PeerInfo(ctx context.Context) (peer.AddrInfo, error) {
+	var peerInfo peer.AddrInfo
 
 	req := a.client.NewRequest("GET", a.url("/peerInfo"))
 	resp, err := req.Send(ctx)

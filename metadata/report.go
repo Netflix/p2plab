@@ -21,7 +21,6 @@ import (
 
 	"github.com/Netflix/p2plab/errdefs"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
-	peer "github.com/libp2p/go-libp2p-peer"
 	protocol "github.com/libp2p/go-libp2p-protocol"
 	"github.com/pkg/errors"
 	bolt "go.etcd.io/bbolt"
@@ -69,7 +68,7 @@ type ReportBandwidth struct {
 	Totals metrics.Stats
 
 	// TODO: Convert back to map[node id].
-	Peers map[peer.ID]metrics.Stats
+	Peers map[string]metrics.Stats
 
 	Protocols map[protocol.ID]metrics.Stats
 }
