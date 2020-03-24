@@ -153,51 +153,52 @@ func (b *builder) Build(ctx context.Context, commit string) (link string, err er
 func (b *builder) buildCommit(ctx context.Context, commit string) (f *os.File, dir string, err error) {
 	dir, err = ioutil.TempDir(b.root, commit)
 	if err != nil {
-		return nil, dir, err
+		return nil, dir, errors.Wrap(err, "failed to create tmp dir")
 	}
 
 	err = b.git(ctx, b.bareRepoPath, "fetch", "--force", "origin")
 	if err != nil {
-		return nil, dir, err
+		return nil, dir, errors.Wrap(err, "failed to fetch origin")
 	}
 
 	shallowRepoPath := filepath.Join(dir, "p2plab")
 	err = os.MkdirAll(shallowRepoPath, 0711)
 	if err != nil {
-		return nil, dir, err
+		return nil, dir, errors.Wrap(err, "failed to create shallow repo directory")
 	}
+	zerolog.Ctx(ctx).Debug().Str("shallow", shallowRepoPath).Msg("Created shallow repository for building peer harness")
 
 	err = b.git(ctx, shallowRepoPath, "init")
 	if err != nil {
-		return nil, dir, err
+		return nil, dir, errors.Wrap(err, "failed to init git repo")
 	}
 
 	// Set origin of shallow repo to be the bare repo on disk.
 	err = b.git(ctx, shallowRepoPath, "remote", "add", "origin", b.bareRepoPath)
 	if err != nil {
-		return nil, dir, err
+		return nil, dir, errors.Wrap(err, "failed to set origin of shallow repo")
 	}
 
 	// Retrieve commit metadata from bare repo.
 	err = b.git(ctx, shallowRepoPath, "fetch", "--depth", "1", "origin", commit)
 	if err != nil {
-		return nil, dir, err
+		return nil, dir, errors.Wrap(err, "failed to retrieve commit metadata")
 	}
 
 	// Check out commit into shallow repo working directory.
 	err = b.git(ctx, shallowRepoPath, "reset", "--hard", commit)
 	if err != nil {
-		return nil, dir, err
+		return nil, dir, errors.Wrap(err, "failed to check out commit")
 	}
 
 	err = b.goBuild(ctx, shallowRepoPath, "-o", "build", "./cmd/labapp")
 	if err != nil {
-		return nil, dir, err
+		return nil, dir, errors.Wrap(err, "failed to build labapp")
 	}
 
 	f, err = os.Open(filepath.Join(shallowRepoPath, "build"))
 	if err != nil {
-		return nil, dir, err
+		return nil, dir, errors.Wrap(err, "failed to open built binary")
 	}
 
 	return f, dir, nil
