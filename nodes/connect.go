@@ -25,11 +25,10 @@ import (
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/logutil"
 	"github.com/Netflix/p2plab/pkg/traceutil"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
-	peer "github.com/libp2p/go-libp2p-peer"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
 )
 
 func Connect(ctx context.Context, ns []p2plab.Node) error {
@@ -43,7 +42,7 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 	go logutil.Elapsed(gctx, 20*time.Second, "Retrieving peer infos")
 
 	var lk sync.Mutex
-	peerInfoByNodeID := make(map[string]peerstore.PeerInfo)
+	peerInfoByNodeID := make(map[string]peer.AddrInfo)
 	for _, n := range ns {
 		n := n
 		collectPeerAddrs.Go(func() error {

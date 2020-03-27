@@ -286,6 +286,12 @@ func (p *Peer) Report(ctx context.Context) (metadata.ReportNode, error) {
 		return metadata.ReportNode{}, err
 	}
 
+	peers := make(map[string]metrics.Stats)
+	peersByID := p.reporter.GetBandwidthByPeer()
+	for id, stats := range peersByID {
+		peers[id.Pretty()] = stats
+	}
+
 	return metadata.ReportNode{
 		metadata.ReportBitswap{
 			BlocksReceived:   stat.BlocksReceived,
@@ -298,7 +304,7 @@ func (p *Peer) Report(ctx context.Context) (metadata.ReportNode, error) {
 		},
 		metadata.ReportBandwidth{
 			Totals:    p.reporter.GetBandwidthTotals(),
-			Peers:     p.reporter.GetBandwidthByPeer(),
+			Peers:     peers,
 			Protocols: p.reporter.GetBandwidthByProtocol(),
 		},
 	}, nil
