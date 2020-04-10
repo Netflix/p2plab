@@ -15,6 +15,7 @@
 package labd
 
 import (
+	"github.com/Netflix/p2plab/downloaders"
 	"github.com/Netflix/p2plab/providers"
 	"github.com/Netflix/p2plab/uploaders"
 )
@@ -22,11 +23,12 @@ import (
 type LabdOption func(*LabdSettings) error
 
 type LabdSettings struct {
-	Libp2pPort    int
-	Provider         string
-	ProviderSettings providers.ProviderSettings
-	Uploader         string
-	UploaderSettings uploaders.UploaderSettings
+	Libp2pPort         int
+	Provider           string
+	ProviderSettings   providers.ProviderSettings
+	Uploader           string
+	UploaderSettings   uploaders.UploaderSettings
+	DownloaderSettings downloaders.DownloaderSettings
 }
 
 func WithLibp2pPort(port int) LabdOption {
@@ -60,6 +62,13 @@ func WithUploader(uploader string) LabdOption {
 func WithUploaderSettings(settings uploaders.UploaderSettings) LabdOption {
 	return func(s *LabdSettings) error {
 		s.UploaderSettings = settings
+		return nil
+	}
+}
+
+func WithDownloaderSettings(settings downloaders.DownloaderSettings) LabdOption {
+	return func(s *LabdSettings) error {
+		s.DownloaderSettings = settings
 		return nil
 	}
 }

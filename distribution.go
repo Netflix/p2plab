@@ -17,6 +17,8 @@ package p2plab
 import (
 	"context"
 	"io"
+
+	"github.com/Netflix/p2plab/metadata"
 )
 
 // Builder compiles the peer to hotswap the underlying implementation on a live
@@ -30,6 +32,29 @@ type Builder interface {
 
 	// Build compiles the peer at the given commit.
 	Build(ctx context.Context, commit string) (link string, err error)
+}
+
+// BuildAPI defines the API for build operations.
+type BuildAPI interface {
+	// Get returns a build.
+	Get(ctx context.Context, id string) (Build, error)
+
+	// List returns available builds.
+	List(ctx context.Context) ([]Build, error)
+
+	// Upload uploads a binary for a build.
+	Upload(ctx context.Context, r io.Reader) (Build, error)
+}
+
+// Build is an compiled peer ready to be deployed.
+type Build interface {
+	// ID returns a uniquely identifiable string.
+	ID() string
+
+	Metadata() metadata.Build
+
+	// Open creates a reader for the build's binary.
+	Open(ctx context.Context) (io.ReadCloser, error)
 }
 
 // Uploader uploads artifacts to an external distribution mechanism.

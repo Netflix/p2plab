@@ -62,3 +62,7 @@ func (a *api) Benchmark() p2plab.BenchmarkAPI {
 func (a *api) Experiment() p2plab.ExperimentAPI {
 	return &experimentAPI{a.client, a.url}
 }
+
+func (a *api) Build() p2plab.BuildAPI {
+	return &buildAPI{a.client, a.url}
+}

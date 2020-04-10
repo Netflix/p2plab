@@ -23,7 +23,9 @@ import (
 	"github.com/Netflix/p2plab/builder"
 	"github.com/Netflix/p2plab/daemon"
 	"github.com/Netflix/p2plab/daemon/healthcheckrouter"
+	"github.com/Netflix/p2plab/downloaders"
 	"github.com/Netflix/p2plab/labd/routers/benchmarkrouter"
+	"github.com/Netflix/p2plab/labd/routers/buildrouter"
 	"github.com/Netflix/p2plab/labd/routers/clusterrouter"
 	"github.com/Netflix/p2plab/labd/routers/experimentrouter"
 	"github.com/Netflix/p2plab/labd/routers/noderouter"
@@ -81,6 +83,9 @@ func New(root, addr string, logger *zerolog.Logger, opts ...LabdOption) (*Labd, 
 	}
 	closers = append(closers, uploader)
 
+	settings.DownloaderSettings.Client = client
+	fs := downloaders.New(filepath.Join(root, "downloaders"), settings.DownloaderSettings)
+
 	builder, err := builder.New(filepath.Join(root, "builder"), db, uploader)
 	if err != nil {
 		return nil, err
@@ -108,6 +113,7 @@ func New(root, addr string, logger *zerolog.Logger, opts ...LabdOption) (*Labd, 
 		scenariorouter.New(db),
 		benchmarkrouter.New(db, client, ts, seeder, builder),
 		experimentrouter.New(db, provider, client, ts, seeder, builder),
+		buildrouter.New(db, uploader, fs),
 	)
 	if err != nil {
 		return nil, err
