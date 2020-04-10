@@ -69,6 +69,8 @@ func (p *tablePrinter) addHeader(table *tablewriter.Table, v interface{}) {
 		table.SetHeader([]string{"ID", "STATUS", "CLUSTER", "SCENARIO", "LABELS", "CREATEDAT", "UPDATEDAT"})
 	case metadata.Experiment:
 		table.SetHeader([]string{"ID", "STATUS", "LABELS", "CREATEDAT", "UPDATEDAT"})
+	case metadata.Build:
+		table.SetHeader([]string{"ID", "LINK", "CREATEDAT", "UPDATEDAT"})
 	}
 }
 
@@ -114,6 +116,13 @@ func (p *tablePrinter) addRow(table *tablewriter.Table, v interface{}) {
 			t.ID,
 			string(t.Status),
 			strings.Join(t.Labels, ","),
+			humanize.Time(t.CreatedAt),
+			humanize.Time(t.UpdatedAt),
+		})
+	case metadata.Build:
+		table.Append([]string{
+			t.ID,
+			string(t.Link),
 			humanize.Time(t.CreatedAt),
 			humanize.Time(t.UpdatedAt),
 		})

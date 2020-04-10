@@ -18,6 +18,8 @@ import (
 	"context"
 	"os"
 
+	"github.com/Netflix/p2plab/downloaders"
+	"github.com/Netflix/p2plab/downloaders/s3downloader"
 	"github.com/Netflix/p2plab/labd"
 	"github.com/Netflix/p2plab/pkg/cliutil"
 	"github.com/Netflix/p2plab/uploaders"
@@ -90,6 +92,11 @@ func App(ctx context.Context) *cli.App {
 			Value:  ":7000",
 			EnvVar: "LABD_UPLOADER_FILE_ADDRESS",
 		},
+		cli.StringFlag{
+			Name:   "downloader.s3.region",
+			Usage:  "region for s3 downloader",
+			EnvVar: "LABD_DOWNLOADER_S3_REGION",
+		},
 	}
 	app.Action = daemonAction
 
@@ -119,6 +126,11 @@ func daemonAction(c *cli.Context) error {
 			},
 			File: fileuploader.FileUploaderSettings{
 				Address: c.GlobalString("uploader.file.address"),
+			},
+		}),
+		labd.WithDownloaderSettings(downloaders.DownloaderSettings{
+			S3: s3downloader.S3DownloaderSettings{
+				Region: c.String("downloader.s3.region"),
 			},
 		}),
 	)

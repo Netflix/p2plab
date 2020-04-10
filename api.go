@@ -37,6 +37,9 @@ type ControlAPI interface {
 
 	// Experiment returns an implementation of Experiment API.
 	Experiment() ExperimentAPI
+
+	// Build returns an implementation of Build API.
+	Build() BuildAPI
 }
 
 type AgentAPI interface {
