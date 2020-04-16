@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"github.com/Netflix/p2plab/metadata"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 // ControlAPI defines APIs for labd.
@@ -37,6 +37,9 @@ type ControlAPI interface {
 
 	// Experiment returns an implementation of Experiment API.
 	Experiment() ExperimentAPI
+
+	// Build returns an implementation of Build API.
+	Build() BuildAPI
 }
 
 type AgentAPI interface {
@@ -49,7 +52,7 @@ type AgentAPI interface {
 }
 
 type AppAPI interface {
-	PeerInfo(ctx context.Context) (peerstore.PeerInfo, error)
+	PeerInfo(ctx context.Context) (peer.AddrInfo, error)
 
 	Report(ctx context.Context) (metadata.ReportNode, error)
 

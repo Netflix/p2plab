@@ -28,7 +28,6 @@ import (
 	"github.com/Netflix/p2plab/pkg/traceutil"
 	cid "github.com/ipfs/go-cid"
 	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	multiaddr "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -53,7 +52,7 @@ func (s *router) Routes() []daemon.Route {
 }
 
 func (s *router) getPeerInfo(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
-	peerInfo := peerstore.PeerInfo{
+	peerInfo := libp2ppeer.AddrInfo{
 		ID:    s.peer.Host().ID(),
 		Addrs: s.peer.Host().Addrs(),
 	}
