@@ -293,7 +293,7 @@ func (p *Peer) Report(ctx context.Context) (metadata.ReportNode, error) {
 	}
 
 	return metadata.ReportNode{
-		metadata.ReportBitswap{
+		Bitswap: metadata.ReportBitswap{
 			BlocksReceived:   stat.BlocksReceived,
 			DataReceived:     stat.DataReceived,
 			BlocksSent:       stat.BlocksSent,
@@ -302,7 +302,7 @@ func (p *Peer) Report(ctx context.Context) (metadata.ReportNode, error) {
 			DupDataReceived:  stat.DupDataReceived,
 			MessagesReceived: stat.MessagesReceived,
 		},
-		metadata.ReportBandwidth{
+		Bandwidth: metadata.ReportBandwidth{
 			Totals:    p.reporter.GetBandwidthTotals(),
 			Peers:     peers,
 			Protocols: p.reporter.GetBandwidthByProtocol(),
