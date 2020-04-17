@@ -36,9 +36,10 @@ func New(ctx context.Context, root, addr string, port int, logger *zerolog.Logge
 	pctx, cancel := context.WithCancel(ctx)
 	p, err := peer.New(pctx, root, port, pdef)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
-	closers = append(closers, &daemon.CancelCloser{cancel})
+	closers = append(closers, &daemon.CancelCloser{Cancel: cancel})
 
 	daemon, err := daemon.New("labapp", addr, logger,
 		approuter.New(p),
