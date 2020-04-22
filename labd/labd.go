@@ -99,9 +99,10 @@ func New(root, addr string, logger *zerolog.Logger, opts ...LabdOption) (*Labd, 
 		Routing:            "nil",
 	})
 	if err != nil {
+		cancel()
 		return nil, errors.Wrap(err, "failed to create seeder peer")
 	}
-	closers = append(closers, &daemon.CancelCloser{cancel})
+	closers = append(closers, &daemon.CancelCloser{Cancel: cancel})
 
 	ts := transformers.New(filepath.Join(root, "transformers"), client.HTTPClient)
 	closers = append(closers, ts)
