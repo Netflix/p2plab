@@ -50,6 +50,8 @@ type ExperimentDefinition struct {
 	ClusterDefinition ClusterDefinition
 
 	ScenarioDefinition ScenarioDefinition
+
+	TrialDefinition TrialDefinition
 }
 
 type IndependentVariable map[string]interface{}
