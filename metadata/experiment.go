@@ -46,12 +46,7 @@ var (
 // ExperimentDefinition defines an experiment.
 type ExperimentDefinition struct {
 	IndependentVariable []IndependentVariable
-	// TODO: remove this
-	ClusterDefinition ClusterDefinition
-	// TODO: remove this
-	ScenarioDefinition ScenarioDefinition
-
-	TrialDefinition []TrialDefinition
+	TrialDefinition     []TrialDefinition
 }
 
 type IndependentVariable map[string]interface{}
@@ -261,7 +256,7 @@ func readExperiment(bkt *bolt.Bucket, experiment *Experiment) error {
 
 func readExperimentDefinition(bkt *bolt.Bucket) (ExperimentDefinition, error) {
 	var edef ExperimentDefinition
-
+	/* TODO: enable in a followup PR
 	dbkt := bkt.Bucket(bucketKeyDefinition)
 	if dbkt == nil {
 		return edef, nil
@@ -270,7 +265,8 @@ func readExperimentDefinition(bkt *bolt.Bucket) (ExperimentDefinition, error) {
 	cbkt := dbkt.Bucket(bucketKeyCluster)
 	if cbkt != nil {
 		var err error
-		edef.ClusterDefinition, err = readClusterDefinition(cbkt)
+		// T
+		// edef.ClusterDefinition, err = readClusterDefinition(cbkt)
 		if err != nil {
 			return edef, nil
 		}
@@ -278,13 +274,13 @@ func readExperimentDefinition(bkt *bolt.Bucket) (ExperimentDefinition, error) {
 
 	sbkt := dbkt.Bucket(bucketKeyScenario)
 	if sbkt != nil {
-		var err error
+		// var err error
 		edef.ScenarioDefinition, err = readScenarioDefinition(sbkt)
 		if err != nil {
 			return edef, nil
 		}
 	}
-
+	*/
 	return edef, nil
 }
 
