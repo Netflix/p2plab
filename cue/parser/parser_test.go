@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"io/ioutil"
 	"testing"
 )
@@ -12,17 +11,23 @@ func TestParser(t *testing.T) {
 		t.Fatal(err)
 	}
 	parser := NewParser([]string{string(data)})
-	data, err = ioutil.ReadFile("../cue.mod/p2plab_example.cue")
-	if err != nil {
-		t.Fatal(err)
+	var sourceFiles = []string{
+		"../cue.mod/p2plab_example1.cue",
+		"../cue.mod/p2plab_example2.cue",
 	}
-	pinst, err := parser.Compile("p2plab_example", string(data))
-	if err != nil {
-		t.Fatal(err)
+	for _, sourceFile := range sourceFiles {
+		data, err = ioutil.ReadFile(sourceFile)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pinst, err := parser.Compile("p2plab_example", string(data))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = pinst.ToExperimentDefinition()
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
-	edef, err := pinst.ToExperimentDefinition()
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(edef)
+
 }
