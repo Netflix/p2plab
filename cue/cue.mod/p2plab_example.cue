@@ -14,12 +14,12 @@ items:: object & {
 
 clust1:: Cluster & {
     groups: [
-            Nodes & {
+            Group & {
                 size: 10
                 instanceType: "t3.micro"
                 region: "us-west-1"
             }, 
-            Nodes & {
+            Group & {
                 size: 2
                 instanceType: "t3.medium"
                 region: "us-east-1"
@@ -45,11 +45,20 @@ scen2:: Scenario & {
         }
         benchmark: {
             "(neighbors)": "golang"
+            "(not neighbors)": "mysql"
         }
 }
 
 experiment: Experiment & {
-    cluster: clust1
-    scenario: scen1
-    trials: [[clust1,scen1],[clust1,scen2]]
+    trials: [
+        Trial & {
+            cluster: clust1
+            scenario: scen1
+        },
+        Trial & {
+            cluster: clust1
+            scenario: scen2
+        }
+    ]
+//    trials: [[clust1,scen1],[clust1,scen2]]
 }

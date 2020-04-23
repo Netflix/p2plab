@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"io/ioutil"
 	"testing"
 )
@@ -19,22 +20,9 @@ func TestParser(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = pinst.ToExperimentDefinition()
+	edef, err := pinst.ToExperimentDefinition()
 	if err != nil {
 		t.Fatal(err)
 	}
-	// manually test pinst functions that arent
-	// used as  part of the ToExperimentDefinition function
-	val := pinst.GetGroups()
-	if val.Err() != nil {
-		t.Fatal(err)
-	}
-	val = pinst.GetScenario()
-	if val.Err() != nil {
-		t.Fatal(err)
-	}
-	val = pinst.GetObjects()
-	if val.Err() != nil {
-		t.Fatal(err)
-	}
+	fmt.Println(edef)
 }

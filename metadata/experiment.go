@@ -46,12 +46,12 @@ var (
 // ExperimentDefinition defines an experiment.
 type ExperimentDefinition struct {
 	IndependentVariable []IndependentVariable
-
+	// TODO: remove this
 	ClusterDefinition ClusterDefinition
-
+	// TODO: remove this
 	ScenarioDefinition ScenarioDefinition
 
-	TrialDefinition TrialDefinition
+	TrialDefinition []TrialDefinition
 }
 
 type IndependentVariable map[string]interface{}
