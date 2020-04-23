@@ -65,7 +65,7 @@ func (p *P2PLabInstance) ToTrialDefinitions() ([]metadata.TrialDefinition, error
 				Objects: objects,
 			},
 		}
-		if err := json.Unmarshal(clusterData, &trial.Cluster); err != nil {
+		if err := json.Unmarshal(clusterData, &trial.Cluster.Groups); err != nil {
 			return nil, err
 		}
 		if err := json.Unmarshal(seedData, &trial.Scenario.Seed); err != nil {
