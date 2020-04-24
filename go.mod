@@ -3,6 +3,7 @@ module github.com/Netflix/p2plab
 go 1.14
 
 require (
+	cuelang.org/go v0.1.2
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Microsoft/go-winio v0.4.13-0.20190408173621-84b4ab48a507 // indirect
 	github.com/Microsoft/hcsshim v0.8.6 // indirect
