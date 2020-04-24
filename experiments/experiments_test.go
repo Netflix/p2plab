@@ -2,7 +2,6 @@ package experiments
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -56,9 +55,7 @@ func TestExperimentDefinition(t *testing.T) {
 			if exp1.Status != exp3.Status {
 				t.Fatal("bad status")
 			}
-			if len(exp1.Definition.TrialDefinition) != len(exp3.Definition.TrialDefinition) {
-				fmt.Println(exp1.Definition.TrialDefinition)
-				fmt.Println(exp3.Definition.TrialDefinition)
+			if !reflect.DeepEqual(exp1.Definition, exp3.Definition) {
 				t.Fatal("bad trial definitions returned")
 			}
 		}
@@ -111,7 +108,15 @@ func TestExperimentDefinition(t *testing.T) {
 		}
 	})
 	t.Run("Delete Experiment", func(t *testing.T) {
-		t.Skip("TODO")
+		if err := db.DeleteExperiment(ctx, ids[0]); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.GetExperiment(ctx, ids[0]); err == nil {
+			t.Fatal("error expected")
+		}
+		if _, err := db.GetExperiment(ctx, ids[1]); err != nil {
+			t.Fatal(err)
+		}
 	})
 }
 
