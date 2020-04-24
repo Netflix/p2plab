@@ -270,12 +270,10 @@ func readExperimentDefinition(bkt *bolt.Bucket, experiment *Experiment) (Experim
 	var edef ExperimentDefinition
 	dbkt := bkt.Bucket(bucketKeyDefinition)
 	if dbkt == nil {
-		// TODO: should we error here
 		return edef, nil
 	}
 	edefData := dbkt.Get([]byte(experiment.ID))
 	if edefData == nil {
-		// TODO: should we error here?
 		return edef, nil
 	}
 	return edef, edef.FromJSON(edefData)

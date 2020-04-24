@@ -4,13 +4,13 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
-	"reflect"
 	"strings"
 	"testing"
 
 	parser "github.com/Netflix/p2plab/cue/parser"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExperimentDefinition(t *testing.T) {
@@ -36,28 +36,16 @@ func TestExperimentDefinition(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if exp1.ID != exp2.ID {
-				t.Fatal("bad id")
-			}
-			if exp1.Status != exp2.Status {
-				t.Fatal("bad status")
-			}
-			if !reflect.DeepEqual(exp1.Definition, exp2.Definition) {
-				t.Fatal("bad definition")
-			}
+			require.Equal(t, exp1.ID, exp2.ID)
+			require.Equal(t, exp1.Status, exp2.Status)
+			require.Equal(t, exp1.Definition, exp2.Definition)
 			exp3, err := db.GetExperiment(ctx, exp1.ID)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if exp1.ID != exp3.ID {
-				t.Fatal("bad id")
-			}
-			if exp1.Status != exp3.Status {
-				t.Fatal("bad status")
-			}
-			if !reflect.DeepEqual(exp1.Definition, exp3.Definition) {
-				t.Fatal("bad trial definitions returned")
-			}
+			require.Equal(t, exp1.ID, exp3.ID)
+			require.Equal(t, exp1.Status, exp3.Status)
+			require.Equal(t, exp1.Definition, exp3.Definition)
 		}
 	})
 	t.Run("List Experiments", func(t *testing.T) {

@@ -141,7 +141,7 @@ type db struct {
 
 func NewDB(root string) (DB, error) {
 	if _, err := os.Stat(root); os.IsNotExist(err) {
-		if err := os.Mkdir(root, os.FileMode(0740)); err != nil {
+		if err := os.Mkdir(root, os.FileMode(0775)); err != nil {
 			return nil, err
 		}
 	} else if err != nil {
