@@ -16,6 +16,7 @@ package metadata
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -139,6 +140,13 @@ type db struct {
 }
 
 func NewDB(root string) (DB, error) {
+	if _, err := os.Stat(root); os.IsNotExist(err) {
+		if err := os.Mkdir(root, os.FileMode(0740)); err != nil {
+			return nil, err
+		}
+	} else if err != nil {
+		return nil, err
+	}
 	path := filepath.Join(root, "meta.db")
 	boltdb, err := bolt.Open(path, 0644, nil)
 	if err != nil {
