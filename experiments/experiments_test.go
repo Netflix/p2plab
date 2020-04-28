@@ -18,9 +18,7 @@ func TestExperimentDefinition(t *testing.T) {
 	defer cancel()
 	db, cleanup := newTestDB(t, "exptestdir")
 	defer func() {
-		if err := cleanup(); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, cleanup())
 	}()
 	var ids []string
 	t.Run("Experiment Creation And Retrieval", func(t *testing.T) {
@@ -33,16 +31,12 @@ func TestExperimentDefinition(t *testing.T) {
 			exp1 := newTestExperiment(t, sourceFile, name[len(name)-1])
 			ids = append(ids, exp1.ID)
 			exp2, err := db.CreateExperiment(ctx, exp1)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			require.Equal(t, exp1.ID, exp2.ID)
 			require.Equal(t, exp1.Status, exp2.Status)
 			require.Equal(t, exp1.Definition, exp2.Definition)
 			exp3, err := db.GetExperiment(ctx, exp1.ID)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			require.Equal(t, exp1.ID, exp3.ID)
 			require.Equal(t, exp1.Status, exp3.Status)
 			require.Equal(t, exp1.Definition, exp3.Definition)
@@ -50,30 +44,22 @@ func TestExperimentDefinition(t *testing.T) {
 	})
 	t.Run("List Experiments", func(t *testing.T) {
 		experiments, err := db.ListExperiments(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		for _, experiment := range experiments {
 			if experiment.ID != ids[0] && experiment.ID != ids[1] {
-				t.Fatal("bad experiment id found")
+				t.Error("bad experiment id found")
 			}
 		}
 	})
 	t.Run("Update Experiments", func(t *testing.T) {
 		for _, id := range ids {
 			exp, err := db.GetExperiment(ctx, id)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			prevUpdateAt := exp.UpdatedAt
 			exp.Labels = append(exp.Labels, "test label")
 			exp, err = db.UpdateExperiment(ctx, exp)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if exp.UpdatedAt.Before(prevUpdateAt) {
-				t.Fatal("bad update at time")
-			}
+			require.NoError(t, err)
+			require.True(t, exp.UpdatedAt.After(prevUpdateAt))
 		}
 	})
 	t.Run("Label Experiments", func(t *testing.T) {
@@ -83,52 +69,34 @@ func TestExperimentDefinition(t *testing.T) {
 			[]string{"should be present"},
 			[]string{"test label"},
 		)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		for _, exp := range exps {
-			if len(exp.Labels) != 1 {
-				t.Fatal("bad number of labels")
-			}
-			if exp.Labels[0] != "should be present" {
-				t.Fatal("bad label found")
-			}
+			require.Len(t, exp.Labels, 1)
+			require.Equal(t, exp.Labels[0], "should be present")
 		}
 	})
 	t.Run("Delete Experiment", func(t *testing.T) {
-		if err := db.DeleteExperiment(ctx, ids[0]); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := db.GetExperiment(ctx, ids[0]); err == nil {
-			t.Fatal("error expected")
-		}
-		if _, err := db.GetExperiment(ctx, ids[1]); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, db.DeleteExperiment(ctx, ids[0]))
+		_, err := db.GetExperiment(ctx, ids[0])
+		require.Error(t, err)
+		_, err = db.GetExperiment(ctx, ids[1])
+		require.NoError(t, err)
 	})
 }
 
 func newTestExperiment(t *testing.T, sourceFile, name string) metadata.Experiment {
 	data, err := ioutil.ReadFile("../cue/cue.mod/p2plab.cue")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	sourceData, err := ioutil.ReadFile(sourceFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	psr := parser.NewParser([]string{string(data)})
 	inst, err := psr.Compile(
 		name,
 		string(sourceData),
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	edef, err := inst.ToExperimentDefinition()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return metadata.Experiment{
 		ID:         uuid.New().String(),
 		Status:     metadata.ExperimentRunning,
@@ -138,9 +106,7 @@ func newTestExperiment(t *testing.T, sourceFile, name string) metadata.Experimen
 
 func newTestDB(t *testing.T, path string) (metadata.DB, func() error) {
 	db, err := metadata.NewDB(path)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cleanup := func() error {
 		if err := db.Close(); err != nil {
 			return err
