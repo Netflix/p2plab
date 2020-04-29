@@ -23,7 +23,7 @@ import (
 // ExperimentAPI is an unimplemented layer to run experiments, a collection
 // of benchmarks while varying some aspect.
 type ExperimentAPI interface {
-	Create(ctx context.Context, id string, edef metadata.ExperimentDefinition) (Experiment, error)
+	Create(ctx context.Context, name string, edef metadata.ExperimentDefinition) (id string, err error)
 
 	Get(ctx context.Context, id string) (Experiment, error)
 

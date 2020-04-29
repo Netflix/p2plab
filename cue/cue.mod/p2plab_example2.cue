@@ -21,12 +21,13 @@ experiment: Experiment & {
 					"neighbors": "image"
 				}
 				benchmark: {
-					"(not neighbors)": "image"
+					"(not 'neighbors')": "image"
 				}
 			}
 		} for o in objects
 	]
 }
+
 objects :: [
 	[{
 		image: {

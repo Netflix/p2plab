@@ -16,6 +16,8 @@ package command
 
 import (
 	"errors"
+	"fmt"
+	"os"
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/experiments"
@@ -33,14 +35,28 @@ var experimentCommand = cli.Command{
 	Subcommands: []cli.Command{
 		{
 			Name:      "create",
-			Aliases:   []string{"s"},
+			Aliases:   []string{"c"},
 			Usage:     "Creates an experiment from a definition file",
 			ArgsUsage: "<filename>",
 			Action:    createExperimentAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{
+					Name:  "output-format",
+					Usage: "one of: json, csv",
+					Value: "csv",
+				},
+				cli.StringFlag{
+					Name:  "output-file",
+					Usage: "file to write data to, only applicable to csv",
+					Value: "reports.csv",
+				},
+				&cli.StringFlag{
 					Name:  "name",
 					Usage: "Name of the experiment, by default takes the name of the experiment definition.",
+				},
+				&cli.BoolFlag{
+					Name:  "dry-run",
+					Usage: "dry run the epxeriment creation, parsing the cue file and printing it to stdout",
 				},
 			},
 		},
@@ -96,7 +112,7 @@ func createExperimentAction(c *cli.Context) error {
 		return errors.New("experiment definition must be provided")
 	}
 
-	p, err := CommandPrinter(c, printer.OutputID)
+	p, err := CommandPrinter(c, printer.OutputJSON)
 	if err != nil {
 		return err
 	}
@@ -112,17 +128,38 @@ func createExperimentAction(c *cli.Context) error {
 		return err
 	}
 
+	if c.Bool("dry-run") {
+		dt, err := edef.ToJSON()
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(dt))
+		return nil
+	}
+
 	control, err := ResolveControl(c)
 	if err != nil {
 		return err
 	}
 
 	ctx := cliutil.CommandContext(c)
-	experiment, err := control.Experiment().Create(ctx, name, edef)
+	id, err := control.Experiment().Create(ctx, name, edef)
 	if err != nil {
 		return err
 	}
 
+	experiment, err := control.Experiment().Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if c.String("output-format") == "csv" {
+		fh, err := os.Create(c.String("output-file"))
+		if err != nil {
+			return err
+		}
+		defer fh.Close()
+		return experiments.ReportToCSV(experiment.Metadata().Reports, fh)
+	}
 	zerolog.Ctx(ctx).Info().Msgf("Completed experiment %q", experiment.Metadata().ID)
 	return p.Print(experiment.Metadata())
 }
