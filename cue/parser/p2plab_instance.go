@@ -20,7 +20,7 @@ func (p *P2PLabInstance) ToExperimentDefinition() (metadata.ExperimentDefinition
 		return metadata.ExperimentDefinition{}, err
 	}
 	return metadata.ExperimentDefinition{
-		TrialDefinition: trials,
+		Trials: trials,
 	}, nil
 }
 

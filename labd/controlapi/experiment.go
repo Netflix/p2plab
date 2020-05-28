@@ -23,6 +23,7 @@ import (
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/Netflix/p2plab/pkg/logutil"
 	"github.com/pkg/errors"
 )
 
@@ -31,29 +32,31 @@ type experimentAPI struct {
 	url    urlFunc
 }
 
-func (a *experimentAPI) Create(ctx context.Context, id string, edef metadata.ExperimentDefinition) (p2plab.Experiment, error) {
-	content, err := json.MarshalIndent(&edef, "", "    ")
+func (a *experimentAPI) Create(ctx context.Context, name string, edef metadata.ExperimentDefinition) (id string, err error) {
+	content, err := edef.ToJSON()
 	if err != nil {
-		return nil, err
+		return id, err
 	}
 
 	req := a.client.NewRequest("POST", a.url("/experiments/create"), httputil.WithRetryMax(0)).
-		Option("id", id).
+		Option("id", name).
 		Body(bytes.NewReader(content))
 
 	resp, err := req.Send(ctx)
 	if err != nil {
-		return nil, err
+		return id, err
 	}
 	defer resp.Body.Close()
 
-	e := experiment{client: a.client}
-	err = json.NewDecoder(resp.Body).Decode(&e.metadata)
-	if err != nil {
-		return nil, err
+	logWriter := logutil.LogWriter(ctx)
+	if logWriter != nil {
+		err = logutil.WriteRemoteLogs(ctx, resp.Body, logWriter)
+		if err != nil {
+			return id, err
+		}
 	}
 
-	return &e, nil
+	return resp.Header.Get(ResourceID), nil
 }
 
 func (a *experimentAPI) Get(ctx context.Context, id string) (p2plab.Experiment, error) {

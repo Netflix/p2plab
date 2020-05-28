@@ -2,12 +2,10 @@ package experiments
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 
-	parser "github.com/Netflix/p2plab/cue/parser"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -85,17 +83,7 @@ func TestExperimentDefinition(t *testing.T) {
 }
 
 func newTestExperiment(t *testing.T, sourceFile, name string) metadata.Experiment {
-	data, err := ioutil.ReadFile("../cue/cue.mod/p2plab.cue")
-	require.NoError(t, err)
-	sourceData, err := ioutil.ReadFile(sourceFile)
-	require.NoError(t, err)
-	psr := parser.NewParser([]string{string(data)})
-	inst, err := psr.Compile(
-		name,
-		string(sourceData),
-	)
-	require.NoError(t, err)
-	edef, err := inst.ToExperimentDefinition()
+	edef, err := Parse(sourceFile)
 	require.NoError(t, err)
 	return metadata.Experiment{
 		ID:         uuid.New().String(),

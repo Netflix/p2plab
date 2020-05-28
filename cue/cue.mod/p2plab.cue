@@ -9,6 +9,17 @@ Group :: {
     region: string
     // labels is an optional field
     labels?: [...string]
+    // although not optional if left unspecified
+    // then we use the default values of Peer
+    peer: Peer | *Peer
+}
+
+Peer :: {
+	gitReference: string | *"HEAD"
+	transports: [...string] | *["tcp"]
+	muxers: [...string] | *["mplex"]
+	securityTransports: [...string] | *["secio"]
+	routing: string | *"nil"
 }
 
 // a cluster is a collection of 1 or more groups of nodes
