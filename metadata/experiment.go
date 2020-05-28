@@ -74,6 +74,17 @@ func (ed *ExperimentDefinition) FromJSON(data []byte) error {
 	return json.Unmarshal(data, ed)
 }
 
+// ToJSON is a helper function to convert an ExperimentDefinition
+// into it's JSON representation
+func (ed *ExperimentDefinition) ToJSON() ([]byte, error) {
+	return json.Marshal(ed)
+}
+
+// FromJSON loads the experiment definition with the values from data
+func (ed *ExperimentDefinition) FromJSON(data []byte) error {
+	return json.Unmarshal(data, ed)
+}
+
 func (m *db) GetExperiment(ctx context.Context, id string) (Experiment, error) {
 	var experiment Experiment
 

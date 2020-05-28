@@ -2,10 +2,11 @@ package experiments
 
 import (
 	"context"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
-
+	parser "github.com/Netflix/p2plab/cue/parser"
 	"github.com/Netflix/p2plab/metadata"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
