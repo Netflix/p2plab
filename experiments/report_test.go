@@ -46,6 +46,6 @@ func TestReportToCSV(t *testing.T) {
 	}
 	fh, err := os.Create(testFile)
 	require.NoError(t, err)
-	defer require.NoError(t, fh.Close())
+	defer fh.Close()
 	require.NoError(t, ReportToCSV(reports, fh))
 }
