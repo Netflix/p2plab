@@ -40,7 +40,19 @@ func Session(ctx context.Context, ns []p2plab.Node, fn func(context.Context) err
 
 	zerolog.Ctx(ctx).Info().Msg("Starting a session for benchmarking")
 	go logutil.Elapsed(gctx, 20*time.Second, "Starting a session for benchmarking")
-	/*var cancels = make([]context.CancelFunc, 0, len(ns))
+	/* 	When running multiple different benchmarks using the same labd host
+	   	the code below introduces a race condition, that will crash all running benchmarks.
+
+		The issue likely happens due to the way context is shared between benchmarks and providers,
+		but given that code below is only useful for data tracing, it has been left disabled.
+
+		If looking into the bug, the following files and their packages may be worth a closer look:
+			* labagent/supervisor/supervisor.go
+			* labagent/agentrouter/router.go
+			* labapp/appapi/appapi.go
+			* labapp/approuter/router.go
+
+	var cancels = make([]context.CancelFunc, 0, len(ns))
 	for _, n := range ns {
 		n := n
 		eg.Go(func() error {

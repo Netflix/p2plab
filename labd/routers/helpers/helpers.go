@@ -13,8 +13,6 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
-// TODO(bonedaddy): not sure if this is the best way to go about sharing code between routers
-
 // Helper abstracts commonly used functions to be shared by any router
 type Helper struct {
 	db       metadata.DB
