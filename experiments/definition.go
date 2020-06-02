@@ -15,23 +15,26 @@
 package experiments
 
 import (
-	"encoding/json"
 	"io/ioutil"
 
+	"github.com/Netflix/p2plab/cue/parser"
 	"github.com/Netflix/p2plab/metadata"
 )
 
+// Parse reads the cue source file at filename and converts it to a
+// metadata.ExperimentDefinition type
 func Parse(filename string) (metadata.ExperimentDefinition, error) {
-	var edef metadata.ExperimentDefinition
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return edef, err
+		return metadata.ExperimentDefinition{}, err
 	}
-
-	err = json.Unmarshal(content, &edef)
+	psr := parser.NewParser([]string{parser.CueTemplate})
+	inst, err := psr.Compile(
+		"p2plab_experiment",
+		string(content),
+	)
 	if err != nil {
-		return edef, err
+		return metadata.ExperimentDefinition{}, err
 	}
-
-	return edef, nil
+	return inst.ToExperimentDefinition()
 }

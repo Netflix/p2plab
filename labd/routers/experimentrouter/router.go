@@ -16,20 +16,34 @@ package experimentrouter
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"strings"
+	"sync"
 
 	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/daemon"
+	"github.com/Netflix/p2plab/labd/controlapi"
+	"github.com/Netflix/p2plab/labd/routers/helpers"
 	"github.com/Netflix/p2plab/metadata"
+	"github.com/Netflix/p2plab/nodes"
 	"github.com/Netflix/p2plab/peer"
 	"github.com/Netflix/p2plab/pkg/httputil"
+	"github.com/Netflix/p2plab/pkg/logutil"
 	"github.com/Netflix/p2plab/pkg/stringutil"
 	"github.com/Netflix/p2plab/query"
+	"github.com/Netflix/p2plab/reports"
+	"github.com/Netflix/p2plab/scenarios"
 	"github.com/Netflix/p2plab/transformers"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/pkg/errors"
+	"github.com/rs/xid"
 	"github.com/rs/zerolog"
+	jaeger "github.com/uber/jaeger-client-go"
+	bolt "go.etcd.io/bbolt"
+	"golang.org/x/sync/errgroup"
 )
 
 type router struct {
@@ -39,17 +53,27 @@ type router struct {
 	ts       *transformers.Transformers
 	seeder   *peer.Peer
 	builder  p2plab.Builder
+	rhelper  *helpers.Helper
 }
 
+// New returns a new experiment router initialized with the router helpers
 func New(db metadata.DB, provider p2plab.NodeProvider, client *httputil.Client, ts *transformers.Transformers, seeder *peer.Peer, builder p2plab.Builder) daemon.Router {
-	return &router{db, provider, client, ts, seeder, builder}
+	return &router{
+		db,
+		provider,
+		client,
+		ts,
+		seeder,
+		builder,
+		helpers.New(db, provider, client),
+	}
 }
 
 func (s *router) Routes() []daemon.Route {
 	return []daemon.Route{
 		// GET
 		daemon.NewGetRoute("/experiments/json", s.getExperiments),
-		daemon.NewGetRoute("/experiments/{id}/json", s.getExperimentByName),
+		daemon.NewGetRoute("/experiments/{id}/json", s.getExperimentByID),
 		// POST
 		daemon.NewPostRoute("/experiments/create", s.postExperimentsCreate),
 		// PUT
@@ -68,8 +92,8 @@ func (s *router) getExperiments(ctx context.Context, w http.ResponseWriter, r *h
 	return daemon.WriteJSON(w, &experiments)
 }
 
-func (s *router) getExperimentByName(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
-	id := vars["name"]
+func (s *router) getExperimentByID(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
+	id := vars["id"]
 	experiment, err := s.db.GetExperiment(ctx, id)
 	if err != nil {
 		return err
@@ -79,7 +103,131 @@ func (s *router) getExperimentByName(ctx context.Context, w http.ResponseWriter,
 }
 
 func (s *router) postExperimentsCreate(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
-	return errors.New("unimplemented")
+	var edef metadata.ExperimentDefinition
+	err := json.NewDecoder(r.Body).Decode(&edef)
+	if err != nil {
+		return err
+	}
+
+	eid := xid.New().String()
+	w.Header().Add(controlapi.ResourceID, eid)
+
+	ctx, logger := logutil.WithResponseLogger(ctx, w)
+	logger.UpdateContext(func(c zerolog.Context) zerolog.Context {
+		return c.Str("eid", eid)
+	})
+
+	experiment, err := s.db.CreateExperiment(ctx, metadata.Experiment{
+		ID:         eid,
+		Definition: edef,
+		Status:     metadata.ExperimentRunning,
+	})
+	if err != nil {
+		return err
+	}
+
+	var seederAddrs []string
+	for _, addr := range s.seeder.Host().Addrs() {
+		seederAddrs = append(seederAddrs, fmt.Sprintf("%s/p2p/%s", addr, s.seeder.Host().ID()))
+	}
+
+	var mu sync.Mutex
+	experiment.Reports = make([]metadata.Report, len(experiment.Definition.Trials))
+
+	eg, ctx := errgroup.WithContext(ctx)
+	for i, trial := range experiment.Definition.Trials {
+		i, trial := i, trial
+		name := fmt.Sprintf("experiment_%s_trial_%d", eid, i)
+
+		eg.Go(func() error {
+			cluster, err := s.rhelper.CreateCluster(ctx, trial.Cluster, name)
+			if err != nil {
+				return err
+			}
+
+			defer func() error {
+				return s.rhelper.DeleteCluster(ctx, name)
+			}()
+
+			mns, err := s.db.ListNodes(ctx, cluster.ID)
+			if err != nil {
+				return err
+			}
+
+			var (
+				ns   []p2plab.Node
+				lset = query.NewLabeledSet()
+			)
+			for _, n := range mns {
+				node := controlapi.NewNode(s.client, n)
+				lset.Add(node)
+				ns = append(ns, node)
+			}
+
+			var ids []string
+			for _, labeled := range lset.Slice() {
+				ids = append(ids, labeled.ID())
+			}
+			zerolog.Ctx(ctx).Info().Int("trial", i).Strs("ids", ids).Msg("Created cluster for experiment")
+
+			err = nodes.Update(ctx, s.builder, ns)
+			if err != nil {
+				return errors.Wrap(err, "failed to update cluster")
+			}
+
+			err = nodes.Connect(ctx, ns)
+			if err != nil {
+				return errors.Wrap(err, "failed to connect cluster")
+			}
+
+			plan, queries, err := scenarios.Plan(ctx, trial.Scenario, s.ts, s.seeder, lset)
+			if err != nil {
+				return err
+			}
+
+			execution, err := scenarios.Run(ctx, lset, plan, seederAddrs)
+			if err != nil {
+				return errors.Wrapf(err, "failed to run scenario plan for %q", cluster.ID)
+			}
+
+			report := metadata.Report{
+				Summary: metadata.ReportSummary{
+					TotalTime: execution.End.Sub(execution.Start),
+				},
+				Nodes:   execution.Report,
+				Queries: queries,
+			}
+
+			report.Aggregates = reports.ComputeAggregates(report.Nodes)
+			jaegerUI := os.Getenv("JAEGER_UI")
+			if jaegerUI != "" {
+				sc, ok := execution.Span.Context().(jaeger.SpanContext)
+				if ok {
+					report.Summary.Trace = fmt.Sprintf("%s/trace/%s", jaegerUI, sc.TraceID())
+				}
+			}
+
+			mu.Lock()
+			experiment.Reports[i] = report
+			mu.Unlock()
+			return err
+		})
+	}
+
+	err = eg.Wait()
+	if err != nil {
+		return err
+	}
+
+	experiment.Status = metadata.ExperimentDone
+	return s.db.Update(ctx, func(tx *bolt.Tx) error {
+		tctx := metadata.WithTransactionContext(ctx, tx)
+		_, err := s.db.UpdateExperiment(tctx, experiment)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (s *router) putExperimentsLabel(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {

@@ -19,8 +19,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Netflix/p2plab"
 	"github.com/Netflix/p2plab/metadata"
+	"github.com/Netflix/p2plab/nodes"
 	"github.com/Netflix/p2plab/pkg/cliutil"
+	"github.com/Netflix/p2plab/query"
 	"github.com/urfave/cli"
 )
 
@@ -55,6 +58,19 @@ var debugCommand = cli.Command{
 					Name:  "app-addr",
 					Usage: "address for labapp's HTTP server",
 					Value: "http://localhost:7003",
+				},
+			},
+		},
+		{
+			Name:      "connect",
+			Aliases:   []string{"c"},
+			Usage:     "Connects a cluster together",
+			ArgsUsage: "<cluster>",
+			Action:    connectAction,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "query,q",
+					Usage: "Runs a query to filter the listed nodes.",
 				},
 			},
 		},
@@ -102,4 +118,42 @@ func runTaskAction(c *cli.Context) error {
 	}
 
 	return nil
+}
+
+func connectAction(c *cli.Context) error {
+	if c.NArg() != 1 {
+		return errors.New("cluster id must be provided")
+	}
+
+	control, err := ResolveControl(c)
+	if err != nil {
+		return err
+	}
+
+	var opts []p2plab.ListOption
+	ctx := cliutil.CommandContext(c)
+	if c.IsSet("query") {
+		q, err := query.Parse(ctx, c.String("query"))
+		if err != nil {
+			return err
+		}
+
+		opts = append(opts, p2plab.WithQuery(q.String()))
+	}
+
+	cluster := c.Args().First()
+	ns, err := control.Node().List(ctx, cluster)
+	if err != nil {
+		return err
+	}
+	if len(ns) == 0 {
+		return fmt.Errorf("No nodes found for %q", cluster)
+	}
+
+	err = nodes.WaitHealthy(ctx, ns)
+	if err != nil {
+		return err
+	}
+
+	return nodes.Connect(ctx, ns)
 }

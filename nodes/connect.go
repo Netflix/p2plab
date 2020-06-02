@@ -132,5 +132,10 @@ func Connect(ctx context.Context, ns []p2plab.Node) error {
 		}
 	}
 
-	return connectPeers.Wait()
+	err = connectPeers.Wait()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

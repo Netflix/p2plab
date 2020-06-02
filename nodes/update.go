@@ -60,9 +60,9 @@ func Update(ctx context.Context, builder p2plab.Builder, ns []p2plab.Node) error
 
 	for _, n := range ns {
 		n := n
+		pdef := n.Metadata().Peer
+		link := linkByCommit[commitByRef[pdef.GitReference]]
 		updatePeers.Go(func() error {
-			pdef := n.Metadata().Peer
-			link := linkByCommit[commitByRef[pdef.GitReference]]
 			return n.Update(gctx, n.ID(), link, pdef)
 		})
 	}
